@@ -70,7 +70,7 @@ def build_transcriber(settings: Settings) -> Transcriber:
     return MockTranscriber(settings.mock_transcripts)
 
 
-class PhotoCoachApp:
+class ApertureAllyApp:
     def __init__(self, settings: Settings, *, providers: dict[str, Provider] | None = None,
                  speech: SpeechBackend | None = None, recorder: Recorder | None = None,
                  transcriber: Transcriber | None = None, store: Store | None = None):

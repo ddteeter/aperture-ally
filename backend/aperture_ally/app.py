@@ -14,10 +14,10 @@ from fastapi.staticfiles import StaticFiles
 
 from .api.routes import install_error_handlers, router
 from .config import Settings, get_settings
-from .services import PhotoCoachApp
+from .services import ApertureAllyApp
 
 
-def create_app(settings: Settings | None = None, coach: PhotoCoachApp | None = None, *, watch: bool = True) -> FastAPI:
+def create_app(settings: Settings | None = None, coach: ApertureAllyApp | None = None, *, watch: bool = True) -> FastAPI:
     settings = settings or get_settings()
 
     @asynccontextmanager
@@ -27,8 +27,8 @@ def create_app(settings: Settings | None = None, coach: PhotoCoachApp | None = N
         yield
         await app.state.coach.stop()
 
-    app = FastAPI(title="Photo Coach", version="0.1.0", lifespan=lifespan)
-    app.state.coach = coach or PhotoCoachApp(settings)
+    app = FastAPI(title="Aperture Ally", version="0.1.0", lifespan=lifespan)
+    app.state.coach = coach or ApertureAllyApp(settings)
     # Loopback single-user service: reject foreign Host headers (DNS rebinding) and foreign origins.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver", "[::1]"])
     app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=["*"],

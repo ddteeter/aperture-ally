@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from photo_coach.coaching.prompt import SYSTEM_ASSESS, ImageInput, ModelRequest
-from photo_coach.coaching.providers.base import ProviderUnavailable
-from photo_coach.domain.assessment import AssessmentResult, provider_json_schema
+from aperture_ally.coaching.prompt import SYSTEM_ASSESS, ImageInput, ModelRequest
+from aperture_ally.coaching.providers.base import ProviderUnavailable
+from aperture_ally.domain.assessment import AssessmentResult, provider_json_schema
 
 
 def _req(fx):
@@ -17,7 +17,7 @@ def _req(fx):
 
 
 async def test_openai_request_shape_and_usage(fx):
-    from photo_coach.coaching.providers.openai_adapter import OpenAIProvider
+    from aperture_ally.coaching.providers.openai_adapter import OpenAIProvider
 
     p = OpenAIProvider("sk-test", "configured-model", image_detail="high")
     seen = {}
@@ -47,7 +47,7 @@ async def test_openai_connection_error_is_unavailable(fx):
     import httpx
     import openai
 
-    from photo_coach.coaching.providers.openai_adapter import OpenAIProvider
+    from aperture_ally.coaching.providers.openai_adapter import OpenAIProvider
 
     p = OpenAIProvider("sk-test", "m")
 
@@ -60,7 +60,7 @@ async def test_openai_connection_error_is_unavailable(fx):
 
 
 async def test_gemini_request_shape(fx):
-    from photo_coach.coaching.providers.gemini_adapter import GeminiProvider
+    from aperture_ally.coaching.providers.gemini_adapter import GeminiProvider
 
     p = GeminiProvider("g-test", "configured-gemini", media_resolution="high")
     seen = {}
@@ -84,11 +84,11 @@ async def test_gemini_request_shape(fx):
 
 
 def test_registry_refuses_unconfigured_providers(tmp_path):
-    from photo_coach.coaching.service import ProviderRegistry
+    from aperture_ally.coaching.service import ProviderRegistry
 
     from .conftest import fast_settings
 
     reg = ProviderRegistry(fast_settings(tmp_path))
-    with pytest.raises(ProviderUnavailable, match="PHOTO_COACH_OPENAI_MODEL"):
+    with pytest.raises(ProviderUnavailable, match="APERTURE_ALLY_OPENAI_MODEL"):
         reg.get("openai")
     assert reg.configured() == {"mock": True, "openai": False, "gemini": False}

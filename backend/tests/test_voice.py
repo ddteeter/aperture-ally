@@ -3,9 +3,9 @@
 import asyncio
 import time
 
-from photo_coach.audio.speech import MockSpeech
-from photo_coach.domain.models import AudioState
-from photo_coach.input.global_keys import KeySpec, PTTKeyTracker
+from aperture_ally.audio.speech import MockSpeech
+from aperture_ally.domain.models import AudioState
+from aperture_ally.input.global_keys import KeySpec, PTTKeyTracker
 
 
 async def _coached(h, s, fx):

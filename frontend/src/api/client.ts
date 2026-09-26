@@ -1,4 +1,4 @@
-// Small typed fetch client for the Photo Coach backend. All routes live under /api.
+// Small typed fetch client for the Aperture Ally backend. All routes live under /api.
 import type {
   CaptureDetail,
   CapturePatch,

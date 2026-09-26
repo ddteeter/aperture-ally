@@ -5,13 +5,13 @@ import math
 
 import pytest
 
-from photo_coach.domain.assessment import (
+from aperture_ally.domain.assessment import (
     AssessmentResult,
     ValidationContext,
     provider_json_schema,
     validate_output,
 )
-from photo_coach.domain.exposure import (
+from aperture_ally.domain.exposure import (
     ExposureContext,
     equivalent_exposure,
     format_shutter,

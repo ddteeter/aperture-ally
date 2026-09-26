@@ -10,4 +10,4 @@ if [[ ! -f "$ROOT/frontend/dist/index.html" || "${REBUILD_UI:-0}" == "1" ]]; the
 fi
 cd "$ROOT/backend"
 [[ -f .env ]] || echo "note: no backend/.env — using mock provider/speech/mic (copy .env.example to configure)"
-exec uv run photo-coach serve "$@"
+exec uv run aperture-ally serve "$@"

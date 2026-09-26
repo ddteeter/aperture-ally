@@ -2,7 +2,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const backend = process.env.PHOTO_COACH_BACKEND ?? "http://127.0.0.1:8765";
+const backend = process.env.APERTURE_ALLY_BACKEND ?? "http://127.0.0.1:8765";
 
 export default defineConfig({
   plugins: [react()],

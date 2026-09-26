@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from photo_coach.audio.recording import MockRecorder, MockTranscriber
-from photo_coach.audio.speech import MockSpeech
-from photo_coach.coaching.providers.mock import MockProvider
-from photo_coach.config import Settings
-from photo_coach.fixtures_gen import REGIONS, generate
-from photo_coach.services import PhotoCoachApp
+from aperture_ally.audio.recording import MockRecorder, MockTranscriber
+from aperture_ally.audio.speech import MockSpeech
+from aperture_ally.coaching.providers.mock import MockProvider
+from aperture_ally.config import Settings
+from aperture_ally.fixtures_gen import REGIONS, generate
+from aperture_ally.services import ApertureAllyApp
 
 
 @pytest.fixture(scope="session")
@@ -34,7 +34,7 @@ def fast_settings(data_dir: Path, **kw) -> Settings:
 
 
 class Harness:
-    def __init__(self, app: PhotoCoachApp):
+    def __init__(self, app: ApertureAllyApp):
         self.app = app
         self.speech: MockSpeech = app.speech  # type: ignore[assignment]
         self.mock: MockProvider = app.providers.get("mock")  # type: ignore[assignment]
@@ -86,13 +86,13 @@ class Harness:
 
 @pytest.fixture
 async def make_harness(tmp_path):
-    apps: list[PhotoCoachApp] = []
+    apps: list[ApertureAllyApp] = []
 
     async def make(**kw) -> Harness:
         data = kw.pop("data_dir", tmp_path / "data")
         providers = kw.pop("providers", None)
         speech = kw.pop("speech", None) or MockSpeech(words_per_s=400)
-        app = PhotoCoachApp(fast_settings(data, **kw), providers=providers, speech=speech,
+        app = ApertureAllyApp(fast_settings(data, **kw), providers=providers, speech=speech,
                             recorder=MockRecorder(), transcriber=MockTranscriber())
         await app.start()
         apps.append(app)

@@ -37,14 +37,14 @@ from ..domain.models import (
     ShotRequirement,
     utcnow,
 )
-from ..services import NotFound, PhotoCoachApp
+from ..services import ApertureAllyApp, NotFound
 from ..telemetry.export import export_timing
 from ..telemetry.timing import summarize
 
 router = APIRouter(prefix="/api")
 
 
-def app_of(request: Request | WebSocket) -> PhotoCoachApp:
+def app_of(request: Request | WebSocket) -> ApertureAllyApp:
     return request.app.state.coach
 
 
@@ -132,14 +132,14 @@ class VoiceBody(BaseModel):
 
 
 # --- helpers ---------------------------------------------------------------------------------
-async def _session_or_404(app: PhotoCoachApp, sid: str):
+async def _session_or_404(app: ApertureAllyApp, sid: str):
     try:
         return await app.get_session(sid)
     except NotFound as e:
         raise HTTPException(404, str(e)) from e
 
 
-async def _capture_or_404(app: PhotoCoachApp, cid: str) -> Capture:
+async def _capture_or_404(app: ApertureAllyApp, cid: str) -> Capture:
     c = await app.store.get(Capture, cid)
     if c is None:
         raise HTTPException(404, f"capture {cid}")
@@ -168,7 +168,7 @@ def _assessment_view(a: Assessment) -> dict[str, Any]:
     return d
 
 
-async def session_state(app: PhotoCoachApp, sid: str) -> dict[str, Any]:
+async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
     s = await _session_or_404(app, sid)
     shots = await app.store.shots(sid)
     caps = await app.store.captures(sid)
@@ -488,7 +488,7 @@ async def patch_experiment(eid: str, body: ExperimentPatch, request: Request):
 
 
 # --- voice / speech --------------------------------------------------------------------------
-async def _voice_session(app: PhotoCoachApp, body: VoiceBody) -> str | None:
+async def _voice_session(app: ApertureAllyApp, body: VoiceBody) -> str | None:
     if body.session_id:
         return body.session_id
     s = await app.active_session()
@@ -553,7 +553,7 @@ async def diagnostics(request: Request, session_id: str | None = None):
     return {
         "checks": checks,
         "config": app.settings.public_view(),
-        "keys": app.keys.diagnostics() if app.keys else {"running": False, "error": "global keys disabled (PHOTO_COACH_GLOBAL_KEYS=none)"},
+        "keys": app.keys.diagnostics() if app.keys else {"running": False, "error": "global keys disabled (APERTURE_ALLY_GLOBAL_KEYS=none)"},
         "voice": app.voice.snapshot(),
         "speech_backend": app.speech.name,
         "speech_stop_latency_ms": {"n": len(stops), "last": stops[-5:], "max": max(stops) if stops else None},

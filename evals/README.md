@@ -34,7 +34,7 @@ are optional (comparison items). Labelling guidance: [rubric.md](rubric.md).
 
 ```bash
 cd backend
-uv run photo-coach eval split --dataset ../evals/datasets/owner.jsonl --holdout 0.3
+uv run aperture-ally eval split --dataset ../evals/datasets/owner.jsonl --holdout 0.3
 ```
 
 Tune prompts only against `dev`. Run `--split holdout` once per prompt version you intend to report.
@@ -43,16 +43,16 @@ Tune prompts only against `dev`. Run `--split holdout` once per prompt version y
 
 ```bash
 # free dry run of the harness
-uv run photo-coach eval run --dataset ../evals/datasets/example.jsonl --provider mock --split all
+uv run aperture-ally eval run --dataset ../evals/datasets/example.jsonl --provider mock --split all
 # two candidate configurations, 5 items × 3 repeats for stability
-uv run photo-coach eval run --dataset ../evals/datasets/owner.jsonl --provider openai --provider gemini \
+uv run aperture-ally eval run --dataset ../evals/datasets/owner.jsonl --provider openai --provider gemini \
     --split dev --repeat-subset 5 --repeats 3 --max-calls 200 --confirm-paid
 ```
 
 The runner prints the planned and worst-case call count (every call needing its one repair) and refuses
 to call paid providers without `--confirm-paid` and a sufficient `--max-calls`. Output:
 `evals/results/<run>/raw.jsonl` (full model outputs — git-ignored), `report.json`, `report.md`.
-`uv run photo-coach eval report <raw.jsonl>` recomputes the report.
+`uv run aperture-ally eval report <raw.jsonl>` recomputes the report.
 
 Metrics per configuration: false acceptance of labelled-defect images; unnecessary retakes of adequate
 images; criterion agreement / disagreement / model-uncertain; verdict uncertainty; comparison agreement;
@@ -66,4 +66,4 @@ When ground truth is subjective, record disagreement in the report rather than s
 ## 2. Live teaching trial
 
 See [../docs/hardware-checks.md §6](../docs/hardware-checks.md). Fill in each experiment card in the UI,
-then `uv run photo-coach eval trial --session <id-prefix>` writes `exports/teaching_trial.md`.
+then `uv run aperture-ally eval trial --session <id-prefix>` writes `exports/teaching_trial.md`.

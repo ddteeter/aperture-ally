@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from photo_coach.coverage import KeeperError, compute_coverage, export_coverage
+from aperture_ally.coverage import KeeperError, compute_coverage, export_coverage
 
 
 async def _analysed(h, s, n):

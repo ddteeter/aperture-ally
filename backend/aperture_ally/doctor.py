@@ -1,4 +1,4 @@
-"""Environment checks: `photo-coach doctor`. Never prints secrets."""
+"""Environment checks: `aperture-ally doctor`. Never prints secrets."""
 
 from __future__ import annotations
 
@@ -66,10 +66,10 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     out.append(_check("assessment provider", True, s.assess_provider))
     out.append(_check("OpenAI configured", (s.openai_api_key is not None and bool(s.openai_model)) or None,
                       f"key {'set' if s.openai_api_key else 'missing'}, model {s.openai_model or 'unset'}",
-                      "set OPENAI_API_KEY and PHOTO_COACH_OPENAI_MODEL (from official docs)"))
+                      "set OPENAI_API_KEY and APERTURE_ALLY_OPENAI_MODEL (from official docs)"))
     out.append(_check("Gemini configured", (s.gemini_api_key is not None and bool(s.gemini_model)) or None,
                       f"key {'set' if s.gemini_api_key else 'missing'}, model {s.gemini_model or 'unset'}",
-                      "set GEMINI_API_KEY and PHOTO_COACH_GEMINI_MODEL (from official docs)"))
+                      "set GEMINI_API_KEY and APERTURE_ALLY_GEMINI_MODEL (from official docs)"))
     out.append(_check("transcription", s.transcriber == "mock" or (bool(s.openai_api_key) and bool(s.transcription_model)) or None,
                       f"{s.transcriber} model={s.transcription_model or 'unset'}"))
     # audio output
@@ -98,7 +98,7 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     # keys / permissions
     out.append(_check("global keys", True if s.global_keys == "pynput" else None,
                       f"mode={s.global_keys} key={s.ptt_key} ({s.ptt_mode})",
-                      "PHOTO_COACH_GLOBAL_KEYS=pynput to enable (macOS)"))
+                      "APERTURE_ALLY_GLOBAL_KEYS=pynput to enable (macOS)"))
     if mac:
         ok, err = _import("pynput")
         out.append(_check("pynput", ok, err))

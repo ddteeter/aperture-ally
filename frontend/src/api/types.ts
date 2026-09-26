@@ -1,4 +1,4 @@
-// Hand-written types for the Photo Coach backend payloads (see backend/photo_coach/api/routes.py).
+// Hand-written types for the Aperture Ally backend payloads (see backend/aperture_ally/api/routes.py).
 // Fields the UI does not use are still listed where cheap, but everything nullable is typed as such.
 
 export type ProviderName = "mock" | "openai" | "gemini";

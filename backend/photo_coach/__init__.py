@@ -1,1 +1,0 @@
-"""Photo Coach POC backend."""

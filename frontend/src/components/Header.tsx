@@ -26,7 +26,7 @@ export function Header(props: {
   return (
     <header className="app-header">
       <div className="header-row">
-        <h1 className="app-name">Photo Coach</h1>
+        <h1 className="app-name">Aperture Ally</h1>
         <label className="session-picker">
           <span>Session</span>
           <select

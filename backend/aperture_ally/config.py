@@ -1,6 +1,6 @@
 """Application configuration.
 
-Values come from environment variables prefixed ``PHOTO_COACH_`` and an optional ``.env`` file in the
+Values come from environment variables prefixed ``APERTURE_ALLY_`` and an optional ``.env`` file in the
 working directory. Provider secrets are read from their conventional variables (``OPENAI_API_KEY``,
 ``GEMINI_API_KEY``) and are never serialized to the frontend or logs.
 
@@ -31,11 +31,11 @@ class ModelPrice(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="PHOTO_COACH_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_prefix="APERTURE_ALLY_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     # --- storage ---------------------------------------------------------------------------
-    data_dir: Path = Field(default=Path.home() / "PhotoCoach", description="DB + session storage root")
+    data_dir: Path = Field(default=Path.home() / "ApertureAlly", description="DB + session storage root")
     import_roots: list[Path] = Field(
         default_factory=lambda: [REPO_ROOT / "fixtures", Path.home() / "Pictures"],
         description="Directories manual path imports may read from",
@@ -123,7 +123,7 @@ class Settings(BaseSettings):
 
     @property
     def db_path(self) -> Path:
-        return self.data_dir / "photo_coach.sqlite3"
+        return self.data_dir / "aperture_ally.sqlite3"
 
     @property
     def sessions_dir(self) -> Path:

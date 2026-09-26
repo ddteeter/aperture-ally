@@ -5,7 +5,7 @@ Bluetooth headphones, a microphone, optionally a Bluetooth remote, and API crede
 unit tests **do not** substitute for them. Record every result (pass *or* fail, with numbers) in
 [POC_STATUS.md](../POC_STATUS.md) and [poc-report.md](poc-report.md).
 
-Before each block: `cd backend && uv run photo-coach doctor` shows no ✘, and the app runs with
+Before each block: `cd backend && uv run aperture-ally doctor` shows no ✘, and the app runs with
 `./scripts/dev.sh`. Keep `Diagnostics` open in a second browser window.
 
 Suggested kit for timing: a phone that records 120/240 fps video, placed so one frame shows the camera
@@ -16,7 +16,7 @@ headphones (hold one earcup to the phone mic) — or use a wired earbud next to 
 
 ## 1. M1 — tethered ingestion (30 presses)
 
-Setup: `.env` with `PHOTO_COACH_ASSESS_PROVIDER=mock` (no spend needed), OM Capture configured per
+Setup: `.env` with `APERTURE_ALLY_ASSESS_PROVIDER=mock` (no spend needed), OM Capture configured per
 setup.md §3, camera in **RAW+JPEG**.
 
 1. Sessions tab → create "HW ingest test", watch folder = OM Capture's save folder. Choose any shot.
@@ -25,7 +25,7 @@ setup.md §3, camera in **RAW+JPEG**.
 4. **Restart check:** stop the backend (Ctrl-C). Take **3 photos** while it is stopped. Start it again.
 5. **Reconnect check:** unplug the USB cable for ~10 s, reconnect, let OM Capture re-attach (restart
    OM Capture if needed), take **2 photos**.
-6. Run: `uv run photo-coach ingest-report --expect 30`.
+6. Run: `uv run aperture-ally ingest-report --expect 30`.
 
 Pass criteria:
 - `logical_captures == 30`, `match: true`, `seq_gaps: []`.
@@ -36,7 +36,7 @@ Pass criteria:
 - `source_files_by_status` contains no `pending_retry`/`failed` left over (or each is explained).
 - In the UI the images are upright (orientation) and a region drawn on the overview matches its crop.
 - Spot-check 3 originals: the OM Capture files are unchanged (Finder dates), and copies exist under
-  `~/PhotoCoach/sessions/<id>/originals/`.
+  `~/ApertureAlly/sessions/<id>/originals/`.
 
 Record: counts, any anomalies, OM Capture version, macOS version, whether "save to PC and card" was used.
 Also note whether ExifTool reported ORF metadata (capture detail → EXIF shows lens, f-number, etc.).
@@ -61,8 +61,8 @@ observations cite only supplied regions; no invented lights/gear/settings; the n
 
 ## 3. M3 — speech, microphone, PTT, remote
 
-Setup: `PHOTO_COACH_SPEECH_PROVIDER=say`, `PHOTO_COACH_RECORDER=sounddevice`,
-`PHOTO_COACH_TRANSCRIBER=openai` (+ model), `PHOTO_COACH_GLOBAL_KEYS=pynput`, key chosen via
+Setup: `APERTURE_ALLY_SPEECH_PROVIDER=say`, `APERTURE_ALLY_RECORDER=sounddevice`,
+`APERTURE_ALLY_TRANSCRIBER=openai` (+ model), `APERTURE_ALLY_GLOBAL_KEYS=pynput`, key chosen via
 Diagnostics → *Learn key*. Permissions granted (setup.md §5).
 
 A. **Audible through Bluetooth headphones:** Shoot tab → *Repeat last advice* (or trigger any
@@ -78,10 +78,10 @@ D. **Key repeat:** hold the key for 5 s. Pass: Diagnostics shows `repeat` events
 E. **Interruption:** during a long spoken answer, press PTT. Pass: speech stops promptly. Measure with
    video: frames from key press to silence; target ≈ ≤300 ms. Also note Diagnostics
    `speech_stop_latency_ms` (process-level; Bluetooth adds output latency on top).
-F. **Lost release:** set `PHOTO_COACH_PTT_MAX_SECONDS=8`, restart; press and hold, then (simulate a lost
+F. **Lost release:** set `APERTURE_ALLY_PTT_MAX_SECONDS=8`, restart; press and hold, then (simulate a lost
    key-up) switch focus/unpair the remote while holding, or just keep holding. Pass: after 8 s the state
    returns to idle, the turn is `timed_out`, nothing is transcribed. Restore 60 s.
-G. **Toggle fallback:** `PHOTO_COACH_PTT_MODE=toggle` (for pulse-only remotes): tap to start, tap to stop.
+G. **Toggle fallback:** `APERTURE_ALLY_PTT_MODE=toggle` (for pulse-only remotes): tap to start, tap to stop.
 H. **Remote:** repeat C–E with the actual remote (e.g. AirTurn DIGIT 500 / 8BitDo Micro in keyboard
    mode). Record the key name, whether it produces held states or pulses, battery/sleep behaviour, and
    whether OM Capture also reacts to that key. **Do not claim remote compatibility without this.**
@@ -102,7 +102,7 @@ H. **Remote:** repeat C–E with the actual remote (e.g. AirTurn DIGIT 500 / 8Bi
 ## 5. Latency measurement
 
 The app logs: file detected → file ready → evidence ready → model request/response → validated →
-speech requested → speech process started → completed (`Diagnostics` timing table, `photo-coach export`).
+speech requested → speech process started → completed (`Diagnostics` timing table, `aperture-ally export`).
 It **cannot** see the shutter press or audible onset. For ≥10 ordinary JPEG captures:
 - **Shutter → file ready:** video frame of the shutter press to the frame where *Received ✓ photo #N* appears.
 - **File ready → first audible speech:** from *Received ✓* to the first audible word in the video.
@@ -118,7 +118,7 @@ looking at the before/after), whether other criteria worsened, a helpful/neutral
 lesson in your own words **without looking at the advice text**. Then:
 
 ```bash
-uv run photo-coach eval trial --session <id-prefix>
+uv run aperture-ally eval trial --session <id-prefix>
 ```
 
 Targets (hypotheses): ≥7/10 helpful, ≤1/10 clearly harmful, a useful explanation recalled after most

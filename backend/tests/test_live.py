@@ -7,7 +7,7 @@ import os
 
 import pytest
 
-from photo_coach.config import Settings
+from aperture_ally.config import Settings
 
 pytestmark = pytest.mark.live
 
@@ -16,9 +16,9 @@ pytestmark = pytest.mark.live
 async def test_live_assessment_contract(make_harness, fx, provider):
     s = Settings()
     if provider == "openai" and not (s.openai_api_key and s.openai_model):
-        pytest.skip("OPENAI_API_KEY / PHOTO_COACH_OPENAI_MODEL not set")
+        pytest.skip("OPENAI_API_KEY / APERTURE_ALLY_OPENAI_MODEL not set")
     if provider == "gemini" and not (s.gemini_api_key and s.gemini_model):
-        pytest.skip("GEMINI_API_KEY / PHOTO_COACH_GEMINI_MODEL not set")
+        pytest.skip("GEMINI_API_KEY / APERTURE_ALLY_GEMINI_MODEL not set")
     h = await make_harness(openai_api_key=s.openai_api_key, openai_model=s.openai_model,
                            gemini_api_key=s.gemini_api_key, gemini_model=s.gemini_model)
     sess = await h.session(assess_provider=provider)

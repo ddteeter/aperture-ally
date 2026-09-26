@@ -37,13 +37,13 @@ function chromiumExecutable(): string | undefined {
 const executablePath = chromiumExecutable();
 
 const backendEnv = [
-  "PHOTO_COACH_DATA_DIR=$(mktemp -d)",
-  "PHOTO_COACH_ASSESS_PROVIDER=mock",
-  "PHOTO_COACH_SPEECH_PROVIDER=mock",
-  "PHOTO_COACH_RECORDER=mock",
-  "PHOTO_COACH_TRANSCRIBER=mock",
-  "PHOTO_COACH_GLOBAL_KEYS=none",
-  `PHOTO_COACH_ALLOWED_ORIGINS='["${BASE}","http://localhost:${PORT}"]'`,
+  "APERTURE_ALLY_DATA_DIR=$(mktemp -d)",
+  "APERTURE_ALLY_ASSESS_PROVIDER=mock",
+  "APERTURE_ALLY_SPEECH_PROVIDER=mock",
+  "APERTURE_ALLY_RECORDER=mock",
+  "APERTURE_ALLY_TRANSCRIBER=mock",
+  "APERTURE_ALLY_GLOBAL_KEYS=none",
+  `APERTURE_ALLY_ALLOWED_ORIGINS='["${BASE}","http://localhost:${PORT}"]'`,
 ].join(" ");
 
 export default defineConfig({
@@ -67,7 +67,7 @@ export default defineConfig({
   ],
   webServer: {
     // Build the UI, then start the backend (which serves frontend/dist at / and /assets).
-    command: `npm run build && cd ../backend && ${backendEnv} uv run photo-coach serve --port ${PORT}`,
+    command: `npm run build && cd ../backend && ${backendEnv} uv run aperture-ally serve --port ${PORT}`,
     url: `${BASE}/api/health`,
     timeout: 180_000,
     reuseExistingServer: false,

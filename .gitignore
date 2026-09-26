@@ -16,7 +16,7 @@ frontend/playwright-report/
 *.sqlite3
 *.sqlite3-*
 data/
-PhotoCoach/
+ApertureAlly/
 fixtures/generated/
 fixtures/private/
 evals/datasets/*

@@ -21,7 +21,7 @@ def cmd_serve(args) -> int:
     if s.host not in ("127.0.0.1", "localhost", "::1") and not args.allow_non_loopback:
         print(f"Refusing to bind {s.host}: loopback only (use --allow-non-loopback to override)", file=sys.stderr)
         return 2
-    print(f"Photo Coach on http://{s.host}:{s.port}  (provider={s.assess_provider}, speech={s.speech_provider}, "
+    print(f"Aperture Ally on http://{s.host}:{s.port}  (provider={s.assess_provider}, speech={s.speech_provider}, "
           f"recorder={s.recorder}, transcriber={s.transcriber}, global_keys={s.global_keys})")
     uvicorn.run(create_app(s), host=s.host, port=s.port, log_level="info")
     return 0
@@ -59,7 +59,7 @@ def cmd_replay(args) -> int:
     try:
         asyncio.run(go())
     except httpx.ConnectError:
-        print(f"Cannot reach {args.url}. Start the app first: ./scripts/dev.sh (or photo-coach serve)", file=sys.stderr)
+        print(f"Cannot reach {args.url}. Start the app first: ./scripts/dev.sh (or aperture-ally serve)", file=sys.stderr)
         return 1
     return 0
 
@@ -140,7 +140,7 @@ def cmd_eval(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="photo-coach")
+    p = argparse.ArgumentParser(prog="aperture-ally")
     sub = p.add_subparsers(dest="cmd", required=True)
     sp = sub.add_parser("serve", help="run the local app (API + built UI)")
     sp.add_argument("--port", type=int)

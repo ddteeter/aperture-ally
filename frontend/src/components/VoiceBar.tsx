@@ -14,7 +14,7 @@ const STATE_TEXT: Record<string, string> = {
   error: "Error",
 };
 
-const TOGGLE_KEY = "photo-coach.ptt-toggle";
+const TOGGLE_KEY = "aperture-ally.ptt-toggle";
 
 export function VoiceBar({ captureId }: { captureId: string | null }) {
   const { sid, state, run } = useApp();

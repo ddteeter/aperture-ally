@@ -66,7 +66,7 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 
 ## Remaining gates (in order)
 
-1. `photo-coach doctor` on the M4: arm64, ExifTool, `say`, microphone, permissions.
+1. `aperture-ally doctor` on the M4: arm64, ExifTool, `say`, microphone, permissions.
 2. Configure model ids (+ prices) from official docs; `uv run pytest -m live -s tests/test_live.py`.
 3. M1 30-press ingestion gate (hardware-checks.md §1).
 4. M3 speech / mic / PTT / remote (§3), incl. video-measured interruption and audible onset.

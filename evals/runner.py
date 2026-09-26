@@ -1,11 +1,11 @@
 """Offline evaluation runner and live-trial summarizer.
 
-    photo-coach eval split  --dataset evals/datasets/owner.jsonl --holdout 0.3 [--seed 7]
-    photo-coach eval run    --dataset evals/datasets/owner.jsonl --provider openai --provider gemini \
+    aperture-ally eval split  --dataset evals/datasets/owner.jsonl --holdout 0.3 [--seed 7]
+    aperture-ally eval run    --dataset evals/datasets/owner.jsonl --provider openai --provider gemini \
                             [--split dev|holdout|all] [--repeat-subset 5 --repeats 3] \
                             --max-calls 150 --confirm-paid
-    photo-coach eval report evals/results/<run>/raw.jsonl
-    photo-coach eval trial  --session <session-id-prefix>
+    aperture-ally eval report evals/results/<run>/raw.jsonl
+    aperture-ally eval trial  --session <session-id-prefix>
 
 Paid providers are never called without --confirm-paid and a --max-calls budget that covers the
 worst case (every call needing its one repair). Results (raw model outputs) go to evals/results/, which
@@ -30,9 +30,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from photo_coach.config import Settings  # noqa: E402
-from photo_coach.domain.models import Assessment, Criterion, Region, ShotRequirement  # noqa: E402
-from photo_coach.telemetry.timing import percentile  # noqa: E402
+from aperture_ally.config import Settings  # noqa: E402
+from aperture_ally.domain.models import Assessment, Criterion, Region, ShotRequirement  # noqa: E402
+from aperture_ally.telemetry.timing import percentile  # noqa: E402
 
 RESULTS = ROOT / "evals" / "results"
 SHUTTER_RX = re.compile(r"\b1/\d{1,5}\s?(s|sec)?\b|\b\d+(\.\d+)?\s?(s|sec|seconds)\b(?! of)", re.I)
@@ -91,14 +91,14 @@ def planned_calls(n_items: int, n_providers: int, subset: int, repeats: int) -> 
 
 
 async def _run_async(items: list[dict], providers: list[str], args, settings: Settings, out_dir: Path) -> list[dict]:
-    from photo_coach.services import PhotoCoachApp
+    from aperture_ally.services import ApertureAllyApp
 
-    data_dir = Path(tempfile.mkdtemp(prefix="photo-coach-eval-"))
+    data_dir = Path(tempfile.mkdtemp(prefix="aperture-ally-eval-"))
     settings = settings.model_copy(update={"data_dir": data_dir, "speech_provider": "none", "recorder": "mock",
                                            "transcriber": "mock", "global_keys": "none", "auto_coach": False,
                                            "teaching_prompt_every": 0, "stability_interval_ms": 20,
                                            "import_roots": [Path("/")]})
-    app = PhotoCoachApp(settings)
+    app = ApertureAllyApp(settings)
     await app.start(watch=False)
     rows: list[dict] = []
     raw_path = out_dir / "raw.jsonl"
@@ -313,7 +313,7 @@ def cmd_run(args) -> int:
     settings = Settings()
     for p in paid:
         if not settings.model_for(p):
-            print(f"{p}: model not configured (PHOTO_COACH_{p.upper()}_MODEL).")
+            print(f"{p}: model not configured (APERTURE_ALLY_{p.upper()}_MODEL).")
             return 2
     run = time.strftime("%Y%m%d-%H%M%S") + "_" + "-".join(providers)
     out_dir = Path(args.out) if args.out else RESULTS / run
@@ -334,7 +334,7 @@ def cmd_report(args) -> int:
 
 # --- live teaching trial ------------------------------------------------------------------
 def cmd_trial(args) -> int:
-    from photo_coach.persistence.db import Store
+    from aperture_ally.persistence.db import Store
 
     settings = Settings()
     store = Store(settings.db_path)
@@ -374,7 +374,7 @@ def cmd_trial(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="photo-coach eval")
+    p = argparse.ArgumentParser(prog="aperture-ally eval")
     sub = p.add_subparsers(dest="cmd", required=True)
     sp = sub.add_parser("split")
     sp.add_argument("--dataset", required=True)

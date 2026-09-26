@@ -142,7 +142,7 @@ export function DiagnosticsTab() {
               {learning || diag.keys.learn_waiting
                 ? "Press the remote's button now…"
                 : learned
-                  ? `Learned key: ${learned} (set PHOTO_COACH_PTT_KEY to use it)`
+                  ? `Learned key: ${learned} (set APERTURE_ALLY_PTT_KEY to use it)`
                   : ""}
             </p>
             {diag.keys.events && diag.keys.events.length > 0 && (

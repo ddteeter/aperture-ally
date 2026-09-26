@@ -6,7 +6,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from photo_coach.app import create_app
+from aperture_ally.app import create_app
 
 from .conftest import fast_settings
 

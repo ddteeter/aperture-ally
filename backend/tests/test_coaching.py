@@ -2,7 +2,7 @@
 
 import asyncio
 
-from photo_coach.domain.models import Assessment, Capture, ProcessingState
+from aperture_ally.domain.models import Assessment, Capture, ProcessingState
 
 
 async def _done(h, s, n):

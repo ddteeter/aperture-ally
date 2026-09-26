@@ -23,7 +23,7 @@ OM Capture ──writes──▶ watch folder ──watchdog hints + periodic sc
  Browser button / Space ──────REST──────────────────────┘
 ```
 
-## Modules (`backend/photo_coach/`)
+## Modules (`backend/aperture_ally/`)
 
 | Package | Responsibility |
 |---|---|
@@ -95,7 +95,7 @@ environment and never serialized.
 
 ## Persistence
 
-`~/PhotoCoach/photo_coach.sqlite3` (WAL). Tables: sessions, setup_revisions, shots, captures,
+`~/ApertureAlly/aperture_ally.sqlite3` (WAL). Tables: sessions, setup_revisions, shots, captures,
 source_files (ingest ledger), assessments, experiments, keeper_decisions, voice_turns, timing_marks.
 Each record table has indexed columns + a JSON body validated on read. New migrations are appended to
 `MIGRATIONS`; never edit a released one.

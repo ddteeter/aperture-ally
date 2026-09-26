@@ -1,4 +1,4 @@
-# Photo Coach POC report
+# Aperture Ally POC report
 
 Status date: 2026-09-26. **Decision: not yet possible.** The software loop is implemented and verified
 in simulation, but none of the evidence the decision depends on (real camera, real speech/PTT on the
@@ -37,7 +37,7 @@ coaching quality.
 | file ready → speech process started | 457 / 541 | 355 / 420 | median < 5000, p95 < 10000 *(real model)* |
 
 - detected → ready is dominated by the stability policy (3 unchanged checks × 250 ms ≈ 750 ms after the
-  last write) plus chunked replay writes (p95). It is configurable (`PHOTO_COACH_STABILITY_*`); measure
+  last write) plus chunked replay writes (p95). It is configurable (`APERTURE_ALLY_STABILITY_*`); measure
   on hardware before tuning.
 - Evidence for a **20 MP** JPEG (5184×3888, 5.4 MB) on this container: ~0.45 s after optimisation
   (was ~1.1 s). The M4 figure is pending.
@@ -58,7 +58,7 @@ cover the plan's software risks; they are not camera/audio/model-quality trials.
 
 | Gate | Result | Notes |
 |---|---|---|
-| M1: 30 presses → 30 captures, RAW+JPEG pairs, restart, reconnect | pending | `photo-coach ingest-report --expect 30` |
+| M1: 30 presses → 30 captures, RAW+JPEG pairs, restart, reconnect | pending | `aperture-ally ingest-report --expect 30` |
 | ORF metadata via ExifTool; RAW-only preview via LibRaw | pending | |
 | M3: audible via Bluetooth headphones | pending | |
 | M3: PTT while OM Capture foreground; hold/release/repeat | pending | |
@@ -77,7 +77,7 @@ version `coach-2026-09-26.1`.
 
 ## 4. Live teaching trial — *pending*
 
-From `photo-coach eval trial`: helpful x/10 (target ≥7), harmful x/10 (target ≤1), lessons recalled x/10,
+From `aperture-ally eval trial`: helpful x/10 (target ≥7), harmful x/10 (target ≤1), lessons recalled x/10,
 plus notable failures in Drew's words.
 
 ## 5. Costs — *pending*

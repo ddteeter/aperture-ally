@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from photo_coach.domain.models import Region
-from photo_coach.fixtures_gen import REGIONS
-from photo_coach.imaging.evidence import DecodeError, build_evidence, verify_decodable
-from photo_coach.imaging.measurements import region_comparable
-from photo_coach.imaging.metadata import MetadataReader, normalize
+from aperture_ally.domain.models import Region
+from aperture_ally.fixtures_gen import REGIONS
+from aperture_ally.imaging.evidence import DecodeError, build_evidence, verify_decodable
+from aperture_ally.imaging.measurements import region_comparable
+from aperture_ally.imaging.metadata import MetadataReader, normalize
 
 
 def test_orientation_normalized_crops_match(fx, tmp_path):
@@ -92,7 +92,7 @@ def test_exiftool_group_prefixes_are_normalized():
 
 
 def test_raw_unsupported_is_reported(tmp_path):
-    from photo_coach.imaging.raw import RawUnsupported, make_preview
+    from aperture_ally.imaging.raw import RawUnsupported, make_preview
 
     fake = tmp_path / "X.ORF"
     fake.write_bytes(b"not a raw" * 100)

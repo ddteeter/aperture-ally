@@ -1,9 +1,9 @@
-# Photo Coach (proof of concept)
+# Aperture Ally (proof of concept)
 
 A local-first macOS app that coaches a beginner through product photography **during the shoot**:
 
 1. OM Capture (tethered E-M1 Mark II) writes a photo into a watch folder.
-2. Photo Coach ingests it for the **active shot requirement** (e.g. "Outsole"), preserves the original,
+2. Aperture Ally ingests it for the **active shot requirement** (e.g. "Outsole"), preserves the original,
    builds an overview + full-resolution region crops + local measurements.
 3. A vision model (or the offline **mock** heuristic) returns structured, grounded coaching: a verdict
    per acceptance criterion and **one** physically achievable change, with explanation and trade-off.
@@ -22,7 +22,7 @@ hardware-verified and model-evaluated — **those are different things**.
 ```bash
 ./scripts/dev.sh                      # uv sync, build UI once, serve http://127.0.0.1:8765
 # in another terminal:
-cd backend && uv run photo-coach replay basic_loop
+cd backend && uv run aperture-ally replay basic_loop
 ```
 
 Open http://127.0.0.1:8765 and watch a simulated session: photos arrive via the real watch-folder path,
@@ -43,10 +43,10 @@ headphones + microphone, PTT permissions and remote), then the manual gates in
 | Command | Purpose |
 |---|---|
 | `./scripts/dev.sh` | one-command launch (API + built UI on 127.0.0.1:8765) |
-| `uv run photo-coach doctor` | dependencies, arm64, providers (never prints keys), audio devices, permissions |
-| `uv run photo-coach replay <scenario>` | simulated camera against a running app |
-| `uv run photo-coach export [--session ID]` | coverage (JSON, Markdown, contact sheet) + timing report |
-| `uv run photo-coach eval …` | offline evaluation / live-trial summary ([evals/README.md](evals/README.md)) |
+| `uv run aperture-ally doctor` | dependencies, arm64, providers (never prints keys), audio devices, permissions |
+| `uv run aperture-ally replay <scenario>` | simulated camera against a running app |
+| `uv run aperture-ally export [--session ID]` | coverage (JSON, Markdown, contact sheet) + timing report |
+| `uv run aperture-ally eval …` | offline evaluation / live-trial summary ([evals/README.md](evals/README.md)) |
 | `./scripts/check.sh` | lint + backend tests + frontend typecheck/unit/build/e2e (no paid calls) |
 | `uv run pytest -m live` | **paid**: one real call per configured provider |
 
@@ -55,7 +55,7 @@ headphones + microphone, PTT permissions and remote), then the manual gates in
 ## Layout
 
 ```
-backend/photo_coach/   api · domain · ingest · imaging · coaching · audio · input · persistence · telemetry
+backend/aperture_ally/ api · domain · ingest · imaging · coaching · audio · input · persistence · telemetry
 frontend/src/          React + TypeScript UI (Shoot, Coverage, Diagnostics, Sessions)
 fixtures/manifest.json replay scenarios; synthetic images are generated into fixtures/generated/ (git-ignored)
 evals/                 runner, rubric, dataset format; results/ is git-ignored

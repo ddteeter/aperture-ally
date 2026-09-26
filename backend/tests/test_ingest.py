@@ -5,8 +5,8 @@ import os
 import stat
 from pathlib import Path
 
-from photo_coach.domain.models import Assessment, ProcessingState
-from photo_coach.ingest.service import sha256_file
+from aperture_ally.domain.models import Assessment, ProcessingState
+from aperture_ally.ingest.service import sha256_file
 
 
 async def test_partial_write_ingested_once_after_complete(h, fx):
@@ -70,7 +70,7 @@ async def test_late_raw_attaches_without_second_coaching(h, fx):
 
 
 async def _raw_attached(h, cid):
-    from photo_coach.domain.models import Capture
+    from aperture_ally.domain.models import Capture
 
     c = await h.app.store.get(Capture, cid)
     return c and c.raw_path

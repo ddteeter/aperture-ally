@@ -74,14 +74,14 @@ class ProviderRegistry:
             p: Provider = MockProvider()
         elif name == "openai":
             if not s.openai_api_key or not s.openai_model:
-                raise ProviderUnavailable("OpenAI not configured: set OPENAI_API_KEY and PHOTO_COACH_OPENAI_MODEL")
+                raise ProviderUnavailable("OpenAI not configured: set OPENAI_API_KEY and APERTURE_ALLY_OPENAI_MODEL")
             from .providers.openai_adapter import OpenAIProvider
 
             p = OpenAIProvider(s.openai_api_key.get_secret_value(), s.openai_model,
                                image_detail=s.openai_image_detail, timeout_s=s.model_timeout_s)
         elif name == "gemini":
             if not s.gemini_api_key or not s.gemini_model:
-                raise ProviderUnavailable("Gemini not configured: set GEMINI_API_KEY and PHOTO_COACH_GEMINI_MODEL")
+                raise ProviderUnavailable("Gemini not configured: set GEMINI_API_KEY and APERTURE_ALLY_GEMINI_MODEL")
             from .providers.gemini_adapter import GeminiProvider
 
             p = GeminiProvider(s.gemini_api_key.get_secret_value(), s.gemini_model,

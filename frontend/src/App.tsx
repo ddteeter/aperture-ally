@@ -17,7 +17,7 @@ function tabFromHash(): Tab {
   return (TABS.find((t) => t.id === h)?.id ?? "shoot") as Tab;
 }
 
-const SID_KEY = "photo-coach.sid";
+const SID_KEY = "aperture-ally.sid";
 function loadSid(): string | null {
   try {
     return localStorage.getItem(SID_KEY);
