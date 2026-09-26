@@ -208,3 +208,16 @@ async def test_recorded_assessment_metadata(h, fx):
     marks = {m["stage"] for m in await h.app.store.timing_marks(s.id) if m["capture_id"] == a.capture_id}
     assert {"file_detected", "file_ready", "evidence_ready", "model_request_started", "model_response_received",
             "result_validated", "speech_requested", "speech_process_started", "speech_completed"} <= marks
+
+
+async def test_explicit_review_of_older_photo_is_identified(h, fx):
+    s = await h.session()
+    await h.use_shot(s, "Upper", "mesh")
+    h.drop(s, fx / "P9260002.JPG")
+    await h.wait(lambda: _done(h, s, 1), 10)
+    h.drop(s, fx / "P9260003.JPG")
+    await h.wait(lambda: _done(h, s, 2), 10)
+    first = (await h.captures(s))[0]
+    await h.app.coaching.request_review(first.id, speak=True)
+    await h.wait(lambda: _done(h, s, 3), 10)
+    assert h.speech.spoken[-1].startswith(f"About earlier photo {first.seq}:")

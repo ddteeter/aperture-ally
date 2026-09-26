@@ -197,3 +197,17 @@ def test_key_tracker_chord_toggle_and_learn():
     t.learn_waiting = True
     assert t.on_press("shift") is None and t.learn_waiting
     assert t.on_press("f13") == "learned" and t.learned == "shift+f13"
+
+
+async def test_offline_question_gets_spoken_notice(h, fx):
+    s = await h.session()
+    await _coached(h, s, fx)
+    h.mock.fail_mode = "unavailable"
+    h.app.voice.transcriber.queue.append("why?")
+    await h.app.voice.press(s.id)
+    await asyncio.sleep(0.3)
+    await h.app.voice.release()
+    await h.wait(lambda: _spoken(h, 2), 10, "offline notice")
+    assert "offline" in h.speech.spoken[-1]
+    (turn,) = await h.app.store.voice_turns(s.id)
+    assert turn.status == "error" and turn.error.startswith("AI unavailable")

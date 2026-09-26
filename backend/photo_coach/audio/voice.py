@@ -231,10 +231,18 @@ class VoiceController:
             raise
         except Exception as exc:
             log.exception("voice turn failed")
+            from ..coaching.providers.base import ProviderUnavailable
+
+            offline = isinstance(exc, ProviderUnavailable | TimeoutError)
             turn.status = "error"
-            turn.error = str(exc)
+            turn.error = ("AI unavailable: " if offline else "") + str(exc)
             await self.store.put(turn)
-            self.set_state(AudioState.error, error=str(exc))
+            self.set_state(AudioState.error, error=turn.error, ai_unavailable=offline)
+            # Drew is at the camera, not the screen: say briefly (local speech) that there's no answer.
+            msg = ("The coach is offline, so I can't answer right now." if offline
+                   else "Sorry, that question failed. Check the screen.")
+            await self.audio.speak(msg, guard, {"session_id": turn.session_id, "voice_turn_id": turn.id,
+                                                "kind": "notice"})
         finally:
             if self.state in (AudioState.transcribing, AudioState.preparing_response, AudioState.error):
                 self.state = AudioState.idle

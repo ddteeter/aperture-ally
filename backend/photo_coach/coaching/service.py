@@ -296,7 +296,10 @@ class CoachingService:
             return assessment
 
         if speak and trigger != "eval":
-            status = await self.audio.speak(self.spoken_for(assessment), guard,
+            text = self.spoken_for(assessment)
+            if trigger == "user" and not self.tracker.is_latest(session.id, capture.shot_id, capture.id):
+                text = f"About earlier photo {capture.seq}: {text}"  # explicit review of an older photo
+            status = await self.audio.speak(text, guard,
                                             {"session_id": session.id, "capture_id": capture.id,
                                              "assessment_id": assessment.id, "kind": "advice"})
         else:
