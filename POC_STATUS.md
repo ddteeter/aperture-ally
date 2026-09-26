@@ -56,12 +56,13 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Optimisation telemetry: raw model I/O per call (incl. invalid/failed), sub-stage timings, persisted events (speech outcomes, stop latency, PTT keys, network probes, startup snapshot), log file, JSONL export | Implemented | `test_telemetry.py`; docs/telemetry.md |
 | Offline eval runner (split, bounded paid runs, stability, report) | Implemented | mock dry run only |
 | Live teaching-trial summary | Implemented | no trial run |
+| Session replay eval (recorded requests → other models/prompts; frozen/chained; agreement with session + keeper/experiment/post-hoc labels) | Implemented, simulated | `test_session_replay.py`; mock dry run only |
 | Security: loopback, host/origin checks, ID-only file serving, import roots | Implemented | `test_api.py` |
 | Frontend (Shoot / Coverage / Diagnostics / Sessions): viewer, region drawing, histogram, before/after, coach card, experiment card, keeper confirm, hold/toggle/Space PTT, diagnostics, exports | Implemented, simulated | Vitest + Playwright (backend-served build, mock adapters); dev-server proxy path not e2e-tested; region drawing is pointer-only |
 
 ## Automated test results (build environment, mocks only)
 
-- Backend: `uv run pytest` → 92 passed, 2 live (paid) tests deselected. `ruff check` clean.
+- Backend: `uv run pytest` → 98 passed, 2 live (paid) tests deselected. `ruff check` clean.
 - Frontend: `npm run typecheck` clean; `npm test` 33 passed; `npm run build` ok; `npm run e2e` 2 passed
   (replay coaching loop → comparison → keeper → coverage; hold-to-talk → answer).
 

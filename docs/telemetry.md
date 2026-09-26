@@ -23,6 +23,9 @@ Join on `capture_id`, `assessment_id`, `voice_turn_id`. `mono_ns` values are onl
 
 The server log is at `<data dir>/logs/aperture-ally.log` (rotating, 10 MB × 5). It also has one line per app event.
 
+The recorded model calls also drive **session replay evaluation**: resend a real shoot's exact requests
+to other models or prompts (`aperture-ally eval session`, see [../evals/README.md](../evals/README.md) §3).
+
 ## What is recorded
 
 **Per capture** (`captures.timings`):

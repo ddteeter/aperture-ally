@@ -255,7 +255,7 @@ def report_md(m: dict[str, Any], meta: dict[str, Any]) -> str:
              "Counts with denominators. Ground truth is Drew's labelling; disagreement is recorded, not "
              "assumed to be model error. This is not a reliability guarantee.", ""]
     for cfg, x in m.items():
-        f = lambda d: f"{d['count']}/{d['of']}"  # noqa: E731
+        f = lambda d: f"{d['count']}/{d['of']}"
         c = x["criterion_agreement"]
         lines += [f"## {cfg}", "",
                   "| Metric | Value |", "|---|---|",
@@ -401,6 +401,9 @@ def main(argv: list[str] | None = None) -> int:
     sp = sub.add_parser("trial")
     sp.add_argument("--session")
     sp.set_defaults(fn=cmd_trial)
+    from .session_replay import add_parsers
+
+    add_parsers(sub)
     args = p.parse_args(argv)
     return args.fn(args)
 

@@ -46,7 +46,7 @@ headphones + microphone, PTT permissions and remote), then the manual gates in
 | `uv run aperture-ally doctor` | dependencies, arm64, providers (never prints keys), audio devices, permissions |
 | `uv run aperture-ally replay <scenario>` | simulated camera against a running app |
 | `uv run aperture-ally export [--session ID]` | coverage (JSON, Markdown, contact sheet), timing report and raw telemetry JSONL ([docs/telemetry.md](docs/telemetry.md)) |
-| `uv run aperture-ally eval …` | offline evaluation / live-trial summary ([evals/README.md](evals/README.md)) |
+| `uv run aperture-ally eval …` | offline evaluation, **session replay against other models/prompts**, live-trial summary ([evals/README.md](evals/README.md)) |
 | `./scripts/check.sh` | lint + backend tests + frontend typecheck/unit/build/e2e (no paid calls) |
 | `uv run pytest -m live` | **paid**: one real call per configured provider |
 

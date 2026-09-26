@@ -67,3 +67,50 @@ When ground truth is subjective, record disagreement in the report rather than s
 
 See [../docs/hardware-checks.md §6](../docs/hardware-checks.md). Fill in each experiment card in the UI,
 then `uv run aperture-ally eval trial --session <id-prefix>` writes `exports/teaching_trial.md`.
+
+## 3. Session replay: re-run a real shoot against other models or prompts
+
+Every assessment in a real session is recorded with the exact system prompt, context JSON and evidence
+images the model saw (`model_calls`, see [../docs/telemetry.md](../docs/telemetry.md)). You can resend those
+same requests to other configurations and compare them with what actually happened. Nothing is written
+back to the session.
+
+```bash
+cd backend
+# optional: label template (keepers pre-labelled adequate); fill in adequate/defects/criteria
+uv run aperture-ally eval session-labels --session <id-prefix>
+# free dry run: the mock provider
+uv run aperture-ally eval session --session <id-prefix> --config mock
+# candidates vs the recorded session (paid, bounded)
+uv run aperture-ally eval session --session <id-prefix> \
+    --config openai:<model-A> --config openai:<model-B> --config gemini:<model-C> \
+    --labels <data dir>/sessions/<id>/exports/replay_labels.jsonl \
+    --repeats 2 --max-calls 200 --confirm-paid
+```
+
+Options:
+- `--mode frozen` (default): identical requests. Retakes still carry the *original* model's previous advice,
+  exactly as in the session.
+- `--mode chained`: comparisons and history use the candidate's *own* earlier result for the baseline photo.
+  Caveat: the retake was shot following the original advice, not the candidate's, so this tests reasoning
+  consistency, not real-world outcome.
+- `--instructions current`: swap in today's system prompt, to try prompt changes on real shoot data. The
+  context keeps its recorded shape. If the output schema changed since recording, a note is printed and
+  the current schema is used.
+- `--include-answers`: also replay the push-to-talk follow-up answers (shown side by side, not scored).
+- `--no-repair`: measure first-try validity only. By default the one production repair is allowed.
+- `--db`: use a copied database (e.g. from a backup). Evidence files referenced by the calls must still exist;
+  requests with missing images are skipped and listed, never faked.
+
+Output, in `evals/results/<run>/` (git-ignored):
+- `raw.jsonl`: every candidate output, including raw text for invalid ones.
+- `report.md` / `report.json`: the offline metrics for each candidate *and* for the recorded session itself
+  (`recorded:<provider>` rows, no API calls). It also covers agreement with the original: validity first try /
+  after repair, verdict, primary action, comparison, keepers the candidate would have sent back for a retake,
+  and spoken length.
+- `side_by_side.md`: the spoken text of every configuration next to each other, per photo.
+
+Ground truth from the session is weak. An accepted keeper means you accepted it, and an experiment card's
+"criterion improved / other worsened" becomes the expected comparison outcome. Add post-hoc labels for real
+false-acceptance / unnecessary-retake counts. Replaying the model you used in the session also shows its
+run-to-run variability.
