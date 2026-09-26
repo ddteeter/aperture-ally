@@ -1,0 +1,259 @@
+"""Persisted domain records.
+
+Conventions: UUID string IDs, UTC ISO timestamps for persisted events, shutter duration in seconds,
+aperture as f-number, ISO numeric, dimensions orientation-normalized. Unknown stays ``None``/"unknown";
+nothing here is ever defaulted to a plausible-looking camera value.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
+
+
+def utcnow() -> str:
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
+
+
+# --- state axes -------------------------------------------------------------------------------
+
+
+class ProcessingState(StrEnum):
+    discovered = "discovered"
+    stabilizing = "stabilizing"
+    ready = "ready"
+    analyzing = "analyzing"
+    analyzed = "analyzed"
+    failed = "failed"
+    pending_retry = "pending_retry"
+
+
+class CoverageState(StrEnum):
+    missing = "missing"
+    candidate = "candidate"
+    needs_retake = "needs_retake"
+    accepted = "accepted"
+
+
+class AudioState(StrEnum):
+    idle = "idle"
+    listening = "listening"
+    transcribing = "transcribing"
+    preparing_response = "preparing_response"
+    speaking = "speaking"
+    cancelled = "cancelled"
+    error = "error"
+
+
+class SessionStatus(StrEnum):
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+
+
+# --- value objects ----------------------------------------------------------------------------
+
+
+class Region(BaseModel):
+    """Normalized rectangle in the orientation-corrected image (0..1)."""
+
+    id: str
+    label: str = ""
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(gt=0, le=1)
+    h: float = Field(gt=0, le=1)
+
+    def clamp(self) -> Region:
+        w = min(self.w, 1 - self.x)
+        h = min(self.h, 1 - self.y)
+        return self.model_copy(update={"w": max(w, 1e-4), "h": max(h, 1e-4)})
+
+
+class Criterion(BaseModel):
+    id: str
+    text: str
+
+
+# --- records ----------------------------------------------------------------------------------
+
+Tri = Literal["unknown"]
+
+
+class SetupFields(BaseModel):
+    camera: str | None = None
+    lens: str | None = None
+    support: Literal["tripod", "handheld", "unknown"] = "unknown"
+    light: Literal["continuous", "flash", "mixed", "natural", "unknown"] = "unknown"
+    light_mobility: Literal["movable", "fixed_sun_or_window", "unknown"] = "unknown"
+    subject_movement: Literal["stationary", "moving", "unknown"] = "unknown"
+    exposure_mode: Literal["manual", "aperture_priority", "shutter_priority", "program", "unknown"] = "unknown"
+    iso_mode: Literal["manual", "auto", "unknown"] = "unknown"
+    available_equipment: list[str] = Field(default_factory=list)
+    intended_crop: str | None = None
+    desired_sharp_regions: str | None = None
+    notes: str | None = None
+
+
+class SetupRevision(SetupFields):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    revision: int
+    created_at: str = Field(default_factory=utcnow)
+
+
+class Session(BaseModel):
+    id: str = Field(default_factory=new_id)
+    name: str
+    product: str = ""
+    watch_folder: str | None = None
+    output_folder: str
+    active_shot_id: str | None = None
+    current_setup_revision_id: str | None = None
+    assess_provider: str = "mock"
+    teaching_mode: bool = True
+    simulated: bool = Field(False, description="Replay/simulator session: results are not hardware evidence")
+    status: SessionStatus = SessionStatus.active
+    watch_since: str = Field(default_factory=utcnow)
+    created_at: str = Field(default_factory=utcnow)
+    updated_at: str = Field(default_factory=utcnow)
+
+
+class ShotRequirement(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    ordinal: int = 0
+    title: str
+    purpose: str = ""
+    must_show: list[str] = Field(default_factory=list)
+    framing: str = ""
+    sharp_regions: list[Region] = Field(default_factory=list)
+    criteria: list[Criterion] = Field(default_factory=list)
+    reference_image: str | None = None
+    needs_retake: bool = False
+    created_at: str = Field(default_factory=utcnow)
+    updated_at: str = Field(default_factory=utcnow)
+
+
+class Capture(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    seq: int = 0
+    shot_id: str | None = None
+    setup_revision_id: str | None = None
+    extra_shot_ids: list[str] = Field(default_factory=list)
+    origin: Literal["watch", "import", "replay", "recovered", "upload"] = "watch"
+    recovered: bool = False
+    attribution_ambiguous: bool = False
+    source_paths: list[str] = Field(default_factory=list)
+    jpeg_path: str | None = None
+    raw_path: str | None = None
+    preview_source: Literal["jpeg", "raw_embedded", "raw_developed", "none"] | None = None
+    jpeg_sha256: str | None = None
+    raw_sha256: str | None = None
+    pairing: dict[str, Any] = Field(default_factory=dict)
+    exif: dict[str, Any] = Field(default_factory=dict)
+    evidence: dict[str, Any] = Field(default_factory=dict)
+    width: int | None = None
+    height: int | None = None
+    capture_time: str | None = None
+    processing_state: ProcessingState = ProcessingState.discovered
+    error: str | None = None
+    baseline_capture_id: str | None = None
+    baseline_overridden: bool = False
+    user_reported_change: str | None = None
+    detected_at: str = Field(default_factory=utcnow)
+    ready_at: str | None = None
+
+
+class Assessment(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    capture_id: str
+    shot_id: str | None = None
+    setup_revision_id: str | None = None
+    baseline_capture_id: str | None = None
+    kind: Literal["assess", "compare"] = "assess"
+    trigger: Literal["auto", "user", "eval"] = "auto"
+    prompt_version: str = ""
+    provider: str = ""
+    model_requested: str | None = None
+    model_resolved: str | None = None
+    measurements: dict[str, Any] = Field(default_factory=dict)
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
+    result: dict[str, Any] | None = None
+    exposure_note: dict[str, Any] | None = None
+    warnings: list[str] = Field(default_factory=list)
+    timings: dict[str, float] = Field(default_factory=dict)
+    usage: dict[str, Any] = Field(default_factory=dict)
+    cost_estimate_usd: float | None = None
+    status: Literal["queued", "running", "completed", "failed", "superseded"] = "queued"
+    error: str | None = None
+    repair_attempted: bool = False
+    speech_status: Literal["pending", "spoken", "suppressed", "cancelled", "not_applicable"] = "pending"
+    context_generation: int = 0
+    created_at: str = Field(default_factory=utcnow)
+    completed_at: str | None = None
+
+
+class Experiment(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    shot_id: str | None
+    baseline_capture_id: str
+    baseline_assessment_id: str
+    suggested_adjustment: str
+    held_constant: str | None = None
+    intended_effect: str | None = None
+    follow_up_capture_id: str | None = None
+    comparison_assessment_id: str | None = None
+    comparison_outcome: Literal["improved", "worse", "mixed", "uncertain"] | None = None
+    actual_change: str | None = None
+    user_rating: Literal["helpful", "neutral", "harmful"] | None = None
+    criterion_improved: bool | None = None
+    other_criteria_worsened: bool | None = None
+    lesson: str | None = None
+    created_at: str = Field(default_factory=utcnow)
+    updated_at: str = Field(default_factory=utcnow)
+
+
+class KeeperDecision(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    shot_id: str
+    capture_id: str
+    stored_path: str
+    sha256: str
+    notes: str | None = None
+    criterion_notes: dict[str, str] = Field(default_factory=dict)
+    source: Literal["ui", "voice"] = "ui"
+    accepted_at: str = Field(default_factory=utcnow)
+    revoked_at: str | None = None
+
+
+class VoiceTurn(BaseModel):
+    id: str = Field(default_factory=new_id)
+    session_id: str
+    shot_id: str | None = None
+    capture_id: str | None = None
+    voice_epoch: int = 0
+    started_at: str = Field(default_factory=utcnow)
+    duration_s: float | None = None
+    transcript: str | None = None
+    intent: str | None = None
+    answer: str | None = None
+    status: Literal[
+        "recording", "transcribing", "answering", "answered", "spoken", "suppressed", "cancelled",
+        "empty", "timed_out", "error",
+    ] = "recording"
+    error: str | None = None
+    audio_path: str | None = None
+    timings: dict[str, float] = Field(default_factory=dict)

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+# Node
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+# Private data, secrets, paid-call outputs — never commit
+.env
+.env.*
+!.env.example
+*.sqlite3
+*.sqlite3-*
+data/
+PhotoCoach/
+fixtures/generated/
+fixtures/private/
+evals/datasets/*
+!evals/datasets/README.md
+!evals/datasets/example.jsonl
+evals/results/*
+!evals/results/README.md
+*.wav
+*.ORF
+*.orf
+.DS_Store
