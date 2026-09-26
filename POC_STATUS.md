@@ -53,6 +53,7 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Keeper decisions (explicit, linked, hash-verified), coverage, exports | Implemented | `test_coverage.py` |
 | Experiment records + user rating/lesson | Implemented | UI + API |
 | Timing marks + export; cost estimate when prices configured | Implemented | speech_process_started ≠ audible onset |
+| Optimisation telemetry: raw model I/O per call (incl. invalid/failed), sub-stage timings, persisted events (speech outcomes, stop latency, PTT keys, network probes, startup snapshot), log file, JSONL export | Implemented | `test_telemetry.py`; docs/telemetry.md |
 | Offline eval runner (split, bounded paid runs, stability, report) | Implemented | mock dry run only |
 | Live teaching-trial summary | Implemented | no trial run |
 | Security: loopback, host/origin checks, ID-only file serving, import roots | Implemented | `test_api.py` |
@@ -60,7 +61,7 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 
 ## Automated test results (build environment, mocks only)
 
-- Backend: `uv run pytest` → 82 passed, 2 live (paid) tests deselected. `ruff check` clean.
+- Backend: `uv run pytest` → 92 passed, 2 live (paid) tests deselected. `ruff check` clean.
 - Frontend: `npm run typecheck` clean; `npm test` 33 passed; `npm run build` ok; `npm run e2e` 2 passed
   (replay coaching loop → comparison → keeper → coverage; hold-to-talk → answer).
 

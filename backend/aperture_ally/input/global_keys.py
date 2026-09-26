@@ -70,6 +70,7 @@ class PTTKeyTracker:
         self.log: deque[dict[str, Any]] = deque(maxlen=200)
         self.learn_waiting = False
         self.learned: str | None = None
+        self.on_log = None  # optional callback(entry) — persisted telemetry; PTT/cancel keys only
 
     def on_press(self, name: str, now: float | None = None) -> str | None:
         now = time.monotonic() if now is None else now
@@ -107,7 +108,10 @@ class PTTKeyTracker:
         return None if self.mode == "toggle" else "release"
 
     def _log(self, kind: str, name: str, now: float, **extra: Any) -> None:
-        self.log.append({"kind": kind, "key": name, "t": round(now, 4), **{k: round(v, 1) for k, v in extra.items()}})
+        entry = {"kind": kind, "key": name, "t": round(now, 4), **{k: round(v, 1) for k, v in extra.items()}}
+        self.log.append(entry)
+        if self.on_log:
+            self.on_log(entry)
 
 
 class GlobalKeyListener:

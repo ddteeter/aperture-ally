@@ -173,6 +173,7 @@ def _row(item: dict, provider: str, rep: int, a: Assessment | None, wall_s: floa
         "action": pa.get("instruction"), "comparison": (r.get("comparison") or {}).get("outcome"),
         "spoken_text": r.get("spoken_text"), "question_for_user": r.get("question_for_user"),
         "warnings": a.warnings, "repair_attempted": a.repair_attempted, "usage": a.usage,
+        "model_call_ids": a.model_call_ids, "timings": a.timings,
         "cost_usd": a.cost_estimate_usd, "model_ms": a.timings.get("model_ms"),
         "exposure_target": pa.get("exposure_target"), "exposure_note": a.exposure_note,
         "metadata_available": bool(item.get("labels", {}).get("metadata_available", True)),

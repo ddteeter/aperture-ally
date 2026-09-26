@@ -162,6 +162,7 @@ class Capture(BaseModel):
     pairing: dict[str, Any] = Field(default_factory=dict)
     exif: dict[str, Any] = Field(default_factory=dict)
     evidence: dict[str, Any] = Field(default_factory=dict)
+    timings: dict[str, Any] = Field(default_factory=dict, description="ingest/evidence sub-stage timings (ms) + counters")
     width: int | None = None
     height: int | None = None
     capture_time: str | None = None
@@ -193,6 +194,7 @@ class Assessment(BaseModel):
     exposure_note: dict[str, Any] | None = None
     warnings: list[str] = Field(default_factory=list)
     timings: dict[str, float] = Field(default_factory=dict)
+    model_call_ids: list[str] = Field(default_factory=list)
     usage: dict[str, Any] = Field(default_factory=dict)
     cost_estimate_usd: float | None = None
     status: Literal["queued", "running", "completed", "failed", "superseded"] = "queued"
@@ -257,3 +259,38 @@ class VoiceTurn(BaseModel):
     error: str | None = None
     audio_path: str | None = None
     timings: dict[str, float] = Field(default_factory=dict)
+    meta: dict[str, Any] = Field(default_factory=dict, description="clip stats, transcriber/model ids, usage")
+    model_call_ids: list[str] = Field(default_factory=list)
+
+
+class ModelCall(BaseModel):
+    """One provider request (model or transcription) with its full input description and raw output.
+
+    Kept for optimisation: failed/invalid raw outputs, exact context, image sizes, latency, tokens,
+    and the network conditions at the time. Image bytes are not duplicated; paths point at evidence files.
+    """
+
+    id: str = Field(default_factory=new_id)
+    session_id: str | None = None
+    capture_id: str | None = None
+    assessment_id: str | None = None
+    voice_turn_id: str | None = None
+    purpose: Literal["assess", "answer", "transcribe"]
+    attempt: int = 0  # 0 = first call, 1 = repair
+    provider: str
+    model_requested: str | None = None
+    model_resolved: str | None = None
+    prompt_version: str | None = None
+    request: dict[str, Any] = Field(default_factory=dict)
+    response_text: str | None = None
+    response_id: str | None = None
+    usage: dict[str, Any] = Field(default_factory=dict)
+    latency_ms: float | None = None
+    queue_wait_ms: float | None = None
+    status: Literal["ok", "invalid", "error", "unavailable", "timeout", "cancelled"] = "ok"
+    validation_errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    error: str | None = None
+    network: dict[str, Any] | None = None
+    started_at: str = Field(default_factory=utcnow)
+    boot_id: str | None = None

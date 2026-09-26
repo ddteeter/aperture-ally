@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import time
 from concurrent.futures import Executor
 from pathlib import Path
 from typing import Any
@@ -38,13 +39,19 @@ async def ensure_evidence(
         raise FileNotFoundError("capture has no decodable image (RAW preview unavailable)")
     out_dir = session_root / "evidence" / capture.id / key
     loop = asyncio.get_running_loop()
-    ev = await loop.run_in_executor(
-        executor,
-        lambda: build_evidence(
+    submitted = time.perf_counter()
+    started: list[float] = []
+
+    def run():
+        started.append(time.perf_counter())
+        return build_evidence(
             image, out_dir, regions, overview_long_edge=settings.overview_long_edge,
             crop_max_edge=settings.crop_max_edge, max_crops=settings.max_crops,
-        ),
-    )
+        )
+
+    ev = await loop.run_in_executor(executor, run)
+    ev["timings"]["executor_queue_wait_ms"] = round((started[0] - submitted) * 1000, 2)
+    ev["timings"]["total_ms"] = round((time.perf_counter() - submitted) * 1000, 2)
     ev["regions_key"] = key
     ev["image_path"] = str(image)
     return ev

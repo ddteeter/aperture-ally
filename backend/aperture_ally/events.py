@@ -18,6 +18,7 @@ class EventBus:
         self._seq = itertools.count(1)
         self._subscribers: set[asyncio.Queue[dict[str, Any]]] = set()
         self.recent: deque[dict[str, Any]] = deque(maxlen=history)
+        self.sinks: list = []  # e.g. TelemetrySink: persists every event
 
     def publish(self, type_: str, *, session_id: str | None = None, capture_id: str | None = None,
                 **payload: Any) -> dict[str, Any]:
@@ -30,6 +31,11 @@ class EventBus:
             "payload": payload,
         }
         self.recent.append(event)
+        for sink in self.sinks:
+            try:
+                sink(event)
+            except Exception:
+                pass
         for q in list(self._subscribers):
             try:
                 q.put_nowait(event)

@@ -37,6 +37,14 @@ from .imaging.metadata import MetadataReader
 from .ingest.service import IngestService
 from .persistence.db import AsyncStore, Store
 from .runtime import ContextTracker
+from .telemetry.recorder import (
+    PROVIDER_HOSTS,
+    ModelCallRecorder,
+    NetworkMonitor,
+    TelemetrySink,
+    setup_file_logging,
+    startup_snapshot,
+)
 from .telemetry.timing import Timer
 from .templates import shoe_shots
 
@@ -79,6 +87,11 @@ class ApertureAllyApp:
         self.store_sync = store or Store(settings.db_path)
         self.store = AsyncStore(self.store_sync)
         self.bus = EventBus()
+        self.telemetry = TelemetrySink(self.store)
+        self.bus.sinks.append(self.telemetry)  # every app event is persisted for later analysis
+        self.network = NetworkMonitor(settings, self.telemetry, self._provider_hosts)
+        self.telemetry_calls = ModelCallRecorder(self.store, settings, self.network, self.telemetry)
+        self.log_path = setup_file_logging(settings.data_dir) if settings.log_to_file else None
         self.tracker = ContextTracker()
         self.timer = Timer(self.store)
         self.executor = ThreadPoolExecutor(max_workers=settings.image_workers, thread_name_prefix="img")
@@ -87,11 +100,12 @@ class ApertureAllyApp:
         self.speech = speech or build_speech(settings)
         self.voice: VoiceController  # set below (audio callbacks reference it)
         self.audio = AudioController(self.speech, on_state=lambda s, i: self.voice.on_audio_state(s, i),
-                                     on_mark=self._speech_mark)
+                                     on_mark=self._speech_mark, on_event=self._audio_event)
         self.keepers = KeeperService(self.store, self.bus)
         self.coaching = CoachingService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
                                         tracker=self.tracker, executor=self.executor, providers=self.providers,
-                                        audio=self.audio, session_root=self.session_root)
+                                        audio=self.audio, session_root=self.session_root,
+                                        recorder=self.telemetry_calls)
         self.ingest = IngestService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
                                     tracker=self.tracker, executor=self.executor, metadata=self.metadata,
                                     on_ready=self.coaching.on_capture_ready)
@@ -100,6 +114,17 @@ class ApertureAllyApp:
                                      transcriber=transcriber or build_transcriber(settings), app=self)
         self.keys = None
         self.started = False
+
+    def _provider_hosts(self) -> list[str]:
+        s, hosts = self.settings, set()
+        if s.openai_api_key and (s.openai_model or s.transcriber == "openai"):
+            hosts.add(PROVIDER_HOSTS["openai"])
+        if s.gemini_api_key and s.gemini_model:
+            hosts.add(PROVIDER_HOSTS["gemini"])
+        return sorted(hosts)
+
+    def _audio_event(self, kind: str, data: dict) -> None:
+        self.telemetry.record(kind, data, session_id=data.get("session_id"), capture_id=data.get("capture_id"))
 
     def session_root(self, session_id: str) -> Path:
         return self.settings.sessions_dir / session_id
@@ -124,9 +149,17 @@ class ApertureAllyApp:
             await self.ingest.watch(active, startup=True)
         if self.settings.global_keys == "pynput":
             await self.start_global_keys()
+        self.telemetry.record("app.started", startup_snapshot(
+            self.settings, {"schema_version": self.store_sync.schema_version(), "log_file": str(self.log_path),
+                            "active_session": active.id if active else None, "speech": self.speech.name,
+                            "recorder": self.voice.recorder.name, "transcriber": self.voice.transcriber.name}),
+            session_id=active.id if active else None)
+        self.network.start()
         self.started = True
 
     async def stop(self) -> None:
+        await self.network.stop()
+        self.telemetry.record("app.stopping", {})
         if self.keys:
             self.keys.stop()
         await self.voice.cancel("shutdown") if self.voice.state.value == "listening" else None
@@ -135,6 +168,7 @@ class ApertureAllyApp:
         await self.coaching.drain(timeout=2)
         for t in list(self.coaching.tasks):
             t.cancel()
+        await self.telemetry.flush()
         self.metadata.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         self.store.shutdown()
@@ -165,7 +199,12 @@ class ApertureAllyApp:
 
         self.keys = GlobalKeyListener(self.settings.ptt_key, self.settings.cancel_key, self.settings.ptt_mode,
                                       dispatch, self.voice.listener_failed)
-        self.keys.start(asyncio.get_running_loop())
+        loop = asyncio.get_running_loop()
+        self.keys.tracker.on_log = lambda entry: loop.call_soon_threadsafe(
+            self.telemetry.record, "keys.event", {**entry, "mode": self.settings.ptt_mode, "source": "global"})
+        self.keys.start(loop)
+        self.telemetry.record("keys.listener", {"running": self.keys.running, "error": self.keys.error,
+                                                 "ptt_key": self.settings.ptt_key, "mode": self.settings.ptt_mode})
 
     # --- sessions ------------------------------------------------------------------------
     async def active_session(self) -> Session | None:

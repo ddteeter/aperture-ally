@@ -5,6 +5,10 @@ Bluetooth headphones, a microphone, optionally a Bluetooth remote, and API crede
 unit tests **do not** substitute for them. Record every result (pass *or* fail, with numbers) in
 [POC_STATUS.md](../POC_STATUS.md) and [poc-report.md](poc-report.md).
 
+After each block run `uv run aperture-ally export --session <id>` and keep the `exports/` folder with
+your notes: it holds every stage timing, raw model call and speech/key event needed for tuning later
+([telemetry.md](telemetry.md)).
+
 Before each block: `cd backend && uv run aperture-ally doctor` shows no ✘, and the app runs with
 `./scripts/dev.sh`. Keep `Diagnostics` open in a second browser window.
 

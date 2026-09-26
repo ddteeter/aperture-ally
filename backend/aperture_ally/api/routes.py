@@ -38,7 +38,7 @@ from ..domain.models import (
     utcnow,
 )
 from ..services import ApertureAllyApp, NotFound
-from ..telemetry.export import export_timing
+from ..telemetry.export import export_telemetry, export_timing
 from ..telemetry.timing import summarize
 
 router = APIRouter(prefix="/api")
@@ -364,6 +364,8 @@ async def exports(sid: str, request: Request):
     out = Path(s.output_folder) / "exports"
     files = await export_coverage(app.store, s, out)
     files.update(await export_timing(app.store, s, out))
+    await app.telemetry.flush()
+    files.update(await export_telemetry(app.store, s, out / "telemetry"))
     return files
 
 
@@ -561,6 +563,10 @@ async def diagnostics(request: Request, session_id: str | None = None):
         "timing": summarize(marks),
         "recent_events": list(app.bus.recent)[-80:],
         "watching": app.ingest.watched_session_id,
+        "telemetry": {"log_file": str(app.log_path) if app.log_path else None,
+                      "store_model_io": app.settings.store_model_io,
+                      "last_network_probe": app.network.last,
+                      "model_calls": len(await app.store.model_calls(session_id)) if session_id else None},
     }
 
 

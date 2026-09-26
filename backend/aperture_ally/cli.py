@@ -69,7 +69,7 @@ def cmd_export(args) -> int:
     from .coverage import export_coverage
     from .domain.models import Session
     from .persistence.db import AsyncStore, Store
-    from .telemetry.export import export_timing
+    from .telemetry.export import export_telemetry, export_timing
 
     s = get_settings()
 
@@ -84,6 +84,7 @@ def cmd_export(args) -> int:
             out = Path(args.out) if args.out else Path(sess.output_folder) / "exports"
             files = await export_coverage(store, sess, out)
             files.update(await export_timing(store, sess, out))
+            files.update(await export_telemetry(store, sess, out / "telemetry"))
             print(json.dumps(files, indent=2))
             return 0
         finally:

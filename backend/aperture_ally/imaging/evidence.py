@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -77,10 +78,15 @@ def build_evidence(
     crop_max_edge: int = 1024,
     max_crops: int = 3,
 ) -> dict[str, Any]:
+    t: dict[str, float] = {}
+    clock = time.perf_counter
+    t0 = clock()
     img, color_info = load_oriented_srgb(image_path)
     W, H = img.size
     arr = np.asarray(img)
+    t["decode_orient_color_ms"] = (clock() - t0) * 1000
 
+    t0 = clock()
     scale = min(1.0, overview_long_edge / max(W, H))
     # INTER_AREA is the appropriate (and multi-threaded) filter for large downscales.
     overview = (Image.fromarray(cv2.resize(arr, (round(W * scale), round(H * scale)), interpolation=cv2.INTER_AREA))
@@ -89,6 +95,8 @@ def build_evidence(
     thumb = overview.copy()
     thumb.thumbnail((360, 360), Image.Resampling.LANCZOS)
     _save_jpeg(thumb, out_dir / "thumb.jpg", quality=80)
+    t["overview_thumb_ms"] = (clock() - t0) * 1000
+    t0 = clock()
 
     crops: list[dict[str, Any]] = []
     selected = [r.clamp() for r in regions][:max_crops]
@@ -97,6 +105,8 @@ def build_evidence(
         x, y, w, h = M.auto_detail_region(arr)
         selected = [Region(id="auto1", label="auto: highest local detail (not user-selected)", x=x, y=y, w=w, h=h)]
         auto = True
+    t["auto_region_ms"] = (clock() - t0) * 1000
+    t0 = clock()
 
     region_metrics: dict[str, Any] = {}
     for r in selected:
@@ -121,9 +131,13 @@ def build_evidence(
             **M.sharpness(sub),  # at native resolution
         }
 
+    t["crops_and_region_stats_ms"] = (clock() - t0) * 1000
+    t0 = clock()
+    global_stats = {**M.tonal_stats(M.subsample_nearest(arr)), **M.sharpness(np.asarray(overview))}
+    t["global_stats_ms"] = (clock() - t0) * 1000
     measurements = {
         "image": {"width": W, "height": H, **color_info},
-        "global": {**M.tonal_stats(M.subsample_nearest(arr)), **M.sharpness(np.asarray(overview))},
+        "global": global_stats,
         "regions": region_metrics,
         "notes": {"global_sharpness_scale": "measured on overview", "region_sharpness_scale": "native pixels"},
         "caveats": M.CAVEATS,
@@ -135,4 +149,6 @@ def build_evidence(
         "thumb": str(out_dir / "thumb.jpg"),
         "crops": crops,
         "measurements": measurements,
+        "timings": {k: round(v, 2) for k, v in t.items()},
+        "source_bytes": image_path.stat().st_size,
     }

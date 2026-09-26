@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     teaching_prompt_every: int = Field(3, description="Ask Drew to predict/explain roughly every Nth coached capture")
     prices: dict[str, ModelPrice] = Field(default_factory=dict, description="model id -> price; optional")
 
+    # --- telemetry ---------------------------------------------------------------------------
+    store_model_io: bool = Field(True, description="Persist full request context + raw model output per call")
+    network_probe_interval_s: float = Field(300.0, description="DNS/TCP probe of configured provider hosts; 0 = off")
+    log_to_file: bool = True
+
     # --- speech / voice --------------------------------------------------------------------
     speech_provider: Literal["say", "mock", "none"] = "mock"
     say_voice: str | None = None

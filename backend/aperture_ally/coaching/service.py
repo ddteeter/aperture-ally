@@ -99,7 +99,7 @@ class ProviderRegistry:
 
 class CoachingService:
     def __init__(self, *, store, bus: EventBus, timer: Timer, settings: Settings, tracker: ContextTracker,
-                 executor: Executor, providers: ProviderRegistry, audio, session_root):
+                 executor: Executor, providers: ProviderRegistry, audio, session_root, recorder):
         self.store = store
         self.bus = bus
         self.timer = timer
@@ -109,6 +109,7 @@ class CoachingService:
         self.providers = providers
         self.audio = audio
         self.session_root = session_root
+        self.recorder = recorder
         self._sem = asyncio.Semaphore(settings.max_model_concurrency)
         self._pending_auto: dict[str, str] = {}
         self._running_auto: dict[str, set[asyncio.Task]] = {}
@@ -235,42 +236,60 @@ class CoachingService:
         try:
             regions = shot.sharp_regions if shot else []
             root = self.session_root(session.id)
+            t_ev = time.monotonic()
             ev = await ensure_evidence(capture, regions, root, self.settings, self.executor)
+            assessment.timings["evidence_ms"] = (time.monotonic() - t_ev) * 1000
             if capture.evidence.get("regions_key") != ev["regions_key"]:
                 # Regions changed since ingest: persist the new crops so the UI can fetch them.
                 def keep(c: Capture, ev=ev) -> None:
                     c.evidence = ev
 
                 capture = await self.store.update(Capture, capture.id, keep) or capture
+            t_ev = time.monotonic()
             b_ev = await ensure_evidence(baseline, regions, root, self.settings, self.executor) if baseline else None
+            if baseline:
+                assessment.timings["baseline_evidence_ms"] = (time.monotonic() - t_ev) * 1000
+            t_req = time.monotonic()
             assessment.measurements = ev["measurements"]
             assessment.evidence = ev["crops"] + [{"id": "overview", "path": ev["overview"]["path"]}]
             teaching = await self._teaching_requested(session, trigger)
             req, vctx = await self._build_request(session, shot, setup, capture, ev, baseline, b_ev, teaching)
+            assessment.timings["build_request_ms"] = (time.monotonic() - t_req) * 1000
 
             provider = self.providers.get(provider_name)
             assessment.model_requested = provider.model
+            ids = {"session_id": session.id, "capture_id": capture.id, "assessment_id": assessment.id}
+            timeout = self.settings.model_timeout_s + 5
+            t_wait = time.monotonic()
             async with self._sem:
-                await self.timer.mark("model_request_started", session_id=session.id, capture_id=capture.id,
-                                      assessment_id=assessment.id)
+                wait_ms = (time.monotonic() - t_wait) * 1000
+                assessment.timings["queue_wait_ms"] = wait_ms
+                await self.timer.mark("model_request_started", **ids)
                 t0 = time.monotonic()
-                resp = await asyncio.wait_for(provider.generate(req), self.settings.model_timeout_s + 5)
+                resp, call = await self.recorder.call(lambda: provider.generate(req), purpose="assess", attempt=0,
+                                                      provider=provider, req=req, queue_wait_ms=wait_ms,
+                                                      timeout_s=timeout, collect=assessment.model_call_ids, **ids)
                 assessment.timings["model_ms"] = (time.monotonic() - t0) * 1000
-                await self.timer.mark("model_response_received", session_id=session.id, capture_id=capture.id,
-                                      assessment_id=assessment.id)
+                await self.timer.mark("model_response_received", **ids)
                 result, errors, warnings = validate_output(resp.text, vctx)
+                await self.recorder.mark(call, "ok" if result else "invalid", errors, warnings)
                 usage = dict(resp.usage)
                 if result is None:
                     assessment.repair_attempted = True
                     self.bus.publish("analysis.repairing", session_id=session.id, capture_id=capture.id,
                                      errors=errors[:5])
                     t1 = time.monotonic()
-                    resp2 = await asyncio.wait_for(provider.repair(req, resp, errors), self.settings.model_timeout_s + 5)
+                    resp2, call2 = await self.recorder.call(lambda: provider.repair(req, resp, errors),
+                                                            purpose="assess", attempt=1, provider=provider,
+                                                            req=req, request_extra={"repair_errors": errors},
+                                                            timeout_s=timeout, collect=assessment.model_call_ids,
+                                                            **ids)
                     assessment.timings["repair_ms"] = (time.monotonic() - t1) * 1000
                     for k, v in resp2.usage.items():
                         if isinstance(v, int | float):
                             usage[k] = (usage.get(k) or 0) + v
                     result, errors2, warnings = validate_output(resp2.text, vctx)
+                    await self.recorder.mark(call2, "ok" if result else "invalid", errors2, warnings)
                     resp = resp2
                     if result is None:
                         raise ProviderError("invalid model output after one repair: " + "; ".join(errors2[:6]))
@@ -305,13 +324,18 @@ class CoachingService:
             text = self.spoken_for(assessment)
             if trigger == "user" and not self.tracker.is_latest(session.id, capture.shot_id, capture.id):
                 text = f"About earlier photo {capture.seq}: {text}"  # explicit review of an older photo
+            t_sp = time.monotonic()
             status = await self.audio.speak(text, guard,
                                             {"session_id": session.id, "capture_id": capture.id,
                                              "assessment_id": assessment.id, "kind": "advice"})
+            speech_ms = (time.monotonic() - t_sp) * 1000
         else:
             status = "not_applicable"
 
         def set_speech(a: Assessment) -> None:
+            if status != "not_applicable":
+                a.timings["speech_call_ms"] = speech_ms
+                a.timings["spoken_words"] = len(text.split())
             a.speech_status = "spoken" if status == "spoken" else (
                 "not_applicable" if status == "not_applicable" else "suppressed" if status == "suppressed" else "cancelled")
 
@@ -468,7 +492,7 @@ class CoachingService:
 
     # --- follow-up questions -------------------------------------------------------------
     async def answer_question(self, session: Session, capture: Capture | None, question: str,
-                              is_older: bool) -> tuple[ConversationAnswer, dict[str, Any]]:
+                              is_older: bool, voice_turn_id: str | None = None) -> tuple[ConversationAnswer, dict[str, Any]]:
         saved = await self.store.latest_completed_assessment(capture.id) if capture else None
         shot = await self.store.get(ShotRequirement, capture.shot_id) if capture and capture.shot_id else None
         needs_pixels = capture is not None and (saved is None or _mentions_visual(question))
@@ -490,16 +514,29 @@ class CoachingService:
         req = ModelRequest("answer", SYSTEM_ANSWER, context, images, "answer",
                            provider_json_schema(ConversationAnswer), ANSWER_PROMPT_VERSION)
         provider = self.providers.get(session.assess_provider)
+        ids = {"session_id": session.id, "capture_id": capture.id if capture else None, "voice_turn_id": voice_turn_id}
+        timeout = self.settings.model_timeout_s + 5
         t0 = time.monotonic()
+        calls: list[str] = []
         async with self._sem:
-            resp = await asyncio.wait_for(provider.generate(req), self.settings.model_timeout_s + 5)
+            wait_ms = (time.monotonic() - t0) * 1000
+            resp, call = await self.recorder.call(lambda: provider.generate(req), purpose="answer", attempt=0,
+                                                  provider=provider, req=req, queue_wait_ms=wait_ms,
+                                                  timeout_s=timeout, collect=calls, **ids)
         try:
             ans = ConversationAnswer.model_validate_json(resp.text)
-        except Exception:
-            resp = await provider.repair(req, resp, ["output did not match the answer schema"])
+            await self.recorder.mark(call, "ok")
+        except Exception as exc:
+            await self.recorder.mark(call, "invalid", [str(exc)[:500]])
+            errs = ["output did not match the answer schema"]
+            resp, call2 = await self.recorder.call(lambda: provider.repair(req, resp, errs), purpose="answer",
+                                                   attempt=1, provider=provider, req=req, timeout_s=timeout,
+                                                   collect=calls, **ids)
             ans = ConversationAnswer.model_validate_json(resp.text)
+            await self.recorder.mark(call2, "ok")
         meta = {"model_resolved": resp.model_resolved, "usage": resp.usage, "used_pixels": bool(images),
-                "latency_ms": (time.monotonic() - t0) * 1000, "prompt_version": ANSWER_PROMPT_VERSION}
+                "latency_ms": (time.monotonic() - t0) * 1000, "queue_wait_ms": wait_ms,
+                "prompt_version": ANSWER_PROMPT_VERSION, "provider": provider.name, "model_call_ids": calls}
         return ans, meta
 
 

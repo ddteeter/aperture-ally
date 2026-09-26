@@ -122,8 +122,10 @@ class AudioController:
     """
 
     def __init__(self, backend: SpeechBackend, on_state: Callable[[str, dict], None],
-                 on_mark: Callable[[str, dict], Awaitable[None]] | None = None):
+                 on_mark: Callable[[str, dict], Awaitable[None]] | None = None,
+                 on_event: Callable[[str, dict], None] | None = None):
         self.backend = backend
+        self.on_event = on_event or (lambda kind, data: None)
         self.on_state = on_state
         self.on_mark = on_mark
         self.current: Utterance | None = None
@@ -137,7 +139,11 @@ class AudioController:
 
     async def speak(self, text: str, guard: Guard, meta: dict[str, Any] | None = None) -> str:
         meta = meta or {}
+        t_req = time.monotonic()
+        ids = {k: meta.get(k) for k in ("session_id", "capture_id", "assessment_id", "voice_turn_id", "kind")}
+        words = len(text.split())
         if not guard():
+            self.on_event("audio.speech", {**ids, "status": "suppressed", "stage": "before_request", "words": words})
             return "suppressed"
         if self.on_mark:
             await self.on_mark("speech_requested", meta)
@@ -145,6 +151,8 @@ class AudioController:
         await self.stop("preempted")
         async with self._lock:
             if not guard():  # re-check immediately before playback
+                self.on_event("audio.speech", {**ids, "status": "suppressed", "stage": "before_playback",
+                                               "words": words})
                 return "suppressed"
             utt = Utterance(text, guard, meta)
             self.current = utt
@@ -173,6 +181,13 @@ class AudioController:
             if self.current is utt:
                 self.current = None
                 self.on_state("idle", {"reason": "speech_done"})
+        now = time.monotonic()
+        self.on_event("audio.speech", {
+            **ids, "status": status, "backend": self.backend.name, "words": words, "chars": len(text),
+            "request_to_process_start_ms": round((utt.started_mono - t_req) * 1000, 1) if utt.started_mono else None,
+            "played_ms": round((now - utt.started_mono) * 1000, 1) if utt.started_mono else None,
+            "stop_reason": utt.meta.get("_stop_reason"),
+        })
         return status
 
     async def stop(self, reason: str = "stopped") -> bool:
@@ -180,12 +195,20 @@ class AudioController:
         if utt is None or utt.task is None or utt.task.done():
             return False
         t0 = time.monotonic()
+        utt.meta["_stop_reason"] = reason
         utt.task.cancel()
         try:
             await asyncio.wait_for(asyncio.shield(utt.task), 1.0)
         except (asyncio.CancelledError, TimeoutError, Exception):
             pass
-        self.stop_latencies_ms.append((time.monotonic() - t0) * 1000)
+        latency = (time.monotonic() - t0) * 1000
+        self.stop_latencies_ms.append(latency)
+        self.on_event("audio.stop", {
+            "reason": reason, "stop_latency_ms": round(latency, 2), "backend": self.backend.name,
+            "kind": utt.meta.get("kind"), "session_id": utt.meta.get("session_id"),
+            "capture_id": utt.meta.get("capture_id"),
+            "played_before_stop_ms": round((t0 - utt.started_mono) * 1000, 1) if utt.started_mono else None,
+        })
         if self.current is utt:
             self.current = None
         self.on_state("idle", {"reason": reason})

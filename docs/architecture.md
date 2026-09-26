@@ -93,9 +93,16 @@ origin allowlist, images served only by capture ID from inside the session root,
 restricted to configured roots, uploads restricted to image types, secrets only in the backend
 environment and never serialized.
 
+## Telemetry
+
+See [telemetry.md](telemetry.md): every provider call (request context, raw output, status, latency,
+tokens, network snapshot) in `model_calls`; every app event plus speech/stop/key/network/startup records in
+`telemetry_events`; ingest/evidence/assessment/voice sub-stage timings on their records; a rotating log file.
+
 ## Persistence
 
 `~/ApertureAlly/aperture_ally.sqlite3` (WAL). Tables: sessions, setup_revisions, shots, captures,
-source_files (ingest ledger), assessments, experiments, keeper_decisions, voice_turns, timing_marks.
+source_files (ingest ledger), assessments, experiments, keeper_decisions, voice_turns, timing_marks,
+model_calls and telemetry_events (migration v2).
 Each record table has indexed columns + a JSON body validated on read. New migrations are appended to
 `MIGRATIONS`; never edit a released one.

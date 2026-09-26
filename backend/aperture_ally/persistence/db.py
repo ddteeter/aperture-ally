@@ -24,6 +24,7 @@ from ..domain.models import (
     Capture,
     Experiment,
     KeeperDecision,
+    ModelCall,
     Session,
     SetupRevision,
     ShotRequirement,
@@ -71,6 +72,19 @@ MIGRATIONS: list[str] = [
         boot_id TEXT NOT NULL, extra TEXT);
     CREATE INDEX timing_capture ON timing_marks(capture_id);
     """,
+    # v2 — optimisation telemetry: every provider call with raw I/O, and a persisted event stream
+    """
+    CREATE TABLE model_calls (
+        id TEXT PRIMARY KEY, session_id TEXT, capture_id TEXT, assessment_id TEXT, voice_turn_id TEXT,
+        purpose TEXT NOT NULL, started_at TEXT NOT NULL, data TEXT NOT NULL);
+    CREATE INDEX model_calls_session ON model_calls(session_id);
+    CREATE INDEX model_calls_assessment ON model_calls(assessment_id);
+    CREATE TABLE telemetry_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, capture_id TEXT, kind TEXT NOT NULL,
+        wall TEXT NOT NULL, mono_ns INTEGER NOT NULL, boot_id TEXT NOT NULL, data TEXT);
+    CREATE INDEX telemetry_events_session ON telemetry_events(session_id);
+    CREATE INDEX telemetry_events_kind ON telemetry_events(kind);
+    """,
 ]
 
 _TABLES: dict[type[BaseModel], str] = {
@@ -82,6 +96,7 @@ _TABLES: dict[type[BaseModel], str] = {
     Experiment: "experiments",
     KeeperDecision: "keeper_decisions",
     VoiceTurn: "voice_turns",
+    ModelCall: "model_calls",
 }
 
 
@@ -111,6 +126,9 @@ def _columns(obj: BaseModel) -> dict[str, Any]:
                     "revoked_at": d["revoked_at"]}
         case VoiceTurn():
             return {"session_id": d["session_id"], "started_at": d["started_at"]}
+        case ModelCall():
+            return {"session_id": d["session_id"], "capture_id": d["capture_id"], "assessment_id": d["assessment_id"],
+                    "voice_turn_id": d["voice_turn_id"], "purpose": d["purpose"], "started_at": d["started_at"]}
     raise TypeError(type(obj))
 
 
@@ -234,6 +252,10 @@ class Store:
     def active_keepers(self, session_id: str) -> list[KeeperDecision]:
         return self.query(KeeperDecision, "session_id=? AND revoked_at IS NULL", (session_id,), "rowid")
 
+    def query_keepers(self, session_id: str) -> list[KeeperDecision]:
+        """All keeper decisions including revoked ones (audit trail)."""
+        return self.query(KeeperDecision, "session_id=?", (session_id,), "rowid")
+
     def active_keeper(self, shot_id: str) -> KeeperDecision | None:
         items = self.query(KeeperDecision, "shot_id=? AND revoked_at IS NULL", (shot_id,), "rowid DESC")
         return items[0] if items else None
@@ -304,6 +326,38 @@ class Store:
                 (session_id, capture_id, assessment_id, voice_turn_id, stage, wall, mono_ns, boot_id,
                  json.dumps(extra) if extra else None),
             )
+
+    def model_calls(self, session_id: str | None = None) -> list[ModelCall]:
+        if session_id:
+            return self.query(ModelCall, "session_id=?", (session_id,), "started_at")
+        return self.query(ModelCall, order="started_at")
+
+    def add_telemetry(self, kind: str, wall: str, mono_ns: int, boot_id: str, data: dict | None = None, *,
+                      session_id: str | None = None, capture_id: str | None = None) -> None:
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO telemetry_events (session_id, capture_id, kind, wall, mono_ns, boot_id, data)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (session_id, capture_id, kind, wall, mono_ns, boot_id, json.dumps(data, default=str) if data else None),
+            )
+
+    def telemetry_events(self, session_id: str | None = None, kind_prefix: str | None = None) -> list[dict]:
+        where, params = ["1=1"], []
+        if session_id:
+            where.append("session_id=?")
+            params.append(session_id)
+        if kind_prefix:
+            where.append("kind LIKE ?")
+            params.append(kind_prefix + "%")
+        with self._lock:
+            rows = self._conn.execute(f"SELECT * FROM telemetry_events WHERE {' AND '.join(where)} ORDER BY id",
+                                      params).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["data"] = json.loads(d["data"]) if d["data"] else None
+            out.append(d)
+        return out
 
     def timing_marks(self, session_id: str | None = None) -> list[dict]:
         with self._lock:

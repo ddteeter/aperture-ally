@@ -192,8 +192,16 @@ class VoiceController:
     async def _process(self, turn: VoiceTurn, clip) -> None:
         guard = self.tracker.voice_guard(turn.session_id)
         t0 = time.monotonic()
+        turn.meta.update({"clip_duration_s": round(clip.duration_s, 3), "clip_rms": round(clip.rms, 1),
+                          "clip_bytes": len(clip.wav), "transcriber": self.transcriber.name,
+                          "transcription_model": getattr(self.transcriber, "model", None),
+                          "recorder": self.recorder.name})
         try:
-            text = await self.transcriber.transcribe(clip)
+            text, _call = await self.app.telemetry_calls.call(
+                lambda: self.transcriber.transcribe(clip), purpose="transcribe", attempt=0,
+                provider=self.transcriber, collect=turn.model_call_ids,
+                request_extra={"clip_duration_s": round(clip.duration_s, 3), "clip_bytes": len(clip.wav)},
+                session_id=turn.session_id, capture_id=turn.capture_id, voice_turn_id=turn.id)
             turn.timings["transcribe_ms"] = (time.monotonic() - t0) * 1000
             turn.transcript = text
             if self.settings.keep_voice_audio:
@@ -221,8 +229,12 @@ class VoiceController:
             self.bus.publish("voice.answer", session_id=turn.session_id, turn_id=turn.id, answer=answer,
                              capture_id=turn.capture_id)
             if spoken:
+                t_sp = time.monotonic()
+                turn.timings["release_to_speech_request_ms"] = (t_sp - t0) * 1000
                 status = await self.audio.speak(spoken, guard, {"session_id": turn.session_id, "capture_id": turn.capture_id,
                                                                 "voice_turn_id": turn.id, "kind": "answer"})
+                turn.timings["speech_call_ms"] = (time.monotonic() - t_sp) * 1000
+                turn.meta["speech_status"] = status
                 turn.status = "spoken" if status == "spoken" else "suppressed" if status == "suppressed" else "answered"
                 await self.store.put(turn)
         except asyncio.CancelledError:
@@ -272,10 +284,15 @@ class VoiceController:
             return msg, msg
         # Question: use the saved assessment for this capture; wait briefly if analysis is in flight.
         if cap:
+            t_wait = time.monotonic()
             await self.app.coaching.wait_inflight(cap.id, timeout=self.settings.model_timeout_s)
+            turn.timings["waited_for_assessment_ms"] = (time.monotonic() - t_wait) * 1000
         is_older = bool(cap and not self.tracker.is_latest(session.id, cap.shot_id, cap.id))
-        ans, meta = await self.app.coaching.answer_question(session, cap, turn.transcript or "", is_older)
+        ans, meta = await self.app.coaching.answer_question(session, cap, turn.transcript or "", is_older,
+                                                            voice_turn_id=turn.id)
         turn.timings["model_ms"] = meta.get("latency_ms", 0)
+        turn.model_call_ids.extend(meta.pop("model_call_ids", []))
+        turn.meta.update({"answer": {**meta, "is_older_photo": is_older}})
         spoken = ans.spoken_text
         if is_older and cap and "earlier" not in spoken.lower():
             spoken = f"About earlier photo {cap.seq}: {spoken}"

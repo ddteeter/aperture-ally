@@ -98,6 +98,14 @@ class Detection:
     detected: tuple[int, str]
     auto_coach: bool = True
     quick: bool = False  # manual import of an already complete file
+    timings: dict[str, Any] = field(default_factory=dict)  # sub-stage ms + counters → Capture.timings
+
+    async def timed(self, name: str, aw):
+        t0 = time.perf_counter()
+        try:
+            return await aw
+        finally:
+            self.timings[name] = round(self.timings.get(name, 0) + (time.perf_counter() - t0) * 1000, 2)
 
 
 @dataclass
@@ -326,7 +334,10 @@ class IngestService:
                                        status="stabilizing", snapshot=det.snapshot)
         self.bus.publish("capture.discovered", session_id=sid, path=path.name, shot_id=det.snapshot["shot_id"])
 
-        stable = await self._wait_stable(path, kind, quick=det.quick)
+        det.timings["file_age_at_first_stat_ms"] = round((time.time() - st.st_mtime) * 1000, 1)
+        stats: dict[str, int] = {}
+        stable = await det.timed("stability_wait_ms", self._wait_stable(path, kind, quick=det.quick, stats=stats))
+        det.timings.update({f"stability_{k}": v for k, v in stats.items()})
         if stable is None:
             st2 = path.stat() if path.exists() else st
             await self.store.record_source(sid, str(path), size=st2.st_size, mtime_ns=st2.st_mtime_ns, kind=kind,
@@ -334,7 +345,8 @@ class IngestService:
             self.bus.publish("capture.pending_retry", session_id=sid, path=path.name)
             return None
         size, mtime_ns = stable
-        sha = await self._run(sha256_file, path)
+        det.timings["source_bytes"] = stable[0]
+        sha = await det.timed("hash_ms", self._run(sha256_file, path))
         dup = await self.store.source_by_hash(sid, sha)
         if dup:
             status = "ingested" if dup["source_path"] == str(path) else "duplicate"
@@ -358,7 +370,12 @@ class IngestService:
             self.bus.publish("capture.ingest_failed", session_id=sid, path=path.name, error=str(exc))
             return None
 
-    async def _wait_stable(self, path: Path, kind: str, *, quick: bool = False) -> tuple[int, int] | None:
+    async def _wait_stable(self, path: Path, kind: str, *, quick: bool = False,
+                           stats: dict[str, int] | None = None) -> tuple[int, int] | None:
+        stats = stats if stats is not None else {}
+        stats.setdefault("polls", 0)
+        stats.setdefault("size_changes", 0)
+        stats.setdefault("decode_failures", 0)
         interval = self.settings.stability_interval_ms / 1000
         needed = 1 if quick else self.settings.stability_checks
         raw_settle = max(1, round(self.settings.raw_unverified_settle_s / interval))
@@ -371,6 +388,9 @@ class IngestService:
             except FileNotFoundError:
                 return None
             cur = (st.st_size, st.st_mtime_ns)
+            stats["polls"] += 1
+            if prev is not None and cur != prev:
+                stats["size_changes"] += 1
             if st.st_size > 0 and (quick or cur == prev):
                 count += 1
             else:
@@ -379,6 +399,7 @@ class IngestService:
             if count >= needed:
                 if await self._decodes(path, kind):
                     return cur
+                stats["decode_failures"] += 1
                 if kind == "raw" and count >= needed + raw_settle:
                     # LibRaw can't tell "truncated" from "unsupported". An undecodable RAW whose size has
                     # been stable for an extra settle period is kept (original preserved) but flagged
@@ -426,7 +447,7 @@ class IngestService:
 
     async def _ingest_primary(self, det: Detection, sha: str, size: int, mtime_ns: int) -> str:
         sid, path = det.session_id, det.path
-        meta = await self._run(self.metadata.read, path)
+        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path))
         root = self.session_root(sid)
         async with self._lock(sid):
             late_for = await self._find_capture(sid, det, "jpeg")
@@ -458,10 +479,12 @@ class IngestService:
 
             cap = self._new_capture(det, meta)
             cap.pairing = {"dir": str(path.parent), "stem": path.stem}
-            stored = await self._run(copy_immutable, path, root / "originals" / cap.id, sha)
+            stored = await det.timed("copy_ms", self._run(copy_immutable, path, root / "originals" / cap.id, sha))
             cap.jpeg_path, cap.jpeg_sha256, cap.preview_source = str(stored), sha, "jpeg"
             if partner:
-                raw_stored = await self._run(copy_immutable, partner.det.path, root / "originals" / cap.id, partner.sha)
+                raw_stored = await det.timed("raw_copy_ms", self._run(
+                    copy_immutable, partner.det.path, root / "originals" / cap.id, partner.sha))
+                cap.timings["raw_partner"] = partner.det.timings
                 cap.raw_path, cap.raw_sha256 = str(raw_stored), partner.sha
                 cap.source_paths.append(str(partner.det.path))
                 cap.pairing["raw_pairing"] = pair_ev
@@ -479,7 +502,7 @@ class IngestService:
 
     async def _ingest_raw(self, det: Detection, sha: str, size: int, mtime_ns: int) -> str | None:
         sid, path = det.session_id, det.path
-        meta = await self._run(self.metadata.read, path)
+        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path))
         root = self.session_root(sid)
         async with self._lock(sid):
             jpeg_cap = await self._find_capture(sid, det, "raw")
@@ -501,7 +524,7 @@ class IngestService:
             pending = PendingRaw(det, sha, meta, fut)
             self._pending_raw[key] = pending
         try:
-            return await asyncio.wait_for(asyncio.shield(fut), self.settings.pair_grace_s)
+            return await det.timed("pair_wait_ms", asyncio.wait_for(asyncio.shield(fut), self.settings.pair_grace_s))
         except TimeoutError:
             pass
         async with self._lock(sid):
@@ -511,16 +534,17 @@ class IngestService:
                 self._pending_raw.pop(key)
             cap = self._new_capture(det, meta)
             cap.pairing = {"dir": str(path.parent), "stem": path.stem, "raw_only": True}
-            stored = await self._run(copy_immutable, path, root / "originals" / cap.id, sha)
+            stored = await det.timed("copy_ms", self._run(copy_immutable, path, root / "originals" / cap.id, sha))
             cap.raw_path, cap.raw_sha256 = str(stored), sha
             preview = root / "evidence" / cap.id / "raw_preview.jpg"
             try:
-                cap.preview_source = await self._run(rawmod.make_preview, stored, preview)
+                cap.preview_source = await det.timed("raw_preview_ms", self._run(rawmod.make_preview, stored, preview))
                 cap.pairing["raw_preview_path"] = str(preview)
             except rawmod.RawUnsupported as exc:
                 cap.preview_source = "none"
                 cap.processing_state = ProcessingState.failed
                 cap.error = f"RAW preview unavailable ({exc}); shoot RAW+JPEG or import a JPEG"
+            cap.timings = dict(det.timings)
             cap = await self.store.insert_capture(cap)
             await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind="raw",
                                            status="ingested", sha256=sha, capture_id=cap.id)
@@ -548,6 +572,7 @@ class IngestService:
 
     # --- readiness + evidence --------------------------------------------------------------
     async def _capture_ready(self, cap: Capture, det: Detection) -> None:
+        cap.timings = {**cap.timings, **det.timings}
         cap.processing_state = ProcessingState.ready
         cap.ready_at = utcnow()
         await self.store.put(cap)
@@ -579,6 +604,7 @@ class IngestService:
 
         def apply(c: Capture) -> None:
             c.evidence = ev
+            c.timings["evidence"] = ev.get("timings", {})
             c.width, c.height = ev["width"], ev["height"]
 
         await self.store.update(Capture, cap.id, apply)

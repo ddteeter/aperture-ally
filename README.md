@@ -45,7 +45,7 @@ headphones + microphone, PTT permissions and remote), then the manual gates in
 | `./scripts/dev.sh` | one-command launch (API + built UI on 127.0.0.1:8765) |
 | `uv run aperture-ally doctor` | dependencies, arm64, providers (never prints keys), audio devices, permissions |
 | `uv run aperture-ally replay <scenario>` | simulated camera against a running app |
-| `uv run aperture-ally export [--session ID]` | coverage (JSON, Markdown, contact sheet) + timing report |
+| `uv run aperture-ally export [--session ID]` | coverage (JSON, Markdown, contact sheet), timing report and raw telemetry JSONL ([docs/telemetry.md](docs/telemetry.md)) |
 | `uv run aperture-ally eval …` | offline evaluation / live-trial summary ([evals/README.md](evals/README.md)) |
 | `./scripts/check.sh` | lint + backend tests + frontend typecheck/unit/build/e2e (no paid calls) |
 | `uv run pytest -m live` | **paid**: one real call per configured provider |
@@ -59,7 +59,7 @@ backend/aperture_ally/ api · domain · ingest · imaging · coaching · audio �
 frontend/src/          React + TypeScript UI (Shoot, Coverage, Diagnostics, Sessions)
 fixtures/manifest.json replay scenarios; synthetic images are generated into fixtures/generated/ (git-ignored)
 evals/                 runner, rubric, dataset format; results/ is git-ignored
-docs/                  setup · hardware-checks · architecture · poc-report
+docs/                  setup · hardware-checks · architecture · telemetry · poc-report
 ```
 
 Private photos, recordings, credentials, the session database and paid-call outputs are git-ignored
