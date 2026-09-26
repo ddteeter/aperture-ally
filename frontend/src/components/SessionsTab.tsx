@@ -142,6 +142,7 @@ function CreateSession({
             <option value="mock">mock — heuristic stand-in{configured("mock")}</option>
             <option value="openai">openai{configured("openai")}</option>
             <option value="gemini">gemini{configured("gemini")}</option>
+            <option value="claude">claude{configured("claude")}</option>
           </select>
         </label>
         <label>

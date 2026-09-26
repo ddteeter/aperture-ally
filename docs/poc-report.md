@@ -72,7 +72,7 @@ cover the plan's software risks; they are not camera/audio/model-quality trials.
 
 Fill from `evals/results/<run>/report.md` for two configurations on the owner dataset (dev and held-out
 reported separately): false acceptance, unnecessary retakes, criterion agreement, uncertainty, stability,
-invented context (manual review), tokens, cost, latency, errors. Record resolved model ids and prompt
+invented context (manual review), tokens, cost, latency, errors. Candidates: OpenAI, Gemini and Claude (incl. effort sweep). Record resolved model ids and prompt
 version `coach-2026-09-26.1`.
 
 ## 4. Live teaching trial — *pending*

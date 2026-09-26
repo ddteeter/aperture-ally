@@ -121,6 +121,8 @@ class ApertureAllyApp:
             hosts.add(PROVIDER_HOSTS["openai"])
         if s.gemini_api_key and s.gemini_model:
             hosts.add(PROVIDER_HOSTS["gemini"])
+        if s.anthropic_api_key and s.claude_model:
+            hosts.add(PROVIDER_HOSTS["claude"])
         return sorted(hosts)
 
     def _audio_event(self, kind: str, data: dict) -> None:

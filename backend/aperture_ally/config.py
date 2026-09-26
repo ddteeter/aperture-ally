@@ -72,9 +72,14 @@ class Settings(BaseSettings):
     max_crops: int = 3
 
     # --- coaching --------------------------------------------------------------------------
-    assess_provider: Literal["mock", "openai", "gemini"] = "mock"
+    assess_provider: Literal["mock", "openai", "gemini", "claude"] = "mock"
     openai_model: str | None = None
     gemini_model: str | None = None
+    claude_model: str | None = Field(
+        "claude-opus-5", description="Anthropic model id (from the bundled Claude API reference, cached 2026-06-24)")
+    claude_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
+        None, description="output_config.effort; None = API default. Lower = faster/cheaper; sweep it in evals")
+    claude_refusal_fallback: bool = Field(True, description='server-side fallbacks: "default" on safety declines')
     openai_image_detail: Literal["low", "high", "auto", "original"] = "high"
     gemini_media_resolution: Literal["low", "medium", "high"] = "high"
     model_timeout_s: float = 45.0
@@ -115,6 +120,7 @@ class Settings(BaseSettings):
     # --- secrets (unprefixed conventional names) ------------------------------------------
     openai_api_key: SecretStr | None = Field(None, validation_alias="OPENAI_API_KEY")
     gemini_api_key: SecretStr | None = Field(None, validation_alias="GEMINI_API_KEY")
+    anthropic_api_key: SecretStr | None = Field(None, validation_alias="ANTHROPIC_API_KEY")
 
     @field_validator("data_dir", "frontend_dist", mode="after")
     @classmethod
@@ -135,13 +141,15 @@ class Settings(BaseSettings):
         return self.data_dir / "sessions"
 
     def model_for(self, provider: str) -> str | None:
-        return {"openai": self.openai_model, "gemini": self.gemini_model, "mock": "mock-heuristic-v1"}.get(provider)
+        return {"openai": self.openai_model, "gemini": self.gemini_model, "claude": self.claude_model,
+                "mock": "mock-heuristic-v1"}.get(provider)
 
     def public_view(self) -> dict:
         """Configuration safe to send to the UI (no secrets)."""
-        data = self.model_dump(exclude={"openai_api_key", "gemini_api_key", "prices"}, mode="json")
+        data = self.model_dump(exclude={"openai_api_key", "gemini_api_key", "anthropic_api_key", "prices"}, mode="json")
         data["openai_key_configured"] = self.openai_api_key is not None
         data["gemini_key_configured"] = self.gemini_api_key is not None
+        data["anthropic_key_configured"] = self.anthropic_api_key is not None
         data["priced_models"] = sorted(self.prices)
         return data
 

@@ -50,7 +50,7 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
                       "" if mac else "Target is macOS; non-mac hosts run replay/mock only"))
     out.append(_check("arm64 native", (arch == "arm64") if mac else None, f"python {platform.python_version()} on {arch}",
                       "Use a native arm64 Python (uv python install 3.12) — not Rosetta" if mac and arch != "arm64" else ""))
-    for mod in ("cv2", "numpy", "PIL", "rawpy", "watchdog", "openai", "google.genai"):
+    for mod in ("cv2", "numpy", "PIL", "rawpy", "watchdog", "openai", "google.genai", "anthropic"):
         ok, ver = _import(mod)
         out.append(_check(f"import {mod}", ok, ver, "" if ok else "uv sync"))
     et = shutil.which("exiftool")
@@ -70,6 +70,11 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     out.append(_check("Gemini configured", (s.gemini_api_key is not None and bool(s.gemini_model)) or None,
                       f"key {'set' if s.gemini_api_key else 'missing'}, model {s.gemini_model or 'unset'}",
                       "set GEMINI_API_KEY and APERTURE_ALLY_GEMINI_MODEL (from official docs)"))
+    out.append(_check("Claude configured", (s.anthropic_api_key is not None and bool(s.claude_model)) or None,
+                      f"key {'set' if s.anthropic_api_key else 'missing (SDK may still use ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile)'}, "
+                      f"model {s.claude_model or 'unset'}, effort {s.claude_effort or 'API default'}, "
+                      f"refusal fallback {'on' if s.claude_refusal_fallback else 'off'}",
+                      "set ANTHROPIC_API_KEY (or run `ant auth login`)"))
     out.append(_check("transcription", s.transcriber == "mock" or (bool(s.openai_api_key) and bool(s.transcription_model)) or None,
                       f"{s.transcriber} model={s.transcription_model or 'unset'}"))
     # audio output

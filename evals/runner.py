@@ -385,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     sp.set_defaults(fn=cmd_split)
     sp = sub.add_parser("run")
     sp.add_argument("--dataset", required=True)
-    sp.add_argument("--provider", action="append", choices=["mock", "openai", "gemini"])
+    sp.add_argument("--provider", action="append", choices=["mock", "openai", "gemini", "claude"])
     sp.add_argument("--split", choices=["dev", "holdout", "all"], default="dev")
     sp.add_argument("--repeat-subset", type=int, default=5)
     sp.add_argument("--repeats", type=int, default=3)

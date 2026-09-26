@@ -1,7 +1,7 @@
 // Hand-written types for the Aperture Ally backend payloads (see backend/aperture_ally/api/routes.py).
 // Fields the UI does not use are still listed where cheap, but everything nullable is typed as such.
 
-export type ProviderName = "mock" | "openai" | "gemini";
+export type ProviderName = "mock" | "openai" | "gemini" | "claude";
 export type SessionStatus = "active" | "paused" | "completed";
 
 export interface Session {

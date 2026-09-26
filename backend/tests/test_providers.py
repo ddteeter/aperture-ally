@@ -91,4 +91,106 @@ def test_registry_refuses_unconfigured_providers(tmp_path):
     reg = ProviderRegistry(fast_settings(tmp_path))
     with pytest.raises(ProviderUnavailable, match="APERTURE_ALLY_OPENAI_MODEL"):
         reg.get("openai")
-    assert reg.configured() == {"mock": True, "openai": False, "gemini": False}
+    assert reg.configured() == {"mock": True, "openai": False, "gemini": False, "claude": False}
+
+
+def _claude_resp(*, stop="end_turn", text='{"ok": true}', model="claude-opus-5", blocks=None, iterations=None):
+    content = blocks if blocks is not None else [SimpleNamespace(type="thinking", thinking=""),
+                                                 SimpleNamespace(type="text", text=text)]
+    usage = SimpleNamespace(input_tokens=2100, output_tokens=380, cache_read_input_tokens=0,
+                            cache_creation_input_tokens=0, iterations=iterations)
+    return SimpleNamespace(id="msg_1", model=model, stop_reason=stop, content=content, usage=usage,
+                           stop_details=SimpleNamespace(category="cyber", explanation="declined") if stop == "refusal" else None)
+
+
+async def test_claude_request_shape_and_usage(fx):
+    from aperture_ally.coaching.providers.claude_adapter import FALLBACK_BETA, ClaudeProvider
+
+    p = ClaudeProvider("sk-ant-test", "claude-opus-5", effort="medium")
+    seen = {}
+
+    async def create(**kw):
+        seen.update(kw)
+        return _claude_resp()
+
+    p.client.beta.messages.create = create
+    resp = await p.generate(_req(fx))
+    assert seen["model"] == "claude-opus-5" and seen["system"] == SYSTEM_ASSESS
+    assert seen["thinking"] == {"type": "adaptive"}
+    assert seen["output_config"]["format"]["type"] == "json_schema" and seen["output_config"]["effort"] == "medium"
+    assert seen["output_config"]["format"]["schema"]["additionalProperties"] is False
+    assert seen["betas"] == [FALLBACK_BETA] and seen["fallbacks"] == "default"
+    blocks = seen["messages"][0]["content"]
+    img = next(b for b in blocks if b["type"] == "image")
+    assert img["source"]["type"] == "base64" and img["source"]["media_type"] == "image/jpeg"
+    assert blocks[0]["type"] == "text" and "Image 1" in blocks[1]["text"]
+    assert resp.text == '{"ok": true}' and resp.model_resolved == "claude-opus-5"
+    assert resp.usage["input_tokens"] == 2100 and resp.usage["fallback_used"] == 0
+
+    await p.repair(_req(fx), resp, ["bad region"])
+    assert [m["role"] for m in seen["messages"]] == ["user", "assistant", "user"]
+    assert "bad region" in seen["messages"][-1]["content"]
+
+
+async def test_claude_fallback_is_attributed_to_the_serving_model(fx):
+    from aperture_ally.coaching.providers.claude_adapter import ClaudeProvider
+
+    p = ClaudeProvider("sk-ant-test", "claude-opus-5")
+
+    async def create(**kw):
+        return _claude_resp(model="claude-opus-4-8",
+                            blocks=[SimpleNamespace(type="fallback"), SimpleNamespace(type="text", text="{}")])
+
+    p.client.beta.messages.create = create
+    resp = await p.generate(_req(fx))
+    assert resp.model_resolved == "claude-opus-4-8" and resp.usage["fallback_used"] == 1
+
+
+async def test_claude_refusal_truncation_and_outage(fx):
+    import anthropic
+    import httpx
+
+    from aperture_ally.coaching.providers.base import ProviderError
+    from aperture_ally.coaching.providers.claude_adapter import ClaudeProvider
+
+    p = ClaudeProvider("sk-ant-test", "claude-opus-5", refusal_fallback=False)
+    calls = []
+
+    async def create(**kw):
+        calls.append(kw)
+        return nxt.pop(0)
+
+    p.client.messages.create = create  # fallback off → non-beta endpoint, no betas/fallbacks params
+    nxt = [_claude_resp(stop="refusal"), _claude_resp(stop="max_tokens")]
+    with pytest.raises(ProviderError, match=r"refusal.*cyber"):
+        await p.generate(_req(fx))
+    with pytest.raises(ProviderError, match="max_tokens"):
+        await p.generate(_req(fx))
+    assert "betas" not in calls[0] and "fallbacks" not in calls[0] and "effort" not in calls[0]["output_config"]
+
+    async def down(**kw):
+        raise anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"))
+
+    p.client.messages.create = down
+    with pytest.raises(ProviderUnavailable):
+        await p.generate(_req(fx))
+
+
+def test_claude_registry_and_replay_effort_spec(tmp_path):
+    import sys
+    from pathlib import Path
+
+    from aperture_ally.coaching.service import ProviderRegistry
+
+    from .conftest import fast_settings
+
+    s = fast_settings(tmp_path, anthropic_api_key="sk-ant-test")
+    assert ProviderRegistry(s).configured()["claude"] is True
+    assert ProviderRegistry(s).get("claude").model == "claude-opus-5"
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from evals.session_replay import make_provider
+
+    p, s2 = make_provider("claude:claude-sonnet-5@low", s)
+    assert p.model == "claude-sonnet-5" and p.effort == "low" and s2.claude_effort == "low"
+    with pytest.raises(SystemExit):
+        make_provider("openai:x@low", s)

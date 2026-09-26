@@ -5,7 +5,7 @@ A local-first macOS app that coaches a beginner through product photography **du
 1. OM Capture (tethered E-M1 Mark II) writes a photo into a watch folder.
 2. Aperture Ally ingests it for the **active shot requirement** (e.g. "Outsole"), preserves the original,
    builds an overview + full-resolution region crops + local measurements.
-3. A vision model (or the offline **mock** heuristic) returns structured, grounded coaching: a verdict
+3. A vision model (OpenAI, Gemini or Claude, or the offline **mock** heuristic) returns structured, grounded coaching: a verdict
    per acceptance criterion and **one** physically achievable change, with explanation and trade-off.
 4. The tip is **spoken** through your headphones. Hold a **push-to-talk** key (keyboard or Bluetooth
    remote) to interrupt and ask a follow-up.

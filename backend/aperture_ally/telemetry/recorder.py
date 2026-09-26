@@ -28,7 +28,8 @@ from .timing import BOOT_ID
 log = logging.getLogger(__name__)
 events_log = logging.getLogger("aperture_ally.events")
 
-PROVIDER_HOSTS = {"openai": "api.openai.com", "gemini": "generativelanguage.googleapis.com"}
+PROVIDER_HOSTS = {"openai": "api.openai.com", "gemini": "generativelanguage.googleapis.com",
+                  "claude": "api.anthropic.com"}
 
 
 # --- file logging ---------------------------------------------------------------------------

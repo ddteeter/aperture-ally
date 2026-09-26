@@ -54,7 +54,7 @@ class SessionCreate(BaseModel):
     product: str = ""
     watch_folder: str | None = None
     template: Literal["running_shoe", "empty"] | None = "running_shoe"
-    assess_provider: Literal["mock", "openai", "gemini"] | None = None
+    assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
     teaching_mode: bool = True
     simulated: bool = False
     setup: SetupFields | None = None
@@ -64,7 +64,7 @@ class SessionPatch(BaseModel):
     name: str | None = None
     product: str | None = None
     watch_folder: str | None = None
-    assess_provider: Literal["mock", "openai", "gemini"] | None = None
+    assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
     teaching_mode: bool | None = None
     status: SessionStatus | None = None
 
@@ -102,7 +102,7 @@ class CapturePatch(BaseModel):
 class AssessBody(BaseModel):
     plain: bool = Field(False, description="Assess without a baseline comparison")
     speak: bool = True
-    provider: Literal["mock", "openai", "gemini"] | None = None
+    provider: Literal["mock", "openai", "gemini", "claude"] | None = None
 
 
 class CompareBody(BaseModel):

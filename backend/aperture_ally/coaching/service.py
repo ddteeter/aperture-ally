@@ -86,6 +86,15 @@ class ProviderRegistry:
 
             p = GeminiProvider(s.gemini_api_key.get_secret_value(), s.gemini_model,
                                media_resolution=s.gemini_media_resolution, timeout_s=s.model_timeout_s)
+        elif name == "claude":
+            if not s.claude_model:
+                raise ProviderUnavailable("Claude not configured: set APERTURE_ALLY_CLAUDE_MODEL")
+            from .providers.claude_adapter import ClaudeProvider
+
+            # No key → the SDK resolves ANTHROPIC_AUTH_TOKEN or an `ant auth login` profile itself.
+            p = ClaudeProvider(s.anthropic_api_key.get_secret_value() if s.anthropic_api_key else None,
+                               s.claude_model, effort=s.claude_effort, timeout_s=s.model_timeout_s,
+                               refusal_fallback=s.claude_refusal_fallback)
         else:
             raise ProviderUnavailable(f"unknown provider {name}")
         self._cache[name] = p
@@ -94,7 +103,8 @@ class ProviderRegistry:
     def configured(self) -> dict[str, bool]:
         s = self.settings
         return {"mock": True, "openai": bool(s.openai_api_key and s.openai_model),
-                "gemini": bool(s.gemini_api_key and s.gemini_model)}
+                "gemini": bool(s.gemini_api_key and s.gemini_model),
+                "claude": bool(s.anthropic_api_key and s.claude_model)}
 
 
 class CoachingService:

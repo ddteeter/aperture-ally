@@ -36,6 +36,19 @@ export OPENAI_API_KEY="$(security find-generic-password -a "$USER" -s aperture-a
 
 ### Models {#models}
 
+**Claude** (added later) ships with a default: `claude-opus-5`, taken from Anthropic's bundled API reference
+(cached 2026-06-24). Its request shape was verified against the installed `anthropic` SDK (1.8.0). It sends
+images as base64 `image` blocks, uses `output_config.format` JSON-schema structured output and adaptive
+thinking, and has an optional `APERTURE_ALLY_CLAUDE_EFFORT`. Server-side refusal fallback
+(`fallbacks: "default"`) is on by default: if Claude's safety classifiers decline a request, Anthropic's
+recommended fallback model answers in the same call. The answering model is recorded as `model_resolved`,
+and `usage.fallback_used` is set. Opus-tier list prices in that reference were $5 / $25 per 1M input/output
+tokens; confirm them before adding them to `APERTURE_ALLY_PRICES`. Thinking tokens count as output tokens,
+and adaptive thinking adds latency, so sweep effort (`low`/`medium`/`high`) with the session-replay harness
+before choosing a live setting.
+
+For OpenAI and Gemini:
+
 Model identifiers and prices change often and were **not verifiable from the build environment**
 (the provider documentation sites were not reachable), so none are hard-coded. At setup time:
 

@@ -199,8 +199,14 @@ def rebuild_request(item: dict, instructions: str, chained: dict[str, dict] | No
 
 
 def make_provider(spec: str, settings: Settings):
+    """``provider[:model][@effort]`` — effort applies to Claude (output_config.effort), e.g. claude:claude-opus-5@low."""
+    spec, _, effort = spec.partition("@")
     name, _, model = spec.partition(":")
-    update = {f"{name}_model": model} if model and name in ("openai", "gemini") else {}
+    update: dict[str, Any] = {f"{name}_model": model} if model and name in ("openai", "gemini", "claude") else {}
+    if effort:
+        if name != "claude":
+            raise SystemExit(f"@effort is only supported for claude configs, not {name}")
+        update["claude_effort"] = effort
     s = settings.model_copy(update=update)
     return ProviderRegistry(s).get(name), s
 
@@ -306,7 +312,8 @@ async def replay_config(spec: str, items: list[dict], store: Store, settings: Se
                     light=setup.light if setup else "unknown", exposure_mode=setup.exposure_mode if setup else "unknown",
                     iso_mode=setup.iso_mode if setup else "unknown", flash_fired=cap.exif.get("flash_fired")))
             cost = estimate_cost(usage, s.prices.get(model_resolved or "") or s.prices.get(provider.model or ""))
-            row = result_row(it, spec.partition(":")[0], model_resolved, rep,
+            label = spec.partition(":")[0].partition("@")[0] + (f"@{spec.partition('@')[2]}" if "@" in spec else "")
+            row = result_row(it, label, model_resolved, rep,
                              result, status, labels=labels, expected=exp, warnings=warnings, errors=errors,
                              usage=usage, latency_ms=latency, repaired=repaired, cost=cost, raw=raw, exposure_note=note,
                              prompt_version=f"{instructions_mode}:{pv}", original=original, substitutions=subs)
@@ -440,7 +447,7 @@ def cmd_session(args) -> int:
 def add_parsers(sub) -> None:
     sp = sub.add_parser("session", help="replay a recorded session's model requests against other configs")
     sp.add_argument("--session", required=True, help="session id prefix")
-    sp.add_argument("--config", action="append", help="provider[:model], e.g. openai:<model>, gemini:<model>, mock")
+    sp.add_argument("--config", action="append", help="provider[:model][@effort], e.g. openai:<model>, gemini:<model>, claude:claude-opus-5@medium, mock")
     sp.add_argument("--mode", choices=["frozen", "chained"], default="frozen")
     sp.add_argument("--instructions", choices=["recorded", "current"], default="recorded")
     sp.add_argument("--labels", help="JSONL from `eval session-labels`, edited")
