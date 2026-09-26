@@ -92,6 +92,46 @@ def cmd_export(args) -> int:
     return asyncio.run(go())
 
 
+def cmd_ingest_report(args) -> int:
+    """Objective numbers for the M1 hardware gate (N shutter presses → N logical captures)."""
+    from collections import Counter
+
+    from .config import get_settings
+    from .persistence.db import Store
+
+    store = Store(get_settings().db_path)
+    sessions = [x for x in store.list_sessions() if x.id.startswith(args.session or "")]
+    if not sessions:
+        print("no such session", file=sys.stderr)
+        return 1
+    sess = sessions[0]
+    caps = store.captures(sess.id)
+    files = store.source_files(sess.id)
+    assessments = store.assessments(sess.id)
+    per_cap = Counter(a.capture_id for a in assessments if a.trigger == "auto")
+    spoken = Counter(a.capture_id for a in assessments if a.speech_status == "spoken")
+    report = {
+        "session": f"{sess.name} ({sess.id})" + (" SIMULATED" if sess.simulated else ""),
+        "logical_captures": len(caps),
+        "raw_jpeg_pairs": sum(1 for c in caps if c.jpeg_path and c.raw_path),
+        "jpeg_only": sum(1 for c in caps if c.jpeg_path and not c.raw_path),
+        "raw_only": sum(1 for c in caps if c.raw_path and not c.jpeg_path),
+        "late_raw_attached": sum(1 for c in caps if c.pairing.get("late_raw")),
+        "recovered": sum(1 for c in caps if c.recovered),
+        "ambiguous_attribution": sum(1 for c in caps if c.attribution_ambiguous),
+        "failed_captures": [(c.seq, c.error) for c in caps if c.processing_state == "failed"],
+        "source_files_by_status": dict(Counter(f["status"] for f in files)),
+        "captures_with_multiple_auto_assessments": [c.seq for c in caps if per_cap[c.id] > 1],
+        "captures_spoken_more_than_once": [c.seq for c in caps if spoken[c.id] > 1],
+        "seq_gaps": [s for s in range(1, (caps[-1].seq if caps else 0) + 1) if s not in {c.seq for c in caps}],
+    }
+    if args.expect is not None:
+        report["expected_presses"] = args.expect
+        report["match"] = len(caps) == args.expect
+    print(json.dumps(report, indent=2))
+    return 0 if args.expect is None or report["match"] else 3
+
+
 def cmd_eval(args) -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from evals.runner import main as eval_main
@@ -122,6 +162,10 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--session", help="session id prefix (default: most recent)")
     sp.add_argument("--out")
     sp.set_defaults(fn=cmd_export)
+    sp = sub.add_parser("ingest-report", help="capture/pairing/duplicate counts for the hardware ingest gate")
+    sp.add_argument("--session", help="session id prefix (default: most recent)")
+    sp.add_argument("--expect", type=int, help="number of shutter presses made")
+    sp.set_defaults(fn=cmd_ingest_report)
     sp = sub.add_parser("eval", help="offline evaluation runner (see evals/README.md)")
     sp.add_argument("rest", nargs=argparse.REMAINDER)
     sp.set_defaults(fn=cmd_eval)

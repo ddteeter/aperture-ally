@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     # --- secrets (unprefixed conventional names) ------------------------------------------
     openai_api_key: SecretStr | None = Field(None, validation_alias="OPENAI_API_KEY")
     gemini_api_key: SecretStr | None = Field(None, validation_alias="GEMINI_API_KEY")
+
+    @field_validator("data_dir", "frontend_dist", mode="after")
+    @classmethod
+    def _expand(cls, v: Path) -> Path:
+        return v.expanduser()
+
+    @field_validator("import_roots", mode="after")
+    @classmethod
+    def _expand_all(cls, v: list[Path]) -> list[Path]:
+        return [p.expanduser() for p in v]
 
     @property
     def db_path(self) -> Path:
