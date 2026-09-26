@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import cv2
 import numpy as np
 from PIL import Image, ImageCms, ImageOps
 
@@ -63,7 +64,7 @@ def load_oriented_srgb(path: Path) -> tuple[Image.Image, dict[str, Any]]:
 def _save_jpeg(img: Image.Image, path: Path, quality: int = 88) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    img.save(tmp, "JPEG", quality=quality, optimize=True)
+    img.save(tmp, "JPEG", quality=quality)
     tmp.replace(path)
 
 
@@ -81,9 +82,11 @@ def build_evidence(
     arr = np.asarray(img)
 
     scale = min(1.0, overview_long_edge / max(W, H))
-    overview = img.resize((round(W * scale), round(H * scale)), Image.Resampling.LANCZOS) if scale < 1 else img
+    # INTER_AREA is the appropriate (and multi-threaded) filter for large downscales.
+    overview = (Image.fromarray(cv2.resize(arr, (round(W * scale), round(H * scale)), interpolation=cv2.INTER_AREA))
+                if scale < 1 else img)
     _save_jpeg(overview, out_dir / "overview.jpg")
-    thumb = img.copy()
+    thumb = overview.copy()
     thumb.thumbnail((360, 360), Image.Resampling.LANCZOS)
     _save_jpeg(thumb, out_dir / "thumb.jpg", quality=80)
 
@@ -100,10 +103,9 @@ def build_evidence(
         x0, y0 = int(r.x * W), int(r.y * H)
         x1, y1 = max(x0 + 1, int((r.x + r.w) * W)), max(y0 + 1, int((r.y + r.h) * H))
         sub = arr[y0:y1, x0:x1]
-        crop = Image.fromarray(sub)
-        cscale = min(1.0, crop_max_edge / max(crop.size))
-        if cscale < 1:
-            crop = crop.resize((round(crop.width * cscale), round(crop.height * cscale)), Image.Resampling.LANCZOS)
+        cscale = min(1.0, crop_max_edge / max(sub.shape[1], sub.shape[0]))
+        crop = Image.fromarray(sub if cscale == 1 else cv2.resize(
+            sub, (round(sub.shape[1] * cscale), round(sub.shape[0] * cscale)), interpolation=cv2.INTER_AREA))
         cpath = out_dir / f"crop_{r.id}.jpg"
         _save_jpeg(crop, cpath, quality=92)
         rect = [round(r.x, 4), round(r.y, 4), round(r.w, 4), round(r.h, 4)]

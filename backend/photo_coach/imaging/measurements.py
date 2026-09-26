@@ -25,27 +25,36 @@ HI = 254
 LO = 1
 
 
+_LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
+
+
 def luminance(rgb: np.ndarray) -> np.ndarray:
     """Rec.709 luma on sRGB-encoded values (a display-referred approximation)."""
-    r, g, b = rgb[..., 0].astype(np.float32), rgb[..., 1].astype(np.float32), rgb[..., 2].astype(np.float32)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return rgb.reshape(-1, 3).astype(np.float32) @ _LUMA
+
+
+def _hist_percentile(hist256: np.ndarray, p: float) -> float:
+    cdf = np.cumsum(hist256)
+    return float(np.searchsorted(cdf, p * cdf[-1]))
 
 
 def tonal_stats(rgb: np.ndarray, bins: int = 64) -> dict[str, Any]:
     lum = luminance(rgb)
-    hist, _ = np.histogram(lum, bins=bins, range=(0, 256))
+    h256 = np.bincount(np.clip(lum, 0, 255).astype(np.uint8), minlength=256)
     total = float(lum.size)
-    any_hi = np.any(rgb >= HI, axis=-1)
-    any_lo = np.any(rgb <= LO, axis=-1)
+    hist = h256.reshape(bins, 256 // bins).sum(axis=1)
+    r, g, b = cv2.split(np.ascontiguousarray(rgb))
+    chmax = cv2.max(cv2.max(r, g), b)
+    chmin = cv2.min(cv2.min(r, g), b)
     return {
         "histogram": (hist / total).round(5).tolist(),
         "mean_luminance": round(float(lum.mean()), 2),
-        "p01_luminance": round(float(np.percentile(lum, 1)), 1),
-        "p99_luminance": round(float(np.percentile(lum, 99)), 1),
-        "highlight_clip_fraction": round(float(any_hi.mean()), 5),
-        "shadow_clip_fraction": round(float(any_lo.mean()), 5),
-        "channel_highlight_clip": {c: round(float((rgb[..., i] >= HI).mean()), 5) for i, c in enumerate("RGB")},
-        "channel_shadow_clip": {c: round(float((rgb[..., i] <= LO).mean()), 5) for i, c in enumerate("RGB")},
+        "p01_luminance": _hist_percentile(h256, 0.01),
+        "p99_luminance": _hist_percentile(h256, 0.99),
+        "highlight_clip_fraction": round(float((chmax >= HI).mean()), 5),
+        "shadow_clip_fraction": round(float((chmin <= LO).mean()), 5),
+        "channel_highlight_clip": {c: round(float((ch >= HI).mean()), 5) for c, ch in zip("RGB", (r, g, b), strict=True)},
+        "channel_shadow_clip": {c: round(float((ch <= LO).mean()), 5) for c, ch in zip("RGB", (r, g, b), strict=True)},
     }
 
 
@@ -61,7 +70,7 @@ def sharpness(rgb: np.ndarray) -> dict[str, float]:
     }
 
 
-def subsample_nearest(rgb: np.ndarray, max_edge: int = 3000) -> np.ndarray:
+def subsample_nearest(rgb: np.ndarray, max_edge: int = 2000) -> np.ndarray:
     """Nearest-neighbour subsample keeps real pixel values (no averaging that hides clipping)."""
     h, w = rgb.shape[:2]
     step = max(1, int(np.ceil(max(h, w) / max_edge)))
