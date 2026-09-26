@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse
@@ -41,6 +42,9 @@ def create_app(settings: Settings | None = None, coach: PhotoCoachApp | None = N
 
         @app.get("/{path:path}", include_in_schema=False)
         async def spa(path: str):
+            # Client-side routing only: never answer API paths or file-like requests with the SPA shell.
+            if path.startswith("api") or ".." in path or Path(path).suffix:
+                raise HTTPException(404)
             return FileResponse(dist / "index.html")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

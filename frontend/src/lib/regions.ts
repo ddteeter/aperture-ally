@@ -46,7 +46,8 @@ export function normalizeDrag(
   const ny1 = clamp01((Math.max(start.y, end.y) * sy) / natural.height);
   const w = nx1 - nx0;
   const h = ny1 - ny0;
-  if (w < minFraction || h < minFraction) return null;
+  const eps = 1e-9; // tolerate float error (0.03 - 0.01 < 0.02)
+  if (w < minFraction - eps || h < minFraction - eps) return null;
   const x = round4(nx0);
   const y = round4(ny0);
   // keep x+w <= 1 after rounding

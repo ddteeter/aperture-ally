@@ -236,6 +236,12 @@ class CoachingService:
             regions = shot.sharp_regions if shot else []
             root = self.session_root(session.id)
             ev = await ensure_evidence(capture, regions, root, self.settings, self.executor)
+            if capture.evidence.get("regions_key") != ev["regions_key"]:
+                # Regions changed since ingest: persist the new crops so the UI can fetch them.
+                def keep(c: Capture, ev=ev) -> None:
+                    c.evidence = ev
+
+                capture = await self.store.update(Capture, capture.id, keep) or capture
             b_ev = await ensure_evidence(baseline, regions, root, self.settings, self.executor) if baseline else None
             assessment.measurements = ev["measurements"]
             assessment.evidence = ev["crops"] + [{"id": "overview", "path": ev["overview"]["path"]}]

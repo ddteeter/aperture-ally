@@ -221,3 +221,16 @@ async def test_explicit_review_of_older_photo_is_identified(h, fx):
     await h.app.coaching.request_review(first.id, speak=True)
     await h.wait(lambda: _done(h, s, 3), 10)
     assert h.speech.spoken[-1].startswith(f"About earlier photo {first.seq}:")
+
+
+async def test_region_change_persists_new_crops(h, fx):
+    s = await h.session()
+    shot = await h.use_shot(s, "Upper", "mesh")
+    h.drop(s, fx / "P9260002.JPG")
+    await h.wait(lambda: _done(h, s, 1), 10)
+    await h.app.update_shot(shot.id, {"sharp_regions": [{"id": "r2", "label": "toe", "x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}]})
+    cap = (await h.captures(s))[0]
+    await h.app.coaching.request_review(cap.id, speak=False)
+    await h.wait(lambda: _done(h, s, 2), 10)
+    cap = await h.app.store.get(Capture, cap.id)
+    assert [c["id"] for c in cap.evidence["crops"]] == ["r2"]

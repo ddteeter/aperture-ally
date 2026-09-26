@@ -194,6 +194,7 @@ async def session_state(app: PhotoCoachApp, sid: str) -> dict[str, Any]:
         "pending_files": pending,
         "voice": app.voice.snapshot(),
         "watching": app.ingest.watched_session_id == sid,
+        "pending_change": app.tracker.get(sid).pending_change,
         "provider_health": app.providers.health,
         "providers_configured": app.providers.configured(),
     }

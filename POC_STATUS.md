@@ -56,12 +56,13 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Offline eval runner (split, bounded paid runs, stability, report) | Implemented | mock dry run only |
 | Live teaching-trial summary | Implemented | no trial run |
 | Security: loopback, host/origin checks, ID-only file serving, import roots | Implemented | `test_api.py` |
-| Frontend (Shoot / Coverage / Diagnostics / Sessions) | see below | |
+| Frontend (Shoot / Coverage / Diagnostics / Sessions): viewer, region drawing, histogram, before/after, coach card, experiment card, keeper confirm, hold/toggle/Space PTT, diagnostics, exports | Implemented, simulated | Vitest + Playwright (backend-served build, mock adapters); dev-server proxy path not e2e-tested; region drawing is pointer-only |
 
 ## Automated test results (build environment, mocks only)
 
-- Backend: `uv run pytest` → 81 passed, 2 live (paid) tests deselected. `ruff check` clean.
-- Frontend: *(filled in below)*
+- Backend: `uv run pytest` → 82 passed, 2 live (paid) tests deselected. `ruff check` clean.
+- Frontend: `npm run typecheck` clean; `npm test` 33 passed; `npm run build` ok; `npm run e2e` 2 passed
+  (replay coaching loop → comparison → keeper → coverage; hold-to-talk → answer).
 
 ## Remaining gates (in order)
 

@@ -12,6 +12,8 @@ export function ReceivedIndicator() {
     return () => clearInterval(t);
   }, []);
   if (!state) return null;
+  // Before any capture.ready event this page load, fall back to the newest capture in the snapshot.
+  const newest = state.captures.reduce<(typeof state.captures)[number] | null>((a, c) => (!a || c.seq > a.seq ? c : a), null);
   const pending = state.pending_files.filter((p) => p.status !== "failed");
   const ago = received ? Math.max(0, Math.round((now - received.at) / 1000)) : null;
   return (
@@ -24,14 +26,20 @@ export function ReceivedIndicator() {
           <>
             <strong className="big">Received ✓ photo #{received.seq}</strong>{" "}
             <span className="small">
-              for {shotTitle(state.shots, received.shotId)} · {ago}s ago
+              for {shotTitle(state.shots, received.shotId)}
               {received.ambiguous && " · shot attribution uncertain — check the filmstrip"}
             </span>
           </>
+        ) : newest ? (
+          <span>
+            Last received: photo #{newest.seq} for {shotTitle(state.shots, newest.shot_id)}. Waiting for the next photo…
+          </span>
         ) : (
-          <span>Waiting for the next photo…</span>
+          <span>Waiting for the first photo…</span>
         )}
       </p>
+      {/* kept outside the live region so the ticking counter isn't announced */}
+      {ago != null && <p className="small muted">{ago}s ago</p>}
       {pending.length > 0 && (
         <p className="small">
           Still arriving: {pending.map((p) => `${p.name} (${p.status.replace(/_/g, " ")})`).join(", ")}

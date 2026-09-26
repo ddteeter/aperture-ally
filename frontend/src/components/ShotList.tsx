@@ -8,15 +8,20 @@ import { Chip } from "./Chip";
 
 export function ShotList() {
   const { state, sid, run, refresh } = useApp();
+  // Optimistic selection so the radio responds immediately; the snapshot stays authoritative.
+  const [pendingActive, setPendingActive] = useState<string | null>(null);
   if (!state || !sid) return null;
-  const activeId = state.session.active_shot_id;
+  const activeId = pendingActive ?? state.session.active_shot_id;
   const cov = new Map(state.coverage.shots.map((c) => [c.shot_id, c]));
 
-  const setActive = (shotId: string) =>
-    run("Set active shot", async () => {
+  const setActive = async (shotId: string) => {
+    setPendingActive(shotId);
+    await run("Set active shot", async () => {
       await api.setActiveShot(sid, shotId);
       await refresh();
     });
+    setPendingActive(null);
+  };
 
   const nextUnresolved = () => {
     const order = state.coverage.shots.map((c) => c.shot_id);

@@ -118,7 +118,8 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     except Exception as exc:
         out.append(_check("data dir writable", False, f"{s.data_dir}: {exc}"))
     fe = s.frontend_dist / "index.html"
-    out.append(_check("frontend build", fe.exists() or None, str(fe), "cd frontend && npm ci && npm run build"))
+    out.append(_check("frontend build", fe.exists() or None, str(fe),
+                      "" if fe.exists() else "cd frontend && npm ci && npm run build"))
     return out
 
 

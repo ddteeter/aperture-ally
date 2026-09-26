@@ -111,6 +111,9 @@ class ReplayRunner:
     # --- steps ---------------------------------------------------------------------------
     async def _select_shot(self, step):
         await self._j("PATCH", f"/api/sessions/{self.session_id}/active-shot", json={"shot_id": self.shots[step["shot"]]})
+        # Like a person walking back to the camera: shots right after a switch are (correctly) flagged
+        # ambiguous, which would badge every replay photo. Override with {"settle_s": 0} to test that.
+        await asyncio.sleep(step.get("settle_s", 3.2))
 
     async def _set_regions(self, step):
         presets = self.manifest["region_presets"]
