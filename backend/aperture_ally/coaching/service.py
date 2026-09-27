@@ -5,6 +5,8 @@ Scheduling policy
   active shot. At most one automatic request is *queued* per session (newer replaces older); running
   requests finish and are stored for history, but their speech is suppressed if no longer current.
 * Explicit user reviews are never coalesced.
+* In-camera brackets: only the base frame (shot 1) is auto-coached; later frames neither trigger coaching
+  nor cut off the base frame's advice.
 * No backlog replay: failed/unavailable assessments stay failed until the user retries.
 """
 
@@ -137,6 +139,14 @@ class CoachingService:
 
     # --- scheduling ----------------------------------------------------------------------
     async def on_capture_ready(self, capture: Capture, auto: bool) -> None:
+        bracket = (capture.exif or {}).get("bracket")
+        if bracket and bracket.get("shot", 1) > 1:
+            # Later frames of an in-camera bracket: the base frame (shot 1) is the one coached, and its advice
+            # keeps playing while the rest of the set arrives. "Review anyway" still works on any frame.
+            if auto and self.settings.auto_coach and not capture.recovered:
+                self.bus.publish("analysis.skipped", session_id=capture.session_id, capture_id=capture.id,
+                                 reason=f"{bracket.get('kind', '')} bracket frame {bracket['shot']}: coaching the base frame")
+            return
         await self.audio.invalidate()  # a new photo makes older automatic advice obsolete
         if not auto or not self.settings.auto_coach or capture.recovered:
             return

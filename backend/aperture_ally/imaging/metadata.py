@@ -121,10 +121,38 @@ def _parse_dt(dt: Any, subsec: Any = None) -> str | None:
     return iso  # camera-local time; the camera clock's zone is unknown
 
 
+# Olympus maker-note DriveMode (ExifTool -n): "mode shot bits …"; mode 5 = bracketing, bits = what is bracketed.
+_BRACKET_BITS = {0: "AE", 1: "WB", 2: "FL", 3: "MF", 4: "ISO", 5: "AE Auto", 6: "Focus"}
+
+
+def _bracket(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """{"kind": "AE", "shot": 3} for a frame of an in-camera bracket (Olympus/OM), else None.
+
+    Olympus AE order: shot 1 is the base exposure, then -2, -1, +1, +2 steps (5 frames).
+    """
+    v = next((v for k, v in raw.items() if k.endswith("Olympus:DriveMode")), None)
+    try:
+        nums = [int(x) for x in str(v).split()] if v is not None else []
+    except ValueError:
+        return None
+    if len(nums) < 2 or nums[0] != 5 or nums[1] < 1:
+        return None
+    bits = nums[2] if len(nums) > 2 else 0
+    kinds = [name for bit, name in _BRACKET_BITS.items() if bits >> bit & 1]
+    return {"kind": "+".join(kinds) or "unknown", "shot": nums[1]}
+
+
 def normalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
     flash = _first(raw, "Flash")
     program = _first(raw, "ExposureProgram")
     exposure_mode_tag = _first(raw, "ExposureMode")
+    program_name = EXPOSURE_PROGRAMS.get(int(program), "unknown") if isinstance(program, int | float) else None
+    # EXIF ExposureMode is unreliable on Olympus/OM bodies (aperture-priority frames tagged "Manual"), so the
+    # exposure program decides when the camera reports one; ExposureMode is only the fallback.
+    if program_name not in (None, "unknown"):
+        manual: bool | None = program_name == "manual"
+    else:
+        manual = (int(exposure_mode_tag) == 1) if isinstance(exposure_mode_tag, int | float) else None
     out: dict[str, Any] = {
         "source": source,
         "camera_make": _first(raw, "Make"),
@@ -137,13 +165,14 @@ def normalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
         "focal_length_35mm": _num(_first(raw, "FocalLengthIn35mmFormat")),
         "exposure_compensation_ev": _first(raw, "ExposureCompensation"),
         "flash_fired": (bool(int(flash) & 1) if isinstance(flash, int | float) else None),
-        "exposure_program": EXPOSURE_PROGRAMS.get(int(program), "unknown") if isinstance(program, int | float) else None,
-        "exposure_mode_manual": (int(exposure_mode_tag) == 1) if isinstance(exposure_mode_tag, int | float) else None,
+        "exposure_program": program_name,
+        "exposure_mode_manual": manual,
         "datetime_original": _parse_dt(_first(raw, "DateTimeOriginal"), _first(raw, "SubSecTimeOriginal")),
         "orientation": _first(raw, "Orientation"),
         "raw_width": _first(raw, "ImageWidth", "ExifImageWidth"),
         "raw_height": _first(raw, "ImageHeight", "ExifImageHeight"),
         "color_space": _first(raw, "ColorSpace"),
+        "bracket": _bracket(raw),
     }
     out = {k: v for k, v in out.items() if v is not None}
     out["exposure_known"] = all(k in out for k in ("exposure_time_s", "f_number", "iso"))

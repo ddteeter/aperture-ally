@@ -110,6 +110,8 @@ export interface Exif {
   orientation?: number | null;
   exposure_known?: boolean;
   metadata_available?: boolean;
+  /** Frame of an in-camera bracket (Olympus/OM). Only shot 1, the base exposure, is auto-coached. */
+  bracket?: { kind: string; shot: number } | null;
 }
 
 export interface Crop {

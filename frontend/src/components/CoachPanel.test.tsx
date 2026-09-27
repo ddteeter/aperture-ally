@@ -77,6 +77,16 @@ describe("CoachPanel", () => {
     expect(screen.queryByTestId("keeper")).not.toBeInTheDocument();
   });
 
+  it("explains a later bracket frame (not auto-coached) and still offers a review", async () => {
+    const f = mockFetch({ queued: true });
+    const cap = followUpCapture(null, { processing_state: "ready", exif: { bracket: { kind: "AE", shot: 3 } } });
+    renderWithCtx(<CoachPanel capture={cap} shot={shot} captures={[cap]} experiments={[]} keeper={null} />, ctxWith());
+    expect(screen.getByText("Bracket frame 3")).toBeInTheDocument();
+    expect(screen.getByText(/The coach reviews the base frame \(shot 1\)/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Review #2 anyway" }));
+    expect(call(f)).toMatchObject({ url: "/api/captures/cap-2/assess", method: "POST" });
+  });
+
   it("shows analysis steps and cancels with the button or Esc", async () => {
     const f = mockFetch({ cancelled: true });
     const running = assessment({ status: "running", result: null, provider: "claude", created_at: new Date().toISOString() });

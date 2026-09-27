@@ -241,10 +241,16 @@ function ResumeButton({ onResume }: { onResume: () => void }) {
 /** Photo with no verdict: coaching paused, auto-coach off, or never reviewed. */
 export function NoVerdict({ capture, paused }: { capture: Capture; paused: boolean }) {
   const { run, refresh } = useApp();
-  const meta: StatusMeta = paused ? { ...CAPTURE_STATE.no_verdict, word: "No verdict (paused)" } : { ...CAPTURE_STATE.no_verdict, word: "Not reviewed yet" };
+  const bracket = capture.exif?.bracket;
+  const bracketFrame = !!bracket && bracket.shot > 1;
+  const word = bracketFrame ? `Bracket frame ${bracket.shot}` : paused ? "No verdict (paused)" : "Not reviewed yet";
+  const meta: StatusMeta = { ...CAPTURE_STATE.no_verdict, word };
+  const sub = bracketFrame
+    ? `Photo #${capture.seq} · ${bracket.kind} bracket. The coach reviews the base frame (shot 1) of each set.`
+    : `Photo #${capture.seq}`;
   return (
     <>
-      <GlanceHead meta={meta} sub={`Photo #${capture.seq}`} size="m" wordTone={false} />
+      <GlanceHead meta={meta} sub={sub} size="m" wordTone={false} />
       <button
         type="button"
         className="cp-btn cp-self-start"
@@ -255,7 +261,7 @@ export function NoVerdict({ capture, paused }: { capture: Capture; paused: boole
           })
         }
       >
-        {paused ? `Review #${capture.seq} anyway` : `Ask the coach about #${capture.seq}`}
+        {paused || bracketFrame ? `Review #${capture.seq} anyway` : `Ask the coach about #${capture.seq}`}
       </button>
     </>
   );

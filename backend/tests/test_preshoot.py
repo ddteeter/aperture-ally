@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from aperture_ally.audio.speech import MockSpeech
 from aperture_ally.coaching.providers.mock import MockProvider
 from aperture_ally.domain.models import Capture, Session
 from aperture_ally.input.global_keys import KeySpec, PTTKeyTracker
@@ -174,3 +175,31 @@ def test_inspect_scrubs_identifying_tags(fx):
     assert r["normalized"]["orientation"] == 6 and r["evidence"]["oriented_size"] == [2400, 1600]
     raw = inspect_file(fx / "P9260010.ORF")
     assert "error" in raw["raw"]                                        # fake RAW → reported, not crashed
+
+
+async def test_in_camera_bracket_coaches_only_the_base_frame(make_harness, fx):
+    # A slow speech engine so the base frame's advice is still playing while the rest of the set arrives.
+    h = await make_harness(speech=MockSpeech(words_per_s=4))
+    real_read = h.app.metadata.read
+    shots = {"P9260002.JPG": 1, "P9260003.JPG": 2, "P9260004.JPG": 3}
+
+    def read(path, include_raw=False):
+        m = real_read(path, include_raw)
+        if path.name in shots:
+            m["bracket"] = {"kind": "AE", "shot": shots[path.name]}
+        return m
+
+    h.app.metadata.read = read
+    s = await h.session()
+    await h.use_shot(s, "Upper", "mesh")
+    for name in shots:
+        h.drop(s, fx / name)
+        await h.n_captures(s, shots[name])
+    await h.settled(15)
+    caps = {c.seq: c for c in await h.captures(s)}
+    assessed = {a.capture_id for a in await h.app.store.assessments(s.id)}
+    assert assessed == {caps[1].id}                              # base frame only; no paid calls for 2 and 3
+    assert caps[3].exif["bracket"] == {"kind": "AE", "shot": 3}
+    assert len(h.speech.spoken) == 1 and not h.speech.cancelled  # frames 2–3 didn't cut off the advice
+    skipped = [e["capture_id"] for e in h.app.bus.recent if e["type"] == "analysis.skipped"]
+    assert skipped == [caps[2].id, caps[3].id]

@@ -91,6 +91,21 @@ def test_exiftool_group_prefixes_are_normalized():
     assert "lens" not in m  # absent stays absent
 
 
+def test_olympus_bracket_frames_and_unreliable_exposure_mode():
+    # Values as ExifTool -n reports them for a real E-M1 II AE bracket (frame 3 of 5, aperture priority).
+    base = {"EXIF:ExifIFD:ExposureProgram": 3, "EXIF:ExifIFD:ExposureMode": 1, "MakerNotes:Olympus:ExposureMode": 3}
+    m = normalize({**base, "MakerNotes:Olympus:DriveMode": "5 3 1 0 0"}, "exiftool")
+    assert m["bracket"] == {"kind": "AE", "shot": 3}
+    # The camera tags aperture-priority frames "Manual" in EXIF ExposureMode; the program wins.
+    assert m["exposure_mode_manual"] is False
+    single = normalize({**base, "MakerNotes:Olympus:DriveMode": "0 0 0 0 0"}, "exiftool")
+    assert "bracket" not in single
+    assert normalize({"EXIF:ExifIFD:ExposureMode": 1}, "exiftool")["exposure_mode_manual"] is True  # no program: fallback
+    assert normalize({"EXIF:ExifIFD:ExposureProgram": 1}, "exiftool")["exposure_mode_manual"] is True
+    assert normalize({"MakerNotes:Olympus:DriveMode": "5 2 65 0 0"}, "exiftool")["bracket"] == {"kind": "AE+Focus", "shot": 2}
+    assert "bracket" not in normalize({"MakerNotes:Canon:DriveMode": "5 3 1"}, "exiftool")  # Olympus only
+
+
 def test_raw_unsupported_is_reported(tmp_path):
     from aperture_ally.imaging.raw import RawUnsupported, make_preview
 
