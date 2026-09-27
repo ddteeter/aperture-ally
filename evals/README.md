@@ -84,7 +84,7 @@ uv run aperture-ally eval session --session <id-prefix> --config mock
 # candidates vs the recorded session (paid, bounded)
 uv run aperture-ally eval session --session <id-prefix> \
     --config openai:<model-A> --config gemini:<model-B> \
-    --config claude:claude-opus-5@low --config claude:claude-opus-5@high \
+    --config claude:claude-opus-5-5@low --config claude:claude-opus-5-5@high \
     --labels <data dir>/sessions/<id>/exports/replay_labels.jsonl \
     --repeats 2 --max-calls 200 --confirm-paid
 ```

@@ -39,7 +39,7 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Assessment schema (strict), semantic validation, one repair, visible failure | Implemented | `test_domain.py`, `test_coaching.py` |
 | OpenAI Responses adapter | Implemented | request shape vs installed SDK (`test_providers.py`); **no live call made** |
 | Gemini adapter | Implemented | request shape vs installed SDK; **no live call made** |
-| Claude adapter (Messages API: structured output, adaptive thinking, optional effort, server-side refusal fallback with serving model recorded) | Implemented | request shape vs installed `anthropic` 1.8 SDK; default model `claude-opus-5`; **no live call made** |
+| Claude adapter (Messages API: structured output, adaptive thinking, optional effort, server-side refusal fallback with serving model recorded) | Implemented | request shape vs installed `anthropic` 1.8 SDK; default model `claude-opus-5-5` (switched from `claude-opus-5` on 2026-09-27: Anthropic's recommended model, $4/$20 vs $5/$25 per MTok); **no live call made** |
 | Model ids / prices | **Not configured** | docs unreachable from build env; must be set from official docs |
 | Deterministic exposure equivalence | Implemented | refuses flash / auto ISO / non-manual / changing light |
 | Teaching prompts (every Nth coached capture) | Implemented | test |

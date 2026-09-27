@@ -76,7 +76,8 @@ class Settings(BaseSettings):
     openai_model: str | None = None
     gemini_model: str | None = None
     claude_model: str | None = Field(
-        "claude-opus-5", description="Anthropic model id (from the bundled Claude API reference, cached 2026-06-24)")
+        "claude-opus-5-5",
+        description="Anthropic model id; Anthropic's recommended starting model (platform.claude.com, checked 2026-09-27)")
     claude_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
         None, description="output_config.effort; None = API default. Lower = faster/cheaper; sweep it in evals")
     claude_refusal_fallback: bool = Field(True, description='server-side fallbacks: "default" on safety declines')

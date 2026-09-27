@@ -199,7 +199,7 @@ def rebuild_request(item: dict, instructions: str, chained: dict[str, dict] | No
 
 
 def make_provider(spec: str, settings: Settings):
-    """``provider[:model][@effort]`` — effort applies to Claude (output_config.effort), e.g. claude:claude-opus-5@low."""
+    """``provider[:model][@effort]`` — effort applies to Claude (output_config.effort), e.g. claude:claude-opus-5-5@low."""
     spec, _, effort = spec.partition("@")
     name, _, model = spec.partition(":")
     update: dict[str, Any] = {f"{name}_model": model} if model and name in ("openai", "gemini", "claude") else {}
@@ -447,7 +447,7 @@ def cmd_session(args) -> int:
 def add_parsers(sub) -> None:
     sp = sub.add_parser("session", help="replay a recorded session's model requests against other configs")
     sp.add_argument("--session", required=True, help="session id prefix")
-    sp.add_argument("--config", action="append", help="provider[:model][@effort], e.g. openai:<model>, gemini:<model>, claude:claude-opus-5@medium, mock")
+    sp.add_argument("--config", action="append", help="provider[:model][@effort], e.g. openai:<model>, gemini:<model>, claude:claude-opus-5-5@medium, mock")
     sp.add_argument("--mode", choices=["frozen", "chained"], default="frozen")
     sp.add_argument("--instructions", choices=["recorded", "current"], default="recorded")
     sp.add_argument("--labels", help="JSONL from `eval session-labels`, edited")

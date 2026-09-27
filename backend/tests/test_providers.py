@@ -192,7 +192,7 @@ def test_claude_registry_and_replay_effort_spec(tmp_path):
 
     s = fast_settings(tmp_path, anthropic_api_key="sk-ant-test")
     assert ProviderRegistry(s).configured()["claude"] is True
-    assert ProviderRegistry(s).get("claude").model == "claude-opus-5"
+    assert ProviderRegistry(s).get("claude").model == "claude-opus-5-5"
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from evals.session_replay import make_provider
 
