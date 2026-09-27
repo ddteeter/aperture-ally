@@ -36,33 +36,57 @@ export OPENAI_API_KEY="$(security find-generic-password -a "$USER" -s aperture-a
 
 ### Models {#models}
 
-**Claude** (added later) ships with a default: `claude-opus-5`, taken from Anthropic's bundled API reference
-(cached 2026-06-24). Its request shape was verified against the installed `anthropic` SDK (1.8.0). It sends
-images as base64 `image` blocks, uses `output_config.format` JSON-schema structured output and adaptive
-thinking, and has an optional `APERTURE_ALLY_CLAUDE_EFFORT`. Server-side refusal fallback
-(`fallbacks: "default"`) is on by default: if Claude's safety classifiers decline a request, Anthropic's
-recommended fallback model answers in the same call. The answering model is recorded as `model_resolved`,
-and `usage.fallback_used` is set. Opus-tier list prices in that reference were $5 / $25 per 1M input/output
-tokens; confirm them before adding them to `APERTURE_ALLY_PRICES`. Thinking tokens count as output tokens,
-and adaptive thinking adds latency, so sweep effort (`low`/`medium`/`high`) with the session-replay harness
-before choosing a live setting.
+Checked **2026-09-27** against the official docs (sources below). Ids and prices change; re-check before
+relying on them, and copy prices into `APERTURE_ALLY_PRICES` (the commented block in `.env.example` is ready
+to uncomment). Price keys must match the *resolved* model id shown on an assessment.
 
-For OpenAI and Gemini:
+| Provider | Model id | Role | USD per 1M tokens (in / out) | Source |
+|---|---|---|---|---|
+| Claude | `claude-opus-5-5` | **default** (Anthropic's recommended starting model) | $4 / $20 | [pricing](https://platform.claude.com/docs/en/about-claude/pricing), [models](https://platform.claude.com/docs/en/about-claude/models/overview) |
+| Claude | `claude-sonnet-5` | cheaper candidate to evaluate | $2 / $10 | same |
+| Claude | `claude-opus-5` | previous default, still active | $5 / $25 | same |
+| OpenAI | `gpt-6-sol` | suggested | $2 / $10 | [model page](https://developers.openai.com/api/docs/models/gpt-6-sol), [pricing](https://developers.openai.com/api/docs/pricing) |
+| OpenAI | `gpt-6-luna` | cheaper | $0.10 / $0.50 | [model page](https://developers.openai.com/api/docs/models/gpt-6-luna) |
+| OpenAI | `gpt-transcribe` | speech-to-text (recommended) | $0.0045 / minute | [model page](https://developers.openai.com/api/docs/models/gpt-transcribe), [guide](https://developers.openai.com/api/docs/guides/speech-to-text) |
+| OpenAI | `gpt-4o-mini-transcribe` | cheaper speech-to-text | ≈ $0.003 / minute | [model page](https://developers.openai.com/api/docs/models/gpt-4o-mini-transcribe) |
+| Gemini | `gemini-3.8-flash` | suggested (stable) | $0.75 / $3.75 until 2026-12-31, then $1.50 / $7.50 | [models](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash), [pricing](https://ai.google.dev/gemini-api/docs/pricing) |
+| Gemini | `gemini-3.5-flash-lite` | cheaper (stable) | $0.30 / $2.50 | same |
 
-Model identifiers and prices change often and were **not verifiable from the build environment**
-(the provider documentation sites were not reachable), so none are hard-coded. At setup time:
+Notes:
 
-1. Open the official docs (OpenAI: images-vision + structured-outputs; Gemini: image-understanding +
-   structured-output; OpenAI speech-to-text) and pick a **current vision model that supports JSON-schema
-   structured output** for each provider, and a transcription model.
-2. Set `APERTURE_ALLY_OPENAI_MODEL`, `APERTURE_ALLY_GEMINI_MODEL`, `APERTURE_ALLY_TRANSCRIPTION_MODEL`.
-3. Optionally add prices to `APERTURE_ALLY_PRICES` with `verified_on` + `source_url`; otherwise cost shows "n/a".
-4. Run the paid smoke test once: `uv run pytest -m live -s tests/test_live.py` (one synthetic image per
-   configured provider). Each assessment records the *resolved* model id and prompt version.
+- **Claude.** Request shape re-checked against the docs and the installed `anthropic` 1.8.0 SDK: images as
+  base64 `image` blocks, `output_config.format` JSON-schema structured output (GA), adaptive thinking,
+  optional `output_config.effort` (`low|medium|high|xhigh|max`, GA), server-side refusal fallback
+  (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`). If the classifiers decline, the fallback
+  model answers in the same call; the answering model is recorded as `model_resolved` and
+  `usage.fallback_used` is set. The default moved from `claude-opus-5` to `claude-opus-5-5` on 2026-09-27.
+  Opus 5.5's API-default effort is **medium** (Opus 5's was high), so pin `APERTURE_ALLY_CLAUDE_EFFORT` when
+  comparing. Thinking tokens are billed as output; adaptive thinking adds latency, so sweep effort with the
+  session-replay harness before choosing a live setting. Images: ⌈w/28⌉×⌈h/28⌉ tokens, capped at 2576 px /
+  4784 tokens per image on these models. Haiku 4.5 does not support adaptive thinking and would need adapter
+  changes. Known limitation: when a request is declined and served by the fallback, only the serving
+  attempt's tokens are counted.
+- **OpenAI.** Responses API with `text.format={type: json_schema, strict: true}` and `input_image.detail`
+  (`low|high|auto|original`; `auto` and `original` send full resolution on gpt-5.6-class models, ~28k tokens
+  for a 24 MP frame, so keep `high`). Current models reason at **medium** effort by default and spend
+  `max_output_tokens` on reasoning first; the adapter reserves 25 000 (it was 2000, which could return an
+  `incomplete` response with no JSON). `APERTURE_ALLY_OPENAI_EFFORT` sets `reasoning.effort`. The vision
+  guide's image-token tables list `gpt-5.6-terra`/`gpt-5.6-luna` but not the gpt-6 models; use those if
+  exact image-cost accounting matters. openai.com/api/pricing was not reachable (HTTP 403); prices are from
+  developers.openai.com.
+- **Gemini.** `response_mime_type=application/json` + `response_json_schema`, per-image `media_resolution`
+  (`low|medium|high|ultra_high` = 280/560/1120/2240 tokens per image on Gemini 3; per-image resolution is
+  Gemini 3 only). Thinking tokens count against `max_output_tokens` and are billed as output; the adapter
+  now counts them in `output_tokens` and reserves 16 000. `APERTURE_ALLY_GEMINI_THINKING_LEVEL` is optional
+  (3.8-flash: low/medium/high, default medium; 3.5-flash-lite adds minimal, its default). Google now calls
+  `generateContent` "legacy" in favour of the Interactions API but says it "remains fully supported".
 
-Request shapes were verified against the installed SDKs (`openai` 3.19, `google-genai` 2.25): OpenAI
-Responses API with `text.format={type: json_schema, strict: true}` and `input_image.detail`
-(`low|high|auto|original`); Gemini `response_json_schema` with per-image `media_resolution`.
+At setup time:
+
+1. Set `APERTURE_ALLY_OPENAI_MODEL`, `APERTURE_ALLY_GEMINI_MODEL`, `APERTURE_ALLY_TRANSCRIPTION_MODEL` (and keys).
+2. Uncomment `APERTURE_ALLY_PRICES` in `.env`; otherwise cost shows "n/a" and the USD cap ignores those calls.
+3. Run the paid smoke test once: `uv run pytest -m live -s tests/test_live.py` (a few calls per configured
+   provider). Each assessment records the *resolved* model id and prompt version.
 
 ## 3. OM Capture (tethering)
 
