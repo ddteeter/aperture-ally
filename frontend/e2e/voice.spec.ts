@@ -6,6 +6,7 @@ test("push-to-talk: hold the button with a queued mock transcript → listening 
 
   // Queue the transcript the mock transcriber will "hear".
   await page.getByRole("link", { name: "Diagnostics" }).click();
+  await page.locator("summary", { hasText: "Developer" }).click();
   await page.getByLabel("Mock transcript for the next voice question").fill("Why does the glare matter here?");
   await page.getByRole("button", { name: "Queue transcript" }).click();
   await expect(page.getByText(/Queued \(1 waiting\)/)).toBeVisible();

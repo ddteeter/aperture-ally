@@ -6,10 +6,10 @@ test("replay basic_loop → comparison improved → accept keeper with confirm �
   await createSession(page, `E2E replay ${Date.now()}`, { simulated: true });
   await expect(page.getByText("SIMULATED", { exact: true })).toBeVisible();
 
-  // Run the replay from the Sessions tab control.
-  await page.getByRole("link", { name: "Sessions" }).click();
-  await page.getByLabel("Replay scenario").selectOption("basic_loop");
-  await page.getByRole("button", { name: "Run replay scenario" }).click();
+  // Run the replay from the Diagnostics tab control.
+  await page.getByRole("link", { name: "Diagnostics" }).click();
+  await page.getByRole("radio", { name: /basic_loop/ }).check();
+  await page.getByRole("button", { name: "Start replay" }).click();
   await expect(page.getByTestId("replay-status")).toHaveText("Replay completed.", { timeout: 120_000 });
 
   // Back to the shoot loop: the first shot of the replay got a glare fix → retake → comparison.
@@ -35,9 +35,10 @@ test("replay basic_loop → comparison improved → accept keeper with confirm �
 
   await page.getByRole("link", { name: "Coverage" }).click();
   const row = page.getByTestId("coverage-row-Hero (3/4 lateral)");
-  await expect(row).toContainText("accepted");
+  await expect(row).toContainText("Keeper");
   await expect(row).toContainText("#7");
-  await expect(page.getByTestId("coverage-row-Upper texture (mesh close-up)")).toContainText("accepted");
-  await expect(page.getByRole("heading", { name: /Coverage: 4 of 6 shots resolved/ })).toBeVisible();
+  await expect(page.getByTestId("coverage-row-Upper texture (mesh close-up)")).toContainText("Keeper");
+  await expect(page.getByRole("heading", { name: "Not yet — 2 shots still missing" })).toBeVisible();
+  await expect(page.getByText("4 of 6 shots have a keeper")).toBeVisible();
   await expect(page.getByText("AI verdicts are advisory; only accepted keepers resolve a shot.")).toBeVisible();
 });

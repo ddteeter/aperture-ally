@@ -2,13 +2,13 @@ import { expect, type Page } from "@playwright/test";
 
 export async function createSession(page: Page, name: string, opts: { simulated?: boolean } = {}) {
   await page.goto("/#sessions");
-  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create session" }) });
+  const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create and start shooting" }) });
   await form.getByLabel(/^Name/).fill(name);
-  await form.getByLabel("AI provider").selectOption("mock");
+  await form.getByRole("radio", { name: /^Mock/ }).check();
   // The replay scenarios use the running-shoe shot list (apparel is the UI default).
-  await form.getByLabel("Shot list template").selectOption("running_shoe");
-  if (opts.simulated) await form.getByLabel(/Simulated session/).check();
-  await form.getByRole("button", { name: "Create session" }).click();
+  await form.getByRole("radio", { name: /^Shoe product/ }).check();
+  if (opts.simulated) await form.getByLabel(/Simulated practice run/).check();
+  await form.getByRole("button", { name: "Create and start shooting" }).click();
   // Creating opens the session on the Shoot tab.
   await expect(page.getByRole("link", { name: "Shoot" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByLabel("Current session")).toHaveValue(/.+/);
