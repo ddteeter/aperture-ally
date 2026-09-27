@@ -1,5 +1,16 @@
 import { createContext, useContext, useEffect, useRef } from "react";
-import type { CoachEvent, SessionState } from "./api/types";
+import type { CoachEvent, SessionState, UiTheme } from "./api/types";
+
+/** Short confirmation shown bottom-right (voice commands, keyboard actions, cues). */
+export interface Toast {
+  id: number;
+  glyph: string;
+  text: string;
+  /** Where the action came from: VOICE, KEYBOARD, CUE, REMOTE… */
+  source: string;
+  tone: "ok" | "unc" | "ret" | "neutral";
+}
+export type ToastInput = Omit<Toast, "id" | "source" | "tone"> & Partial<Pick<Toast, "source" | "tone">>;
 
 export interface ReceivedInfo {
   seq: number;
@@ -21,6 +32,13 @@ export interface AppCtx {
   received: ReceivedInfo | null;
   pendingNote: string | null;
   setPendingNote: (v: string | null) => void;
+  toasts: Toast[];
+  toast: (t: ToastInput) => void;
+  dismissToast: (id: number) => void;
+  /** Effective theme: the session's ui_theme, else the last local choice. */
+  theme: UiTheme;
+  /** Persists to the session when one is open, and locally either way. */
+  setTheme: (t: UiTheme) => void;
 }
 
 export const AppContext = createContext<AppCtx | null>(null);

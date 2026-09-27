@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0c0c0c;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button,input,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--acc,oklch(0.80 0.10 230));outline-offset:2px}
+:root{--mono:'IBM Plex Mono',monospace;--lost-hi:#ff2626;--lost-lo:#2659ff;--mock:oklch(0.72 0.17 330)}
+[data-theme="dark"]{--stage:#101010;--app:#161616;--panel:#1a1a1a;--bar:#121212;--raised:#262626;--card:#222;--line:#262626;--line2:#333;--line3:#3a3a3a;--t1:#ececec;--t2:#b8b8b8;--t3:#8c8c8c;--inset:#141414;--ph1:#262626;--ph2:#2b2b2b;--z1:#181818;--z2:#1d1d1d;--bar-idle:#6a6a6a;--acc:oklch(0.80 0.10 230);--acc-ink:#0f1a20;--ret:oklch(0.76 0.13 35);--ok:oklch(0.79 0.13 150);--unc:oklch(0.84 0.12 90);--acc-t:oklch(0.30 0.05 230);--ret-t:oklch(0.30 0.06 35);--ok-t:oklch(0.30 0.06 150);--unc-t:oklch(0.30 0.05 90);--pri:#e8e8e8;--pri-ink:#141414;--chip:#0e0e0e;--wm:500;--wb:600;--wbody:400;--scrim:rgba(0,0,0,.62);--pop-shadow:0 20px 50px rgba(0,0,0,.5);--ovl:rgba(0,0,0,.66);--ovl-ink:#ececec;color:var(--t1)}
+[data-theme="daylight"]{--stage:#d4d4d4;--app:#f2f2f2;--panel:#ffffff;--bar:#ffffff;--raised:#e2e2e2;--card:#eeeeee;--line:#cfcfcf;--line2:#b0b0b0;--line3:#808080;--t1:#0a0a0a;--t2:#242424;--t3:#3d3d3d;--inset:#ffffff;--ph1:#b6b6b6;--ph2:#c0c0c0;--z1:#f4f4f4;--z2:#e8e8e8;--bar-idle:#4a4a4a;--acc:oklch(0.47 0.16 245);--acc-ink:#ffffff;--ret:oklch(0.50 0.18 30);--ok:oklch(0.46 0.14 150);--unc:oklch(0.50 0.12 70);--acc-t:oklch(0.93 0.04 245);--ret-t:oklch(0.93 0.05 30);--ok-t:oklch(0.93 0.05 150);--unc-t:oklch(0.93 0.06 85);--pri:#0a0a0a;--pri-ink:#ffffff;--chip:#ffffff;--wm:600;--wb:700;--wbody:500;--scrim:rgba(0,0,0,.45);--pop-shadow:0 12px 40px rgba(0,0,0,.25);--ovl:rgba(255,255,255,.94);--ovl-ink:#0a0a0a;color:var(--t1)}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 16px 20px;gap:12px">
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;font-size:12px;max-width:1440px">
+    <span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;letter-spacing:.06em;text-transform:uppercase;margin-right:6px">Shoot states · keys 1–9</span>
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="14">
+      <button onClick="{{ t.go }}" style="border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+  </div>
+
+  <div style="width:{{ boxW }}px;height:{{ boxH }}px;position:relative;flex:none">
+  <div data-theme="{{ theme }}" style="width:1440px;height:900px;transform:scale({{ scale }});transform-origin:0 0;position:absolute;left:0;top:0;background:var(--app);font-weight:var(--wbody);display:flex;flex-direction:column;overflow:hidden;border-radius:10px;box-shadow:0 0 0 1px #2a2a2a,0 30px 80px rgba(0,0,0,.5)">
+
+    <!-- Top bar -->
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bar);white-space:nowrap;border-bottom:1px solid var(--line);position:relative;z-index:5">
+      <div style="display:flex;align-items:center;gap:10px;flex:none">
+        <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--t1);display:grid;place-items:center"><div style="width:6px;height:6px;border-radius:50%;background:var(--t1)"></div></div>
+        <span style="font-size:14px;font-weight:var(--wb)">Aperture Ally</span>
+      </div>
+      <div style="width:1px;height:20px;background:var(--line2)"></div>
+      <sc-if value="{{ hasSession }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:baseline;gap:8px;flex:none"><span style="font-size:14px;font-weight:var(--wm)">Trail Jacket Review</span><span style="font-size:12px;color:var(--t3)">Session 3 · Sep 27</span></div>
+      </sc-if>
+      <sc-if value="{{ isFirstRun }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:var(--t3)">No shoot open</span></sc-if>
+      <nav style="display:flex;gap:0;flex:none">
+        <a href="#" style="padding:6px 8px;border-radius:6px;background:var(--raised);color:var(--t1);font-size:13px;font-weight:var(--wm)">Shoot</a>
+        <a href="Aperture%20Ally%20Workflows.dc.html#coverage" style="padding:6px 8px;border-radius:6px;color:var(--t2);font-size:13px">Coverage</a>
+        <a href="Aperture%20Ally%20Workflows.dc.html#shots" style="padding:6px 8px;border-radius:6px;color:var(--t2);font-size:13px">Shot list</a>
+        <a href="Aperture%20Ally%20Workflows.dc.html#setup" style="padding:6px 8px;border-radius:6px;color:var(--t2);font-size:13px">Setup</a>
+        <a href="Aperture%20Ally%20Workflows.dc.html#sessions" style="padding:6px 8px;border-radius:6px;color:var(--t2);font-size:13px">Sessions</a>
+        <a href="Aperture%20Ally%20Workflows.dc.html#diagnostics" style="padding:6px 8px;border-radius:6px;color:var(--t2);font-size:13px">Diagnostics</a>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex:none">
+        <button onClick="{{ toggleTheme }}" title="Daylight mode for outdoor shoots" aria-label="Daylight mode" style="display:flex;align-items:center;gap:6px;height:28px;width:30px;justify-content:center;padding:0;border-radius:6px;border:1px solid var(--line2);background:{{ sun.bg }};color:{{ sun.fg }};font-size:12px;font-weight:var(--wm);cursor:pointer"><span style="font-family:var(--mono);font-size:14px">☀</span></button>
+        <span style="font-size:12px;color:var(--t2);padding:4px 8px;border:1px solid var(--line2);border-radius:6px" title="Setup version 3">v3</span>
+        <span style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 8px;border:1px solid var(--line2);border-radius:6px;color:{{ net.color }}"><span style="font-family:var(--mono)">{{ net.glyph }}</span>{{ net.label }}</span>
+        <button onClick="{{ togglePop }}" aria-expanded="{{ popOpen }}" style="display:flex;align-items:center;gap:10px;padding:4px 8px 4px 4px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--t1);cursor:pointer">
+          <span style="display:flex;align-items:center;gap:6px;border-radius:5px;padding:4px 10px;font-size:12px;font-weight:var(--wb);background:{{ coach.bg }};color:{{ coach.fg }}"><span style="font-family:var(--mono)">{{ coach.glyph }}</span>{{ coach.label }}</span>
+          <span style="display:flex;flex-direction:column;gap:3px;width:136px;align-items:stretch">
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t2);white-space:nowrap;text-align:left">{{ coach.calls }} calls · ≈ {{ coach.cost }}</span>
+            <span style="height:3px;background:var(--line2);border-radius:2px;display:block"><span style="display:block;height:3px;border-radius:2px;width:{{ coach.pct }}%;background:{{ coach.meter }}"></span></span>
+          </span>
+          <span style="font-size:10px;color:var(--t3)">▾</span>
+        </button>
+      </div>
+      <sc-if value="{{ popOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:16px;top:52px;width:340px;background:var(--panel);border:1px solid var(--line3);border-radius:12px;box-shadow:var(--pop-shadow);padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:var(--wb)">Coaching</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:7px;padding:2px;gap:2px">
+              <sc-for list="{{ onOff }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="height:28px;padding:0 12px;border:0;border-radius:5px;background:{{ o.bg }};color:{{ o.fg }};font-size:12px;font-weight:var(--wm);cursor:pointer">{{ o.label }}</button></sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;align-items:center;row-gap:10px;column-gap:12px;font-size:13px">
+            <span style="display:flex;flex-direction:column"><span>Paid-call cap</span><span style="font-size:11px;color:var(--t3)">{{ coach.used }} used this session</span></span>
+            <div style="display:flex;align-items:center;border:1px solid var(--line2);border-radius:7px;overflow:hidden">
+              <button onClick="{{ capDown }}" aria-label="Lower cap" style="width:30px;height:32px;border:0;background:transparent;color:var(--t1);font-size:15px;cursor:pointer">−</button>
+              <span style="width:44px;text-align:center;font-family:var(--mono);font-size:14px">{{ callCap }}</span>
+              <button onClick="{{ capUp }}" aria-label="Raise cap" style="width:30px;height:32px;border:0;background:transparent;color:var(--t1);font-size:15px;cursor:pointer">+</button>
+            </div>
+            <span style="display:flex;flex-direction:column"><span>Spend cap (USD)</span><span style="font-size:11px;color:var(--t3)">≈ $0.028 per call so far</span></span>
+            <div style="display:flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:7px;padding:0 8px;height:34px"><span style="font-family:var(--mono);color:var(--t3)">$</span><input value="{{ usdCap }}" onChange="{{ onUsd }}" style="width:56px;border:0;background:transparent;color:var(--t1);font-family:var(--mono);font-size:14px"></div>
+          </div>
+          <span style="font-size:11px;color:var(--t3);line-height:1.4">Coaching pauses at whichever cap is hit first. Photos and local measurements continue.</span>
+          <div style="height:1px;background:var(--line)"></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px">When a photo is received</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:7px;padding:2px;gap:2px">
+              <sc-for list="{{ cues }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="flex:1;height:30px;border:0;border-radius:5px;background:{{ o.bg }};color:{{ o.fg }};font-size:12px;font-weight:var(--wm);cursor:pointer">{{ o.label }}</button></sc-for>
+            </div>
+            <span style="font-size:11px;color:var(--t3)">{{ cueNote }}</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showBand }}" hint-placeholder-val="{{ false }}">
+      <div style="height:30px;flex:none;display:flex;align-items:center;justify-content:center;gap:14px;background:repeating-linear-gradient(135deg,oklch(0.42 0.14 330) 0 12px,oklch(0.36 0.12 330) 12px 24px);color:#fff;font-size:13px;font-weight:600;letter-spacing:.04em">
+        <span style="font-family:var(--mono);background:#fff;color:oklch(0.35 0.14 330);padding:1px 8px;border-radius:3px">{{ bandTag }}</span><span>{{ bandText }}</span>
+      </div>
+    </sc-if>
+
+    <!-- First run -->
+    <sc-if value="{{ isFirstRun }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;background:var(--stage);display:grid;place-items:center">
+        <div style="width:600px;display:flex;flex-direction:column;gap:22px">
+          <span style="font-size:40px;font-weight:var(--wb);letter-spacing:-.01em;line-height:1.15">Start a shoot to begin coaching</span>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:17px">
+            <div style="display:flex;gap:14px;align-items:baseline"><span style="font-family:var(--mono);color:var(--t3)">1</span><span>Name the shoot and the product you're reviewing.</span></div>
+            <div style="display:flex;gap:14px;align-items:baseline"><span style="font-family:var(--mono);color:var(--t3)">2</span><span>Point it at the folder your tether software saves into.</span></div>
+            <div style="display:flex;gap:14px;align-items:baseline"><span style="font-family:var(--mono);color:var(--t3)">3</span><span>Pick a shot and take a photo. It shows up here in about a second.</span></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="Aperture%20Ally%20Workflows.dc.html#sessions" style="height:48px;padding:0 22px;border-radius:9px;background:var(--pri);color:var(--pri-ink);font-size:16px;font-weight:var(--wb);display:flex;align-items:center;text-decoration:none">New shoot</a>
+            <a href="Aperture%20Ally%20Workflows.dc.html#sessions" style="height:48px;padding:0 18px;border-radius:9px;border:1px solid var(--line3);color:var(--t1);font-size:14px;display:flex;align-items:center;text-decoration:none">Open a past shoot</a>
+            <a href="Aperture%20Ally%20Workflows.dc.html#diagnostics" style="font-size:13px;margin-left:10px;color:var(--acc)">Try a replay scenario (marked SIMULATED)</a>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasSession }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:248px minmax(0,1fr) 432px">
+
+      <aside style="background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+        <div style="padding:14px 14px 10px;display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3)">Shot list</span>
+          <a href="Aperture%20Ally%20Workflows.dc.html#shots" style="font-size:12px;color:var(--acc)">Edit</a>
+        </div>
+        <div style="flex:1;overflow:auto;padding:0 8px;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ shots }}" as="s" hint-placeholder-count="7">
+            <div style="border-radius:8px;padding:9px 10px;background:{{ s.bg }};display:flex;flex-direction:column;gap:8px;cursor:pointer">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3);width:14px">{{ s.n }}</span>
+                <span style="flex:1;font-size:14px;font-weight:{{ s.weight }};color:{{ s.fg }};min-width:0">{{ s.name }}</span>
+                <span title="{{ s.st.label }}" style="font-family:var(--mono);font-size:12px;color:{{ s.st.c }}">{{ s.st.g }}</span>
+              </div>
+              <sc-if value="{{ s.active }}" hint-placeholder-val="{{ false }}">
+                <div style="padding-left:24px;display:flex;flex-direction:column;gap:8px">
+                  <span style="font-size:12px;color:var(--t2);line-height:1.45">Show the ripstop weave up close so readers can judge the fabric.</span>
+                  <span style="align-self:flex-start;display:flex;align-items:center;gap:5px;font-size:11px;font-weight:var(--wb);padding:2px 7px;border-radius:4px;background:var(--app);color:{{ s.st.c }}"><span style="font-family:var(--mono)">{{ s.st.g }}</span>{{ s.st.label }}</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <a href="Aperture%20Ally%20Workflows.dc.html#coverage" style="margin:10px;padding:10px 12px;border:1px solid var(--line2);border-radius:8px;display:flex;flex-direction:column;gap:6px;color:var(--t1);text-decoration:none">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>Coverage</span><span style="color:var(--t2)">{{ keepers }} / 7 keepers</span></div>
+          <div style="height:4px;background:var(--line2);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--t1);width:{{ keeperPct }}%"></div></div>
+        </a>
+      </aside>
+
+      <section style="background:var(--stage);display:flex;flex-direction:column;min-width:0;min-height:0;position:relative">
+        <div style="flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:16px 20px">
+
+          <sc-if value="{{ showWaiting }}" hint-placeholder-val="{{ false }}">
+            <div style="width:100%;height:100%;border:1px dashed var(--line3);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px">
+              <div style="width:14px;height:14px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 8px color-mix(in oklch,var(--acc) 18%,transparent)"></div>
+              <div style="font-size:40px;font-weight:var(--wm);letter-spacing:-.01em">{{ wait.title }}</div>
+              <div style="font-size:18px;color:var(--t2)">{{ wait.sub }}</div>
+              <div style="font-family:var(--mono);font-size:12px;color:var(--t3);margin-top:6px">Watching ~/Pictures/Tether/trail-jacket-s3 · checked 2 s ago</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasPhoto }}" hint-placeholder-val="{{ true }}">
+            <div ref="{{ photoRef }}" onMouseDown="{{ startDraw }}" style="height:100%;aspect-ratio:4/3;max-width:100%;position:relative;background:repeating-linear-gradient(135deg,var(--ph1) 0 14px,var(--ph2) 14px 28px);box-shadow:0 0 0 1px var(--line);cursor:crosshair;user-select:none">
+              <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;color:var(--t3);text-align:center;line-height:1.6;pointer-events:none">tethered frame #{{ photoNo }}<br>running jacket · fabric close-up · 4:3</div>
+              <sc-for list="{{ patches }}" as="p" hint-placeholder-count="0">
+                <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:{{ p.w }}%;height:{{ p.h }}%;background:{{ p.bg }};pointer-events:none"></div>
+              </sc-for>
+              <div style="position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;color:var(--ovl-ink);background:var(--ovl);padding:3px 7px;border-radius:4px;pointer-events:none">#{{ photoNo }} · P92700{{ photoNo }}.JPG · 14:32:08</div>
+              <sc-for list="{{ rects }}" as="r" hint-placeholder-count="3">
+                <div onMouseDown="{{ r.down }}" onMouseEnter="{{ r.enter }}" onMouseLeave="{{ r.leave }}" style="position:absolute;left:{{ r.x }}%;top:{{ r.y }}%;width:{{ r.w }}%;height:{{ r.h }}%;border:{{ r.bw }}px solid {{ r.bc }};cursor:pointer">
+                  <sc-if value="{{ r.notRenaming }}" hint-placeholder-val="{{ true }}">
+                    <span onMouseDown="{{ r.labelDown }}" style="position:absolute;left:-2px;top:-24px;background:{{ r.bc }};color:var(--acc-ink);font-size:12px;font-weight:var(--wb);padding:2px 7px;border-radius:3px 3px 3px 0;white-space:nowrap">{{ r.idx }} {{ r.name }}</span>
+                  </sc-if>
+                  <sc-if value="{{ r.renaming }}" hint-placeholder-val="{{ false }}">
+                    <input autoFocus="{{ true }}" value="{{ r.name }}" onChange="{{ r.onName }}" onKeyDown="{{ r.onNameKey }}" onBlur="{{ r.onNameBlur }}" onMouseDown="{{ r.stop }}" style="position:absolute;left:-2px;top:-30px;width:150px;height:28px;background:var(--panel);border:2px solid var(--acc);border-radius:4px;color:var(--t1);font-size:13px;font-weight:var(--wm);padding:0 8px">
+                  </sc-if>
+                  <sc-if value="{{ r.sel }}" hint-placeholder-val="{{ false }}">
+                    <div onMouseDown="{{ r.stop }}" style="position:absolute;left:-2px;top:calc(100% + 6px);display:flex;gap:2px;background:var(--panel);border:1px solid var(--line3);border-radius:7px;padding:3px;box-shadow:var(--pop-shadow)">
+                      <button onClick="{{ r.rename }}" style="height:28px;padding:0 10px;border:0;border-radius:5px;background:transparent;color:var(--t1);font-size:12px;cursor:pointer">Rename</button>
+                      <button onClick="{{ r.del }}" style="height:28px;padding:0 10px;border:0;border-radius:5px;background:transparent;color:var(--ret);font-size:12px;font-weight:var(--wm);cursor:pointer">Delete <span style="font-family:var(--mono)">⌫</span></button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ hasGhost }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:{{ ghost.x }}%;top:{{ ghost.y }}%;width:{{ ghost.w }}%;height:{{ ghost.h }}%;border:2px dashed var(--acc);background:color-mix(in oklch,var(--acc) 10%,transparent);pointer-events:none">
+                  <span style="position:absolute;left:-2px;top:-24px;background:var(--panel);color:var(--acc);border:1px solid var(--acc);font-size:12px;font-weight:var(--wm);padding:1px 7px;border-radius:3px;white-space:nowrap">{{ ghost.label }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ isIngest }}" hint-placeholder-val="{{ false }}">
+                <div onMouseDown="{{ stopEv }}" style="position:absolute;left:50%;top:14px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--unc);border-radius:10px;padding:10px 12px 10px 16px;box-shadow:var(--pop-shadow);white-space:nowrap;cursor:default">
+                  <span style="font-family:var(--mono);color:var(--unc);font-weight:600">?</span>
+                  <span style="font-size:15px">#16 might belong to the previous shot, <b style="font-weight:var(--wb)">Hero — full jacket</b></span>
+                  <button style="height:32px;padding:0 12px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">Move to Hero</button>
+                  <button style="height:32px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Keep here</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ zoneCaption }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ovl-ink);background:var(--ovl);padding:5px 10px;border-radius:5px;pointer-events:none">
+                  <span style="width:16px;height:12px;border-radius:2px;background:{{ zoneSwatch }}"></span>{{ zoneCaption }}
+                </div>
+              </sc-if>
+              <sc-if value="{{ isAnalysing }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line3);padding:12px 22px;border-radius:10px;pointer-events:none">
+                  <span style="font-family:var(--mono);font-size:22px;color:var(--ok)">✓</span>
+                  <span style="font-size:36px;font-weight:var(--wb);letter-spacing:-.01em;white-space:nowrap">Received #12</span>
+                  <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">0.8 s</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ regionHint }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:10px;bottom:10px;font-size:12px;color:var(--ovl-ink);background:var(--ovl);padding:5px 10px;border-radius:5px;white-space:nowrap;pointer-events:none">{{ regionHint }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isCompare }}" hint-placeholder-val="{{ false }}">
+            <div style="width:100%;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px;position:relative">
+                <span style="font-size:14px;color:var(--t2)">Comparing #13 with</span>
+                <button onClick="{{ togglePicker }}" aria-expanded="{{ pickerOpen }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line3);background:var(--panel);color:var(--t1);font-size:14px;font-weight:var(--wb);cursor:pointer;display:flex;align-items:center;gap:6px">#{{ baseline }} <span style="font-size:10px;color:var(--t3)">▾</span></button>
+                <span style="margin-left:auto;font-family:var(--mono);font-size:12px;color:{{ cmp.matchC }}">{{ cmp.match }}</span>
+                <sc-if value="{{ pickerOpen }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:130px;top:36px;width:320px;background:var(--panel);border:1px solid var(--line3);border-radius:10px;box-shadow:var(--pop-shadow);padding:6px;z-index:4;display:flex;flex-direction:column;gap:2px">
+                    <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding:6px 8px">COMPARE WITH… · THIS SHOT</span>
+                    <sc-for list="{{ picks }}" as="p" hint-placeholder-count="3">
+                      <button onClick="{{ p.pick }}" style="display:flex;align-items:center;gap:10px;padding:6px 8px;border:0;border-radius:7px;background:{{ p.bg }};color:var(--t1);cursor:pointer;text-align:left">
+                        <span style="width:44px;height:33px;flex:none;background:repeating-linear-gradient(135deg,var(--ph1) 0 5px,var(--ph2) 5px 10px)"></span>
+                        <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:13px;font-weight:var(--wm)">#{{ p.n }} · {{ p.label }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--t3)">{{ p.meta }}</span></span>
+                        <span style="font-family:var(--mono);font-size:12px;color:{{ p.c }}">{{ p.g }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="font-family:var(--mono);color:var(--t3);letter-spacing:.06em">BEFORE</span><span style="font-weight:var(--wb)">#{{ baseline }}</span><span style="color:var(--ret);font-size:12px">↺ Needs retake</span></div>
+                  <div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--ph1) 0 12px,var(--ph2) 12px 24px);position:relative;box-shadow:0 0 0 1px var(--line)"><span style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--t3)">frame #{{ baseline }}</span></div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="font-family:var(--mono);color:var(--t3);letter-spacing:.06em">AFTER</span><span style="font-weight:var(--wb)">#13</span><span style="color:{{ cmp.after.c }};font-size:12px">{{ cmp.after.g }} {{ cmp.after.label }}</span></div>
+                  <div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--ph1) 0 12px,var(--ph2) 12px 24px);position:relative;box-shadow:0 0 0 2px var(--acc)"><span style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--t3)">frame #13</span></div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+                <sc-for list="{{ cmp.pairs }}" as="r" hint-placeholder-count="3">
+                  <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:var(--wm)">{{ r.n }} {{ r.name }}</span><span style="color:{{ r.c }};font-weight:var(--wb)"><span style="font-family:var(--mono)">{{ r.g }}</span> {{ r.word }}</span></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                      <div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--ph1) 0 8px,var(--ph2) 8px 16px);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--t3)">before</div>
+                      <div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--ph1) 0 8px,var(--ph2) 8px 16px);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--t3)">after</div>
+                    </div>
+                    <div style="position:relative;height:36px;background:var(--z1);border-radius:3px">
+                      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px">
+                        <sc-for list="{{ r.cur }}" as="b" hint-placeholder-count="40"><div style="flex:1;height:{{ b.h }}%;background:{{ b.c }}"></div></sc-for>
+                      </div>
+                      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px">
+                        <sc-for list="{{ r.prev }}" as="b" hint-placeholder-count="40"><div style="flex:1;height:{{ b.h }}%;border-top:1.5px solid var(--t2)"></div></sc-for>
+                      </div>
+                    </div>
+                    <span style="font-size:12px;color:var(--t2);line-height:1.35">{{ r.delta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:16px;font-size:11px;color:var(--t3);align-items:center">
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;border-top:1.5px solid var(--t2)"></span>before</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:8px;background:color-mix(in oklch,var(--acc) 60%,transparent)"></span>after</span>
+                <span>Brightness per region, dark → bright. Sharpness is relative to the baseline. From JPEG previews, not RAW.</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Brightness inspector -->
+        <sc-if value="{{ showInspector }}" hint-placeholder-val="{{ true }}">
+          <div style="height:204px;flex:none;border-top:1px solid var(--line);background:var(--panel);display:grid;grid-template-columns:248px minmax(0,1fr);position:relative">
+            <div style="border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:1px;min-height:0;overflow:hidden">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding:0 6px 4px">MARKED REGIONS FIRST</span>
+              <sc-for list="{{ regionList }}" as="r" hint-placeholder-count="4">
+                <button onMouseEnter="{{ r.enter }}" onMouseLeave="{{ r.leave }}" onClick="{{ r.pin }}" style="display:flex;align-items:center;gap:10px;padding:4px 6px;border:0;border-radius:6px;background:{{ r.bg }};color:var(--t1);cursor:pointer;text-align:left">
+                  <span style="width:30px;height:30px;flex:none;background:repeating-linear-gradient(135deg,var(--ph1) 0 5px,var(--ph2) 5px 10px);box-shadow:0 0 0 1px {{ r.ring }};display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--t2)">{{ r.tag }}</span>
+                  <span style="flex:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:13px;font-weight:var(--wm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.meta }}</span></span>
+                  <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:{{ r.sev.c }}">{{ r.sev.g }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="padding:8px 16px;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:0;overflow:hidden">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <span style="width:22px;height:22px;flex:none;border-radius:5px;background:{{ hd.sev.bg }};color:{{ hd.sev.c }};display:grid;place-items:center;font-family:var(--mono);font-size:12px;font-weight:600">{{ hd.sev.g }}</span>
+                <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                  <span style="font-size:15px;font-weight:var(--wm);line-height:1.3;color:{{ hd.sev.tc }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--t3);font-weight:var(--wbody)">{{ hd.who }} · </span>{{ hd.text }}</span>
+                  <span style="font-size:12px;color:var(--t2);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ hd.context }}</span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px">
+                <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;background:var(--lost-lo)"></span>pure black</span>
+                <span style="display:flex;align-items:center;gap:5px;color:{{ hiEndC }}">{{ hiEndLabel }}<span style="width:8px;height:8px;background:var(--lost-hi)"></span></span>
+              </div>
+              <div style="position:relative;height:50px;flex:none">
+                <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 12fr 14fr 12fr 1fr;gap:1px">
+                  <sc-for list="{{ zones }}" as="z" hint-placeholder-count="5">
+                    <div onMouseEnter="{{ z.enter }}" onMouseLeave="{{ z.leave }}" onClick="{{ z.pin }}" title="{{ z.label }}" style="background:{{ z.bg }};cursor:pointer;box-shadow:inset 0 0 0 {{ z.ring }}px var(--acc)"></div>
+                  </sc-for>
+                </div>
+                <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px;pointer-events:none">
+                  <sc-for list="{{ hist }}" as="b" hint-placeholder-count="40"><div style="flex:1;height:{{ b.h }}%;background:{{ b.c }}"></div></sc-for>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 12fr 14fr 12fr 1fr;font-size:11px;text-align:center">
+                <sc-for list="{{ zones }}" as="z" hint-placeholder-count="5"><span style="color:{{ z.fg }};white-space:nowrap">{{ z.short }}</span></sc-for>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px;margin-top:auto;font-size:11px;color:var(--t3);white-space:nowrap">
+                <button onClick="{{ toggleHelp }}" style="border:0;background:transparent;color:var(--acc);font-size:12px;padding:0;cursor:pointer;white-space:nowrap">{{ helpLabel }}</button>
+                <span>Hover a zone → see it on the photo</span>
+                <span style="margin-left:auto;overflow:hidden;text-overflow:ellipsis" title="Reflects the processed JPEG, not the RAW file — RAW may hold more highlight detail.">From JPEG, not RAW — RAW may hold more detail</span>
+              </div>
+            </div>
+            <sc-if value="{{ helpOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;right:16px;bottom:calc(100% + 8px);width:410px;background:var(--panel);border:1px solid var(--line3);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--pop-shadow);font-size:13px;line-height:1.45;z-index:3">
+                <span style="font-weight:var(--wb);font-size:14px">How to read the brightness graph</span>
+                <span><b style="font-weight:var(--wb)">Left → right is dark → bright.</b> The taller a bar, the more of the picture has that brightness.</span>
+                <span><b style="font-weight:var(--wb)">A spike at either edge</b> means pure black (blue on the photo) or pure white (red). There's no detail left there.</span>
+                <span><b style="font-weight:var(--wb)">No shape is “correct”.</b> A white shoe on white should lean right, and dark fabric should lean left. What matters is whether the part you care about is lost.</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- Filmstrip -->
+        <div style="height:92px;flex:none;border-top:1px solid var(--line);background:var(--app);display:flex;flex-direction:column;gap:6px;padding:8px 14px">
+          <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--t3)">
+            <span style="font-family:var(--mono);letter-spacing:.06em;font-size:11px">FILMSTRIP</span>
+            <span style="color:var(--t1)">All {{ filmCount }}</span><span>This shot</span><span>Keepers</span>
+            <span style="margin-left:auto;font-family:var(--mono);font-size:11px">← → step · ⌘F filter</span>
+          </div>
+          <sc-if value="{{ filmEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="height:50px;border:1px dashed var(--line3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--t2)">No photos yet. They appear here as files land in the watch folder.</div>
+          </sc-if>
+          <div style="display:flex;gap:6px;overflow-x:auto;padding:2px">
+            <sc-for list="{{ film }}" as="f" hint-placeholder-count="12">
+              <div title="#{{ f.n }} · {{ f.label }}" style="width:64px;height:48px;flex:none;position:relative;background:repeating-linear-gradient(135deg,var(--ph1) 0 6px,var(--ph2) 6px 12px);box-shadow:0 0 0 {{ f.ring }}px var(--acc);border-radius:2px;opacity:{{ f.op }}">
+                <span style="position:absolute;left:3px;bottom:2px;font-family:var(--mono);font-size:10px;color:var(--t1)">{{ f.n }}</span>
+                <span style="position:absolute;right:2px;top:2px;min-width:16px;height:16px;padding:0 3px;border-radius:3px;background:var(--chip);color:{{ f.c }};font-family:var(--mono);font-size:11px;font-weight:600;display:grid;place-items:center">{{ f.g }}</span>
+                <sc-if value="{{ f.hasTag }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;right:2px;bottom:2px;padding:0 3px;border-radius:2px;background:var(--chip);color:var(--t1);font-family:var(--mono);font-size:9px;font-weight:600;line-height:13px">{{ f.tag }}</span>
+                </sc-if>
+                <sc-if value="{{ f.writing }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;left:0;right:0;bottom:0;height:14px;background:var(--chip);display:flex;align-items:center;padding:0 3px;gap:3px"><span style="flex:1;height:3px;background:var(--line2)"><span style="display:block;height:3px;width:{{ f.pct }}%;background:var(--acc)"></span></span><span style="font-family:var(--mono);font-size:8px;color:var(--t2)">writing</span></span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- Toasts -->
+        <div aria-live="polite" style="position:absolute;right:16px;bottom:104px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;z-index:4">
+          <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+            <div style="display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line3);border-radius:9px;padding:9px 14px;box-shadow:var(--pop-shadow)">
+              <span style="font-family:var(--mono);font-size:14px;color:{{ t.c }};font-weight:600">{{ t.g }}</span>
+              <span style="font-size:16px;font-weight:var(--wm)">{{ t.text }}</span>
+              <span style="font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.06em">{{ t.src }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- Coach panel -->
+      <aside style="background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+        <div style="flex:1;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:18px">
+
+          <sc-if value="{{ showBrief }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">SHOT 2 · BRIEF</span>
+              <span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Fabric close-up</span>
+              <span style="font-size:18px;color:var(--t2);line-height:1.45;text-wrap:pretty">Show the ripstop weave up close so readers can judge the fabric.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">MUST SHOW</span>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span style="font-size:13px;padding:4px 10px;border:1px solid var(--line3);border-radius:14px">Ripstop texture</span>
+                <span style="font-size:13px;padding:4px 10px;border:1px solid var(--line3);border-radius:14px">Chest logo</span>
+                <span style="font-size:13px;padding:4px 10px;border:1px solid var(--line3);border-radius:14px">Reflective trim</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">ACCEPTANCE CRITERIA</span>
+              <div style="display:flex;gap:10px;font-size:15px;line-height:1.4"><span style="font-family:var(--mono);color:var(--t3)">1</span>Weave texture sharp across the main panel</div>
+              <div style="display:flex;gap:10px;font-size:15px;line-height:1.4"><span style="font-family:var(--mono);color:var(--t3)">2</span>Logo and zipper pull legible</div>
+              <div style="display:flex;gap:10px;font-size:15px;line-height:1.4"><span style="font-family:var(--mono);color:var(--t3)">3</span>No clipped highlights on reflective trim</div>
+            </div>
+            <span style="font-size:13px;color:var(--t3);line-height:1.45">Coaching tips appear once the first photo has been assessed.</span>
+          </sc-if>
+
+          <sc-if value="{{ isAnalysing }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;border:2px solid var(--acc);display:grid;place-items:center;font-family:var(--mono);font-size:20px;color:var(--acc)">…</div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Analysing #12</span><span style="font-size:13px;color:var(--t2)">Usually 3–6 s · keep shooting if you like</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;font-size:15px">
+              <div style="display:flex;gap:12px;align-items:center"><span style="font-family:var(--mono);color:var(--ok);width:16px">✓</span><span style="flex:1">File received</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3)">0.8 s</span></div>
+              <div style="display:flex;gap:12px;align-items:center"><span style="font-family:var(--mono);color:var(--ok);width:16px">✓</span><span style="flex:1">Measured locally (see brightness below)</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3)">0.3 s</span></div>
+              <div style="display:flex;gap:12px;align-items:center"><span style="font-family:var(--mono);color:var(--acc);width:16px">●</span><span style="flex:1;font-weight:var(--wm)">Coach reviewing against 3 criteria</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3)">2.1 s</span></div>
+              <div style="display:flex;gap:12px;align-items:center;color:var(--t3)"><span style="font-family:var(--mono);width:16px">○</span><span style="flex:1">Speak verdict</span></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="height:14px;width:40%;background:var(--raised);border-radius:4px"></div>
+              <div style="height:26px;width:92%;background:var(--raised);border-radius:4px"></div>
+              <div style="height:26px;width:70%;background:var(--raised);border-radius:4px"></div>
+            </div>
+            <button style="align-self:flex-start;height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Cancel analysis <span style="font-family:var(--mono);color:var(--t3)">Esc</span></button>
+          </sc-if>
+
+          <sc-if value="{{ isRetake }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;background:var(--ret-t);display:grid;place-items:center;font-family:var(--mono);font-size:26px;color:var(--ret)">↺</div>
+              <div style="display:flex;flex-direction:column;flex:1"><span style="font-size:34px;font-weight:var(--wb);letter-spacing:-.01em;color:var(--ret)">Needs retake</span><span style="font-size:13px;color:var(--t2)">Photo #12 · verdict in 4.2 s · spoken</span></div>
+              <sc-if value="{{ showBand }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 7px;border-radius:4px;background:var(--mock);color:#1a0716">{{ bandTag }}</span></sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">DO THIS</span>
+              <span style="font-size:30px;font-weight:var(--wm);line-height:1.2;letter-spacing:-.01em;text-wrap:pretty">Move the light a hand-width camera-left.</span>
+              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:2px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">STARTING POINT</span>
+                <span style="font-family:var(--mono);font-size:16px;font-weight:600">1/15 s at f/8</span>
+                <span style="font-size:12px;color:var(--t2)">ISO 200 · f/8 adds depth for the logo; the tripod holds 1/15 s</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:72px 1fr;row-gap:10px;column-gap:12px;font-size:15px;line-height:1.45">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding-top:3px">WHY</span>
+              <span>The reflective trim is glaring: 3.1% of it is pure white, so its texture is gone. <button onClick="{{ showGlare }}" style="border:0;background:transparent;padding:0;color:var(--acc);font-size:14px;cursor:pointer">Show me on the photo ↙</button></span>
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding-top:3px">EXPECT</span><span>Trim detail comes back, and the weave gets more texture from side-light.</span>
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding-top:3px">TRADEOFF</span><span style="color:var(--t2)">The right edge of the jacket falls about ½ stop darker.</span>
+            </div>
+            <div style="border:1px solid var(--acc);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--acc)">COACH ASKS</span>
+              <span style="font-size:17px;line-height:1.35">Should the trim show its texture in the review, or glow like it does at night?</span>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <button style="height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Texture</button>
+                <button style="height:32px;padding:0 12px;border-radius:16px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Glow</button>
+                <span style="font-size:12px;color:var(--t3);margin-left:4px">or hold the remote to answer</span>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">CRITERIA</span><span style="font-size:12px;color:var(--t3)">1 pass · 1 unsure · 1 fail</span></div>
+              <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)">
+                  <span style="width:26px;height:26px;border-radius:6px;background:{{ c.bg }};color:{{ c.c }};display:grid;place-items:center;font-family:var(--mono);font-size:14px;font-weight:600;flex:none">{{ c.g }}</span>
+                  <span style="flex:1;font-size:14px;line-height:1.35">{{ c.text }}</span>
+                  <span style="font-size:12px;font-weight:var(--wb);color:{{ c.c }}">{{ c.word }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:var(--card);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">TRY THIS · SPECULAR REFLECTION</span>
+              <span style="font-size:15px;line-height:1.45">Before you retake, look at the trim from right behind the camera. You'll see the light reflected in it. Move the light until that reflection slides off the trim.</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45"><span style="font-family:var(--mono);color:var(--unc);font-weight:600">⚠</span><span>Image stabilisation is on, but Setup says tripod. Turn IS off to avoid slight drift.</span></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button onClick="{{ toggleCauses }}" style="align-self:flex-start;border:0;background:transparent;padding:0;color:var(--t2);font-size:14px;cursor:pointer">{{ causesLabel }}</button>
+              <sc-if value="{{ causesOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:6px;padding-left:14px;font-size:14px;color:var(--t2);line-height:1.4">
+                  <span>· The trim is angled toward the light. Rotating the jacket 10° would also work.</span>
+                  <span>· Overall exposure is a little high (mean 124 of 255). This is minor.</span>
+                </div>
+              </sc-if>
+            </div>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">Claude · claude-sonnet-4.5 · 2.1k tokens · $0.028</span>
+          </sc-if>
+
+          <sc-if value="{{ isRegions }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-size:28px;font-weight:var(--wb);letter-spacing:-.01em">Mark what must be sharp</span>
+              <span style="font-size:15px;color:var(--t2);line-height:1.45">Up to 3 regions. Each one gets its own sharpness and brightness reading, and the coach checks them first.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ rects }}" as="r" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid {{ r.listBd }}">
+                  <span style="width:24px;height:24px;border-radius:5px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font-size:12px;font-weight:var(--wb)">{{ r.idx }}</span>
+                  <input value="{{ r.name }}" onChange="{{ r.onName }}" aria-label="Region name" style="flex:1;height:32px;background:var(--inset);border:1px solid var(--line2);border-radius:6px;color:var(--t1);font-size:14px;padding:0 10px">
+                  <button onClick="{{ r.del }}" aria-label="Delete region" style="height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--line3);background:transparent;color:var(--ret);font-size:13px;cursor:pointer">Delete</button>
+                </div>
+              </sc-for>
+              <span style="font-size:13px;color:var(--t3)">{{ regionCount }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;row-gap:6px;column-gap:12px;font-size:13px;color:var(--t2)">
+              <span style="font-family:var(--mono);color:var(--t1)">drag</span><span>on the photo to draw</span>
+              <span style="font-family:var(--mono);color:var(--t1)">click label</span><span>rename in place</span>
+              <span style="font-family:var(--mono);color:var(--t1)">⌫</span><span>delete the selected region</span>
+              <span style="font-family:var(--mono);color:var(--t1)">C</span><span>clear all regions</span>
+            </div>
+            <span style="font-size:12px;color:var(--t3);line-height:1.45">Regions stay with the shot, so the next photo is measured in the same places.</span>
+          </sc-if>
+
+          <sc-if value="{{ isCompare }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;background:{{ cmp.t }};display:grid;place-items:center;font-family:var(--mono);font-size:22px;font-weight:600;color:{{ cmp.c }}">{{ cmp.g }}</div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:34px;font-weight:var(--wb);letter-spacing:-.01em;color:{{ cmp.c }}">{{ cmp.word }}</span><span style="font-size:13px;color:var(--t2)">{{ cmp.sub }}</span></div>
+            </div>
+            <span style="font-size:23px;font-weight:var(--wm);line-height:1.3;text-wrap:pretty">{{ cmp.summary }}</span>
+            <div style="display:flex;flex-direction:column">
+              <sc-for list="{{ cmp.changes }}" as="x" hint-placeholder-count="3">
+                <div style="display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);font-size:14px"><span style="font-family:var(--mono);color:{{ x.c }};width:14px">{{ x.g }}</span><span style="flex:1">{{ x.label }}</span><span style="font-family:var(--mono);font-size:13px;text-align:right">{{ x.val }}</span></div>
+              </sc-for>
+              <sc-if value="{{ cmp.hasEv }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:10px;align-items:baseline;padding:6px 0 0 24px;font-size:12px;color:var(--t3);border-top:1px solid var(--line)"><span style="flex:1">Exposure was manual, so this change came from the light</span><span style="font-family:var(--mono)">{{ cmp.ev }}</span></div>
+              </sc-if>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">{{ cmp.critLabel }}</span>
+              <sc-for list="{{ cmp.crit }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+                  <span style="font-family:var(--mono);font-size:13px;color:{{ c.bc }};width:14px">{{ c.b }}</span>
+                  <span style="color:var(--t3);font-size:12px">→</span>
+                  <span style="font-family:var(--mono);font-size:13px;color:{{ c.ac }};width:14px">{{ c.a }}</span>
+                  <span style="flex:1">{{ c.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ cmp.hasNext }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid var(--line3);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">NEXT</span>
+                <span style="font-size:18px;font-weight:var(--wm);line-height:1.35">{{ cmp.next }}</span>
+                <sc-if value="{{ cmp.hasNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--t3);line-height:1.4">{{ cmp.note }}</span></sc-if>
+              </div>
+            </sc-if>
+            <div style="background:var(--card);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">WHAT YOU CHANGED · SPOKEN 14:33</span>
+              <span style="font-size:15px">{{ cmp.quote }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">WAS THE ADVICE FOR #12…</span>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+                <sc-for list="{{ ratings }}" as="r" hint-placeholder-count="3">
+                  <button onClick="{{ r.pick }}" style="height:40px;border-radius:8px;border:1px solid {{ r.bd }};background:{{ r.bg }};color:{{ r.fg }};font-size:14px;font-weight:var(--wm);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><span style="font-family:var(--mono)">{{ r.g }}</span>{{ r.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">LESSON, IN YOUR WORDS</span>
+              <textarea value="{{ lesson }}" onChange="{{ onLesson }}" onBlur="{{ saveLesson }}" style="height:60px;resize:none;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;line-height:1.4;padding:9px 11px"></textarea>
+            </div>
+            <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">Claude · claude-sonnet-4.5 · 2.6k tokens · $0.031</span>
+          </sc-if>
+
+          <sc-if value="{{ isFailure }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;background:var(--ret-t);display:grid;place-items:center;font-family:var(--mono);font-size:24px;font-weight:600;color:var(--ret)">!</div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Coach unavailable</span><span style="font-size:13px;color:var(--t2)">Photo #14 · no verdict yet</span></div>
+            </div>
+            <span style="font-size:17px;line-height:1.45;text-wrap:pretty">No network. Claude couldn't be reached after 20 s. The local brightness and sharpness readings below are still valid.</span>
+            <div style="display:flex;gap:8px">
+              <button style="height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:14px;font-weight:var(--wb);cursor:pointer">Retry now <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘R</span></button>
+              <button style="height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Retry when online</button>
+            </div>
+            <div style="border:1px solid var(--line2);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-size:14px;color:var(--ret)">⚠</span><span style="font-size:16px;font-weight:var(--wb)">#15 couldn't be read</span></div>
+              <span style="font-size:14px;color:var(--t2);line-height:1.45">The file ended early (truncated JPEG). The camera may still have been writing it.</span>
+              <div style="display:flex;gap:8px;margin-top:2px">
+                <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Read again</button>
+                <button style="height:34px;padding:0 12px;border-radius:7px;border:0;background:transparent;color:var(--t2);font-size:13px;cursor:pointer">Skip file</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPaused }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;background:var(--unc-t);display:grid;place-items:center;font-family:var(--mono);font-size:20px;font-weight:600;color:var(--unc)">‖</div>
+              <div style="display:flex;flex-direction:column"><span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Coaching paused</span><span style="font-size:13px;color:var(--t2)">Call cap reached · {{ coach.calls }} paid calls · ≈ {{ coach.cost }}</span></div>
+            </div>
+            <span style="font-size:17px;line-height:1.45;text-wrap:pretty">Photos still arrive and local measurements keep running. No paid calls are made until you resume.</span>
+            <div style="display:flex;gap:8px">
+              <button onClick="{{ togglePause }}" style="height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:14px;font-weight:var(--wb);cursor:pointer">Resume coaching <span style="font-family:var(--mono);font-weight:400;opacity:.7">P</span></button>
+              <button onClick="{{ togglePop }}" style="height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Edit caps…</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isIngest }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:28px;font-weight:var(--wb);letter-spacing:-.01em">4 files need a look</span><span style="font-size:14px;color:var(--t2)">None of these block shooting.</span></div>
+            <sc-for list="{{ ingest }}" as="n" hint-placeholder-count="5">
+              <div style="display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)">
+                <span style="width:26px;height:26px;flex:none;border-radius:6px;background:{{ n.bg }};color:{{ n.c }};display:grid;place-items:center;font-family:var(--mono);font-size:13px;font-weight:600">{{ n.g }}</span>
+                <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:15px;font-weight:var(--wm)">{{ n.title }}</span>
+                  <span style="font-size:13px;color:var(--t2);line-height:1.4">{{ n.desc }}</span>
+                  <sc-if value="{{ n.hasAct }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;margin-top:4px"><button style="height:30px;padding:0 10px;border-radius:6px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:12px;cursor:pointer">{{ n.act }}</button><sc-if value="{{ n.hasAct2 }}" hint-placeholder-val="{{ false }}"><button style="height:30px;padding:0 10px;border-radius:6px;border:0;background:transparent;color:var(--t2);font-size:12px;cursor:pointer">{{ n.act2 }}</button></sc-if></div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+
+          <sc-if value="{{ showCam }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">CAMERA · FROM EXIF</span>
+              <div style="display:grid;grid-template-columns:auto auto auto 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+                <sc-for list="{{ cam }}" as="k" hint-placeholder-count="4">
+                  <div style="background:var(--panel);padding:8px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:11px;color:var(--t3)">{{ k.k }}</span><span style="font-family:var(--mono);font-size:14px;color:{{ k.c }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.v }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="flex:none;border-top:1px solid var(--line);padding:14px 22px;display:flex;flex-direction:column;gap:10px">
+          <sc-if value="{{ showAccept }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px">
+              <button onClick="{{ openConfirm }}" style="flex:1;height:48px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:16px;font-weight:var(--wb);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><span>★</span>Accept #13 as keeper…</button>
+              <button style="height:48px;padding:0 16px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Take another</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ accepted }}" hint-placeholder-val="{{ false }}">
+            <div style="height:48px;display:flex;align-items:center;gap:10px;font-size:16px;font-weight:var(--wb)"><span style="width:28px;height:28px;border-radius:6px;background:var(--t1);color:var(--panel);display:grid;place-items:center">★</span>Keeper accepted · #13<button onClick="{{ undoAccept }}" style="margin-left:auto;border:0;background:transparent;color:var(--acc);font-size:14px;cursor:pointer">Undo</button></div>
+          </sc-if>
+          <sc-if value="{{ showChanged }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">WHAT I CHANGED</span>
+              <input value="{{ changed }}" onChange="{{ onChanged }}" onKeyDown="{{ onChangedKey }}" placeholder="Hold the remote and say it, or type and press ↵" style="height:42px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;padding:0 12px">
+            </div>
+          </sc-if>
+          <sc-if value="{{ footerIdle }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:13px;color:var(--t3)">{{ footerNote }}</span>
+          </sc-if>
+        </div>
+      </aside>
+    </div>
+    </sc-if>
+
+    <!-- Voice bar -->
+    <div style="height:60px;flex:none;border-top:1px solid var(--line);background:var(--bar);display:grid;grid-template-columns:240px minmax(0,1fr) auto;align-items:center;gap:20px;padding:0 16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;background:{{ voice.bg }};display:grid;place-items:center;color:{{ voice.c }};font-family:var(--mono);font-size:14px;font-weight:600">{{ voice.g }}</div>
+        <div style="display:flex;flex-direction:column"><span style="font-size:16px;font-weight:var(--wb);color:{{ voice.c }}">{{ voice.mode }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.02em">{{ voice.sub }}</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;row-gap:2px;font-size:14px;min-width:0">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--t3);padding-top:2px">YOU</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t2)">{{ voice.q }}</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--t3);padding-top:2px">COACH</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ voice.a }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Repeat <span style="font-family:var(--mono);color:var(--t3)">R</span></button>
+        <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Stop voice <span style="font-family:var(--mono);color:var(--t3)">S</span></button>
+        <span style="font-size:12px;color:var(--t3);margin-left:6px">Hold remote or <span style="font-family:var(--mono);color:var(--t2)">Space</span> to talk</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:10">
+        <div role="dialog" aria-modal="true" style="width:540px;background:var(--panel);border:1px solid var(--line3);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px;box-shadow:var(--pop-shadow)">
+          <span style="font-size:26px;font-weight:var(--wb);line-height:1.25">Accept #13 as the keeper for Fabric close-up?</span>
+          <div style="display:flex;gap:14px">
+            <div style="width:160px;aspect-ratio:4/3;flex:none;background:repeating-linear-gradient(135deg,var(--ph1) 0 8px,var(--ph2) 8px 16px);display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:var(--t3)">frame #13</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:14px">
+              <span><span style="font-family:var(--mono);color:var(--ok)">✓</span> Weave texture sharp</span>
+              <span><span style="font-family:var(--mono);color:var(--ok)">✓</span> Logo and pull legible</span>
+              <span><span style="font-family:var(--mono);color:var(--ok)">✓</span> Trim not clipped</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">1/125 s · f/5.6 · ISO 200</span>
+            </div>
+          </div>
+          <span style="font-size:13px;color:var(--t2);line-height:1.45">The coach suggested this frame, but only you can accept it. You can revoke it later in Coverage.</span>
+          <div style="display:flex;justify-content:flex-end;gap:8px">
+            <button onClick="{{ closeConfirm }}" style="height:44px;padding:0 18px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Not yet <span style="font-family:var(--mono);color:var(--t3)">Esc</span></button>
+            <button onClick="{{ doAccept }}" style="height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">★ Accept keeper <span style="font-family:var(--mono);font-weight:400;opacity:.7">↵</span></button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;firstrun&quot;,&quot;nophotos&quot;,&quot;idle&quot;,&quot;analysing&quot;,&quot;retake&quot;,&quot;improved&quot;,&quot;worse&quot;,&quot;mixed&quot;,&quot;uncertain&quot;,&quot;failure&quot;,&quot;paused&quot;,&quot;confirm&quot;,&quot;ingest&quot;,&quot;regions&quot;],&quot;default&quot;:&quot;retake&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;daylight&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;honesty&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;mock&quot;,&quot;simulated&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Honesty label&quot;}}">
+class Component extends DCLogic {
+  static VIEWS = [
+    ['firstrun', 'First run'], ['nophotos', 'No photos yet'], ['idle', 'Idle · brief'], ['analysing', 'Analysing'], ['retake', 'Needs retake'],
+    ['improved', 'Improved'], ['worse', 'Worse'], ['mixed', 'Mixed'], ['uncertain', 'Can\u2019t compare'], ['failure', 'Failure / offline'],
+    ['paused', 'Paused'], ['confirm', 'Accept keeper'], ['ingest', 'Ingest edge cases'], ['regions', 'Region editing']
+  ];
+  static CMPV = ['improved', 'worse', 'mixed', 'uncertain', 'confirm'];
+  static RECTS = [{ id: 1, name: 'Weave', x: 17, y: 30, w: 30, h: 34 }, { id: 2, name: 'Logo', x: 56, y: 13, w: 20, h: 18 }, { id: 3, name: 'Trim', x: 60, y: 56, w: 26, h: 26 }];
+  static FRAMES = {
+    A: { all: { p: [[16, 7, 80], [30, 4, 22]], lo: 0.1, hi: 0.9 }, 1: { p: [[14, 5, 92]], lo: 0, hi: 0 }, 2: { p: [[9, 4, 70], [31, 3, 55]], lo: 0, hi: 0.1 }, 3: { p: [[24, 6, 40], [34, 3, 70]], lo: 0, hi: 3.1 } },
+    B: { all: { p: [[16, 7, 82], [29, 4, 20]], lo: 0.1, hi: 0.2 }, 1: { p: [[14, 5, 92]], lo: 0, hi: 0 }, 2: { p: [[10, 4, 70], [30, 3, 52]], lo: 0, hi: 0 }, 3: { p: [[23, 6, 48], [32, 3, 60]], lo: 0, hi: 0.3 } },
+    C: { 1: { p: [[14, 5, 94]], lo: 0, hi: 0 }, 2: { p: [[10, 4, 72], [30, 3, 55]], lo: 0, hi: 0 }, 3: { p: [[23, 6, 48], [32, 3, 58]], lo: 0, hi: 0.4 } },
+    D: { 1: { p: [[19, 4, 96]], lo: 0, hi: 0 }, 2: { p: [[12, 4, 66], [33, 3, 60]], lo: 0, hi: 0.4 }, 3: { p: [[27, 6, 34], [35, 3, 80]], lo: 0, hi: 5.8 } },
+    E: { 1: { p: [[15, 5, 90]], lo: 0, hi: 0 }, 2: { p: [[10, 5, 64], [29, 4, 48]], lo: 0, hi: 0 }, 3: { p: [[23, 6, 48], [32, 3, 58]], lo: 0, hi: 0.3 } }
+  };
+  static INFO = {
+    all: { noun: 'frame', ctx: 'The whole-frame shape matters less than your marked regions.' },
+    1: { noun: 'weave', ctx: 'Dark-grey fabric should sit left of centre. That\u2019s fine here.' },
+    2: { noun: 'logo', ctx: 'A white logo on dark fabric makes two humps. That\u2019s expected.' },
+    3: { noun: 'trim', ctx: 'Reflective trim should be bright, but not solid white. Where it clips, the texture is gone.' }
+  };
+  static ZONES = [
+    { id: 'clipLo', short: '', label: 'Pure black: no detail', cap: 'Solid blue = pure black, no detail', sw: 'var(--lost-lo)' },
+    { id: 'sh', short: 'Shadows', label: 'Shadows', cap: 'Shadows', sw: 'color-mix(in oklch,var(--acc) 35%,transparent)' },
+    { id: 'mid', short: 'Mid-tones', label: 'Mid-tones', cap: 'Mid-tones', sw: 'color-mix(in oklch,var(--acc) 25%,transparent)' },
+    { id: 'hi', short: 'Highlights', label: 'Highlights', cap: 'Highlights', sw: 'color-mix(in oklch,var(--acc) 30%,transparent)' },
+    { id: 'clipHi', short: '', label: 'Pure white: no detail', cap: 'Solid red = pure white, no detail', sw: 'var(--lost-hi)' }
+  ];
+  static CMP = {
+    improved: {
+      g: '▲', word: 'Improved', c: 'var(--ok)', t: 'var(--ok-t)', sub: '#13 compared with #12 · usable candidate', after: ['✓', 'Usable candidate', 'var(--ok)'],
+      summary: 'The glare on the trim is gone and the logo reads sharper.', match: 'Framing match 94%', frame: 'C',
+      changes: [['▲', 'ok', 'Pure white on the trim', '3.1% → 0.4%'], ['▲', 'ok', 'Logo', '+36% sharper'], ['◆', 'unc', 'Overall darker', 'mean 124 → 118 of 255']], ev: '≈ −0.4 EV',
+      crit: [['✓', 'ok', '✓', 'ok', 'Weave texture sharp'], ['?', 'unc', '✓', 'ok', 'Logo and pull legible'], ['✕', 'ret', '✓', 'ok', 'Trim not clipped']],
+      quote: '“Moved the light about fifteen centimetres left.”',
+      pairs: [[1, 'Weave', '◆', 'Same', 'unc', 'About as sharp (+2%). Brightness unchanged.'], [2, 'Logo', '▲', 'Better', 'ok', '+36% sharper. Same tones.'], [3, 'Trim', '▲', 'Better', 'ok', 'The white spike at the right edge is gone.']]
+    },
+    worse: {
+      g: '▼', word: 'Worse', c: 'var(--ret)', t: 'var(--ret-t)', sub: '#13 compared with #12 · needs retake', after: ['↺', 'Needs retake', 'var(--ret)'],
+      summary: 'The light went frontal. The weave flattened and the trim glares more.', match: 'Framing match 96%', frame: 'D',
+      changes: [['▼', 'ret', 'Pure white on the trim', '3.1% → 5.8%'], ['▼', 'ret', 'Weave', '22% less sharp'], ['◆', 'unc', 'Overall brighter', 'mean 124 → 142 of 255']], ev: '≈ +0.5 EV',
+      crit: [['✓', 'ok', '✕', 'ret', 'Weave texture sharp'], ['?', 'unc', '?', 'unc', 'Logo and pull legible'], ['✕', 'ret', '✕', 'ret', 'Trim not clipped']],
+      quote: '“Moved the light closer to the camera.”',
+      next: 'Put the light back where it was for #12, then slide it left, away from the camera.',
+      note: 'Starting point not calculated: the light moved, so #13 isn\u2019t a reliable exposure base.',
+      pairs: [[1, 'Weave', '▼', 'Worse', 'ret', '22% less sharp. The side-light that showed the weave is gone.'], [2, 'Logo', '◆', 'Same', 'unc', '+3%, within noise.'], [3, 'Trim', '▼', 'Worse', 'ret', 'The white spike grew. More of the trim has no detail.']]
+    },
+    mixed: {
+      g: '◆', word: 'Mixed', c: 'var(--unc)', t: 'var(--unc-t)', sub: '#13 compared with #12 · uncertain', after: ['?', 'Uncertain', 'var(--unc)'],
+      summary: 'The trim glare is fixed, but the logo went soft.', match: 'Framing match 91%', frame: 'E',
+      changes: [['▲', 'ok', 'Pure white on the trim', '3.1% → 0.3%'], ['▼', 'ret', 'Logo', '18% less sharp'], ['◆', 'unc', 'Weave', 'about the same (−3%)']], ev: '≈ −0.1 EV',
+      crit: [['✓', 'ok', '✓', 'ok', 'Weave texture sharp'], ['?', 'unc', '✕', 'ret', 'Logo and pull legible'], ['✕', 'ret', '✓', 'ok', 'Trim not clipped']],
+      quote: '“Moved the light left and angled the jacket.”',
+      next: 'Keep the light where it is. Turn the jacket back so the logo faces the lens again.',
+      pairs: [[1, 'Weave', '◆', 'Same', 'unc', 'About the same (−3%).'], [2, 'Logo', '▼', 'Worse', 'ret', '18% less sharp. It turned out of the focus plane.'], [3, 'Trim', '▲', 'Better', 'ok', 'The white spike is gone.']]
+    },
+    uncertain: {
+      g: '?', word: 'Can\u2019t compare', c: 'var(--unc)', t: 'var(--unc-t)', sub: '#13 vs #12 · framing and light both changed', after: ['?', 'Uncertain', 'var(--unc)'],
+      summary: 'The framing moved about a third and the light moved too, so a side-by-side wouldn\u2019t be fair.', match: 'Framing match 64% · too low', matchBad: true, frame: 'C',
+      changes: [['?', 't3', 'Framing overlap', '≈ 64%'], ['?', 't3', 'Light position', 'changed'], ['◆', 'unc', 'Overall brighter', 'mean 124 → 138 of 255']],
+      critLabel: 'CRITERIA · #13 ON ITS OWN',
+      crit: [['—', 't3', '✓', 'ok', 'Weave texture sharp'], ['—', 't3', '?', 'unc', 'Logo and pull legible'], ['—', 't3', '✓', 'ok', 'Trim not clipped']],
+      quote: '“Reframed tighter and moved the light.”',
+      next: 'Compare with #10 (framing 86% match), or treat #13 as a fresh start.',
+      pairs: [[1, 'Weave', '?', 'Can\u2019t match', 't3', 'The region moved partly out of frame.'], [2, 'Logo', '?', 'Can\u2019t match', 't3', 'Its size changed by 30%.'], [3, 'Trim', '?', 'Can\u2019t match', 't3', 'The light changed as well, so the effects can\u2019t be separated.']]
+    }
+  };
+
+  constructor(props) {
+    super(props);
+    this.photoRef = React.createRef();
+    this.state = Object.assign({ view: null, theme: null, scale: 1, rating: 'helpful', accepted: false, paused: null, help: false, pop: false,
+      callCap: 40, usdCap: '2.00', cue: 'sound', causes: false, baseline: 12, picker: false,
+      lesson: 'Side-light brings out the weave. Keep the light off the shiny trim.', changed: '' }, this.seed(props.state ?? 'retake'));
+  }
+  seed(v) {
+    const T = (g, text, src, c) => ({ id: Math.random(), g, text, src: src || 'VOICE', c: c || 'var(--ok)' });
+    const toasts = { improved: [T('✓', 'Change noted: moved the light ~15 cm left')], mixed: [T('✓', 'Marked helpful'), T('✓', 'Lesson saved')], paused: [T('‖', 'Paused', 'VOICE', 'var(--unc)')], ingest: [T('✓', 'Received #16', 'CUE')] }[v] || [];
+    const regions = v === 'regions' ? Component.RECTS.slice(0, 2).map(r => Object.assign({}, r)) : Component.RECTS.map(r => Object.assign({}, r));
+    return {
+      toasts, regions, selected: v === 'regions' ? 2 : null, renaming: v === 'regions',
+      ghost: v === 'regions' ? { x: 58, y: 54, w: 28, h: 28, label: 'New region · release to add' } : null,
+      pinZone: undefined, pinRegion: undefined, hoverZone: null, hoverRegion: null, paused: null, help: false, pop: false, picker: v === 'uncertain', baseline: 12, causes: false
+    };
+  }
+  componentDidMount() {
+    this.fit = () => { const s = Math.min((window.innerWidth - 32) / 1440, (window.innerHeight - 100) / 900); this.setState({ scale: Math.max(0.3, Math.min(s, 1.2)) }); };
+    this.fit(); window.addEventListener('resize', this.fit);
+    this.onKey = e => {
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const i = parseInt(e.key, 10);
+      if (i >= 1 && i <= 9) return this.go(Component.VIEWS[i - 1][0]);
+      const v = this.view();
+      if (e.key === 'Escape') { if (v === 'confirm') this.setState({ view: 'improved' }); this.setState({ pop: false, picker: false, selected: null, renaming: false }); }
+      if (e.key === 'Enter' && v === 'confirm') this.setState({ view: 'improved', accepted: true });
+      if ((e.key === 'Backspace' || e.key === 'Delete') && this.state.selected != null) this.delRegion(this.state.selected);
+      if (e.key === 'p' || e.key === 'P') this.togglePause();
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.fit); window.removeEventListener('keydown', this.onKey); clearTimeout(this.tt); }
+  view() { return this.state.view ?? this.props.state ?? 'retake'; }
+  go(id) { this.setState(Object.assign({ view: id }, this.seed(id))); }
+  toast(g, text, src, c) {
+    const t = { id: Math.random(), g, text, src: src || 'KEYBOARD', c: c || 'var(--ok)' };
+    this.setState(s => ({ toasts: s.toasts.concat([t]).slice(-3) }));
+    setTimeout(() => this.setState(s => ({ toasts: s.toasts.filter(x => x.id !== t.id) })), 3800);
+  }
+  isPaused() { return this.state.paused ?? (this.view() === 'paused'); }
+  togglePause() { const p = !this.isPaused(); this.setState({ paused: p }); this.toast(p ? '‖' : '●', p ? 'Paused' : 'Coaching resumed', 'KEYBOARD', p ? 'var(--unc)' : 'var(--ok)'); }
+  delRegion(id) { this.setState(s => ({ regions: s.regions.filter(r => r.id !== id), selected: null, renaming: false })); this.toast('✓', 'Region deleted'); }
+  pct(e) { const r = this.photoRef.current.getBoundingClientRect(); return { x: Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)), y: Math.max(0, Math.min(100, (e.clientY - r.top) / r.height * 100)) }; }
+  startDraw(e) {
+    if (e.button !== 0 || !this.photoRef.current) return;
+    if (this.state.regions.length >= 3) { this.setState({ selected: null, renaming: false }); return this.toast('!', '3 regions max. Delete one first', 'KEYBOARD', 'var(--unc)'); }
+    const p0 = this.pct(e);
+    const box = p => { const x = Math.min(p0.x, p.x), y = Math.min(p0.y, p.y), w = Math.abs(p.x - p0.x), h = Math.abs(p.y - p0.y); return { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), label: `New region · ${Math.round(w)} × ${Math.round(h)}%` }; };
+    this.setState({ ghost: box(p0), selected: null, renaming: false });
+    const move = ev => this.setState({ ghost: box(this.pct(ev)) });
+    const up = ev => {
+      window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up);
+      const g = box(this.pct(ev));
+      if (g.w > 3 && g.h > 3) {
+        const id = Date.now();
+        this.setState(s => ({ ghost: null, regions: s.regions.concat([{ id, name: `Region ${s.regions.length + 1}`, x: g.x, y: g.y, w: g.w, h: g.h }]), selected: id, renaming: true }));
+      } else this.setState({ ghost: null });
+    };
+    window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  }
+
+  bars(d, activeZone) {
+    return Array.from({ length: 40 }, (_, i) => {
+      const z = i === 0 ? 'clipLo' : i === 39 ? 'clipHi' : i < 13 ? 'sh' : i < 27 ? 'mid' : 'hi';
+      let h;
+      if (i === 0) h = Math.min(100, d.lo * 30);
+      else if (i === 39) h = Math.min(100, d.hi * 30);
+      else h = 3 + d.p.reduce((s, [m, sp, a]) => s + a * Math.exp(-Math.pow((i - m) / sp, 2)), 0);
+      let c = 'var(--bar-idle)';
+      if (i === 39 && d.hi >= 0.5) c = 'var(--lost-hi)';
+      if (i === 0 && d.lo >= 0.5) c = 'var(--lost-lo)';
+      if (activeZone && z === activeZone) c = z === 'clipHi' ? 'var(--lost-hi)' : z === 'clipLo' ? 'var(--lost-lo)' : 'var(--acc)';
+      return { h: Math.min(100, Math.round(h)), c };
+    });
+  }
+  describe(key, d) {
+    const info = Component.INFO[key];
+    const tot = d.p.reduce((s, [, , a]) => s + a, 0), mean = d.p.reduce((s, [m, , a]) => s + m * a, 0) / tot;
+    const tone = mean < 13 ? 'Mostly shadows' : mean > 26 ? 'Leans bright' : 'Mostly mid-tones';
+    const SEV = { ok: { g: '✓', c: 'var(--ok)', bg: 'var(--ok-t)', tc: 'var(--t1)' }, warn: { g: '!', c: 'var(--unc)', bg: 'var(--unc-t)', tc: 'var(--t1)' }, bad: { g: '✕', c: 'var(--ret)', bg: 'var(--ret-t)', tc: 'var(--ret)' } };
+    let sev, text;
+    if (d.hi >= 1) { sev = SEV.bad; text = `${d.hi}% of the ${info.noun} is pure white, so detail is lost there.`; }
+    else if (d.hi >= 0.5) { sev = SEV.warn; text = `${tone}. ${d.hi}% is pure white, so check where.`; }
+    else if (d.hi > 0) { sev = SEV.ok; text = `${tone}. Only ${d.hi}% is pure white, which is negligible.`; }
+    else { sev = SEV.ok; text = `${tone}, nothing clipped. All the detail is recorded.`; }
+    let ctx = info.ctx;
+    if (key === 'all' && d.hi >= 0.5) ctx = 'All of the pure white is on the trim (region 3).';
+    if (key === 3 && d.hi < 1) ctx = 'Bright but not solid white, so the reflective texture survives.';
+    return { sev, text, ctx };
+  }
+
+  renderVals() {
+    const v = this.view(), CM = Component.CMP;
+    const col = k => ({ ok: 'var(--ok)', ret: 'var(--ret)', unc: 'var(--unc)', t3: 'var(--t3)' }[k] || k);
+    const ST = {
+      missing: { g: '○', label: 'Missing', c: 'var(--t3)' }, candidate: { g: '✓', label: 'Candidate', c: 'var(--ok)' },
+      retake: { g: '↺', label: 'Needs retake', c: 'var(--ret)' }, keeper: { g: '★', label: 'Keeper', c: 'var(--t1)' },
+      uncertain: { g: '?', label: 'Uncertain', c: 'var(--unc)' }, analysing: { g: '…', label: 'Analysing', c: 'var(--acc)' },
+      failed: { g: '!', label: 'AI unavailable', c: 'var(--ret)' }, bad: { g: '⚠', label: 'Bad file', c: 'var(--ret)' },
+      unsupported: { g: '⚠', label: 'RAW-only · no preview', c: 'var(--ret)' }, writing: { g: '◌', label: 'Still being written', c: 'var(--acc)' },
+      maybe: { g: '?', label: 'Might belong to previous shot', c: 'var(--unc)' }, none: { g: '–', label: 'No verdict (paused)', c: 'var(--t3)' }
+    };
+    const isCmp = Component.CMPV.includes(v);
+    const cmpKey = v === 'confirm' ? 'improved' : v;
+    const accepted = this.state.accepted && cmpKey === 'improved';
+    const paused = this.isPaused();
+    const firstRun = v === 'firstrun', noPhotos = v === 'nophotos';
+
+    const s2 = { nophotos: 'missing', idle: 'missing', analysing: 'analysing', retake: 'retake', regions: 'retake', worse: 'retake', mixed: 'uncertain', uncertain: 'uncertain' }[v] || (accepted ? 'keeper' : 'candidate');
+    const shotDefs = [['Hero — full jacket', 'keeper'], ['Fabric close-up', s2], ['Zipper & pulls', 'keeper'], ['Reflective trim, low light', 'missing'], ['Pocket detail', 'retake'], ['Fit on model — front', 'missing'], ['Packed size', 'candidate']]
+      .map((s, i) => noPhotos ? [s[0], 'missing'] : s);
+    const shots = shotDefs.map(([name, st], i) => ({ n: i + 1, name, st: ST[st], active: i === 1, bg: i === 1 ? 'var(--raised)' : 'transparent', fg: i === 1 ? 'var(--t1)' : 'var(--t2)', weight: i === 1 ? 'var(--wb)' : 'var(--wbody)' }));
+    const keepers = shotDefs.filter(s => s[1] === 'keeper').length;
+
+    const base = ['retake', 'retake', 'keeper', 'candidate', 'uncertain', 'retake', 'keeper', 'bad', 'candidate', 'retake', 'candidate'];
+    const after13 = { improved: accepted ? 'keeper' : 'candidate', confirm: 'candidate', worse: 'retake', mixed: 'uncertain', uncertain: 'uncertain' }[v];
+    const extra = { analysing: ['analysing'], retake: ['retake'], regions: ['retake'], failure: ['retake', 'candidate', 'failed', 'bad'], paused: ['retake', 'candidate', 'none'], ingest: ['retake', 'candidate', 'candidate', 'unsupported', 'maybe', 'writing'] }[v] || (isCmp ? ['retake', after13] : []);
+    const tags = v === 'ingest' ? { 13: '+RAW', 14: '↻', 15: 'RAW' } : {};
+    const selN = { analysing: 12, retake: 12, regions: 12, failure: 14, paused: 14, ingest: 16 }[v] || (isCmp ? 13 : 0);
+    const film = (firstRun || noPhotos) ? [] : base.concat(extra).map((k, i) => ({
+      n: i + 1, g: ST[k].g, c: ST[k].c, label: ST[k].label + (tags[i + 1] ? ' · ' + ({ '+RAW': 'late RAW attached', '↻': 'recovered after restart', 'RAW': 'RAW-only' })[tags[i + 1]] : ''),
+      ring: i + 1 === selN ? 2 : 0, op: selN && i + 1 !== selN ? 0.8 : 1, tag: tags[i + 1] || '', hasTag: !!tags[i + 1], writing: k === 'writing', pct: 64
+    }));
+
+    // inspector
+    const later = v === 'failure' || v === 'paused' || v === 'ingest';
+    const frame = Component.FRAMES[later ? 'B' : 'A'];
+    const sharp = later ? [0.86, 0.80, 0.77] : [0.84, 0.58, 0.71];
+    const regs = this.state.regions.slice(0, 3);
+    const idxs = regs.map((r, i) => i + 1);
+    const defRegion = later ? 1 : (idxs.includes(3) ? 3 : (idxs[0] || 'all'));
+    let pinRegion = this.state.pinRegion === undefined ? defRegion : this.state.pinRegion;
+    if (pinRegion !== 'all' && !idxs.includes(pinRegion)) pinRegion = idxs[0] || 'all';
+    let region = this.state.hoverRegion ?? pinRegion;
+    if (region !== 'all' && !idxs.includes(region)) region = pinRegion;
+    const defZone = v === 'retake' ? 'clipHi' : null;
+    const pinZone = this.state.pinZone === undefined ? defZone : this.state.pinZone;
+    const zone = this.state.hoverZone ?? pinZone;
+    const d = frame[region];
+    const desc = this.describe(region, d);
+    const nameOf = k => k === 'all' ? 'Whole frame' : (regs[k - 1] ? regs[k - 1].name : '');
+    const hd = { sev: desc.sev, text: desc.text, context: desc.ctx, who: region === 'all' ? 'Whole frame' : `${region} ${nameOf(region)}` };
+    const regionList = idxs.concat(['all']).map(k => {
+      const dd = this.describe(k, frame[k]), on = k === region;
+      return {
+        name: k === 'all' ? 'Whole frame' : `${k} ${nameOf(k)}`, tag: k === 'all' ? 'all' : k,
+        meta: k === 'all' ? `${frame.all.hi}% pure white` : `sharp ${sharp[k - 1].toFixed(2)} · ${frame[k].hi}% white`,
+        sev: dd.sev, bg: on ? 'var(--raised)' : 'transparent', ring: on ? 'var(--acc)' : 'var(--line2)',
+        enter: () => this.setState({ hoverRegion: k }), leave: () => this.setState({ hoverRegion: null }), pin: () => this.setState({ pinRegion: k })
+      };
+    });
+    const zones = Component.ZONES.map(z => {
+      const on = z.id === zone, clip = z.id.startsWith('clip');
+      return {
+        label: z.label, short: z.short, fg: on ? 'var(--acc)' : 'var(--t3)', ring: on ? 1 : 0,
+        bg: on ? 'color-mix(in oklch,var(--acc) 14%,transparent)' : clip ? 'repeating-linear-gradient(45deg,var(--raised) 0 2px,var(--panel) 2px 4px)' : (z.id === 'mid' ? 'var(--z2)' : 'var(--z1)'),
+        enter: () => this.setState({ hoverZone: z.id }), leave: () => this.setState({ hoverZone: null }),
+        pin: () => this.setState({ pinZone: pinZone === z.id ? null : z.id })
+      };
+    });
+    const zDef = Component.ZONES.find(z => z.id === zone);
+    const PATCH = {
+      clipHi: later ? [[70, 69, 4, 2]] : [[63, 60, 9, 5], [70, 67, 12, 4], [66, 74, 7, 3], [58, 18, 3, 2]],
+      clipLo: [[3, 88, 5, 3]],
+      hi: [[56, 13, 20, 18], [60, 56, 26, 26]], mid: [[12, 22, 42, 58]], sh: [[0, 68, 30, 32], [86, 0, 14, 44]]
+    };
+    const patches = zone ? PATCH[zone].map(([x, y, w, h]) => ({ x, y, w, h, bg: zDef.sw })) : [];
+    const coachPoint = v === 'retake' && zone === 'clipHi';
+
+    const sel = this.state.selected, ren = this.state.renaming;
+    const rects = regs.map((r, i) => {
+      const idx = i + 1, isSel = r.id === sel, on = isSel || idx === region;
+      const setName = e => this.setState(s => ({ regions: s.regions.map(x => x.id === r.id ? Object.assign({}, x, { name: e.target.value }) : x) }));
+      return {
+        x: r.x, y: r.y, w: r.w, h: r.h, idx, name: r.name, sel: isSel && !ren, renaming: isSel && ren, notRenaming: !(isSel && ren),
+        bw: on ? 2 : 1.5, bc: on ? 'var(--acc)' : 'color-mix(in oklch,var(--acc) 55%,transparent)', listBd: isSel ? 'var(--acc)' : 'var(--line2)',
+        down: e => { e.stopPropagation(); this.setState({ selected: r.id, renaming: false, pinRegion: idx }); },
+        labelDown: e => { e.stopPropagation(); this.setState({ selected: r.id, renaming: true }); },
+        stop: e => e.stopPropagation(),
+        enter: () => this.setState({ hoverRegion: idx }), leave: () => this.setState({ hoverRegion: null }),
+        onName: setName, onNameKey: e => { if (e.key === 'Enter' || e.key === 'Escape') this.setState({ renaming: false }); },
+        onNameBlur: () => this.setState({ renaming: false }), rename: () => this.setState({ selected: r.id, renaming: true }),
+        del: e => { if (e) e.stopPropagation(); this.delRegion(r.id); }
+      };
+    });
+    const regionHint = (v === 'analysing' || v === 'regions') ? `Drag to draw · ${regs.length} of 3 used · click a label to rename` : '';
+
+    const lens = v === 'failure' ? { k: 'Lens', v: 'not in EXIF', c: 'var(--t3)' } : { k: 'Lens', v: 'M.Zuiko 60mm F2.8 Macro', c: 'var(--t1)' };
+    const cam = [{ k: 'Shutter', v: '1/125 s', c: 'var(--t1)' }, { k: 'Aperture', v: v === 'paused' ? 'f/8' : 'f/5.6', c: 'var(--t1)' }, { k: 'ISO', v: '200', c: 'var(--t1)' }, lens];
+    const criteria = [
+      { text: 'Weave texture sharp across the main panel', g: '✓', word: 'Pass', c: 'var(--ok)', bg: 'var(--ok-t)' },
+      { text: 'Logo and zipper pull legible', g: '?', word: 'Unsure', c: 'var(--unc)', bg: 'var(--unc-t)' },
+      { text: 'No clipped highlights on reflective trim', g: '✕', word: 'Fail', c: 'var(--ret)', bg: 'var(--ret-t)' }
+    ];
+
+    let cmp = null;
+    if (isCmp) {
+      const c = CM[cmpKey], FA = Component.FRAMES.A, FX = Component.FRAMES[c.frame];
+      cmp = {
+        g: c.g, word: c.word, c: c.c, t: c.t, sub: c.sub, summary: c.summary, match: c.match, matchC: c.matchBad ? 'var(--unc)' : 'var(--t3)',
+        after: { g: c.after[0], label: c.after[1], c: c.after[2] },
+        changes: c.changes.map(([g, k, label, val]) => ({ g, c: col(k), label, val })),
+        hasEv: !!c.ev, ev: c.ev || '', critLabel: c.critLabel || `CRITERIA  #${this.state.baseline} → #13`,
+        crit: c.crit.map(([b, bk, a, ak, text]) => ({ b, bc: col(bk), a, ac: col(ak), text })),
+        hasNext: !!c.next, next: c.next || '', hasNote: !!c.note, note: c.note || '', quote: c.quote,
+        pairs: c.pairs.map(([n, name, g, word, k, delta]) => ({ n, name, g, word, c: col(k), delta, prev: this.bars(FA[n], null), cur: this.bars(FX[n], null).map(b => ({ h: b.h, c: 'color-mix(in oklch,var(--acc) 60%,transparent)' })) }))
+      };
+    }
+    const picks = [[12, 'Previous attempt', 'framing ' + (cmpKey === 'uncertain' ? '64%' : '94%'), '↺', 'var(--ret)'], [10, 'First attempt', 'framing 86%', '↺', 'var(--ret)']].map(([n, label, meta, g, c]) => ({
+      n, label, meta, g, c, bg: n === this.state.baseline ? 'var(--raised)' : 'transparent', pick: () => this.setState({ baseline: n, picker: false })
+    }));
+    const ratings = [['helpful', '✓', 'Helpful'], ['neutral', '–', 'Neutral'], ['harmful', '✕', 'Harmful']].map(([id, g, label]) => {
+      const on = this.state.rating === id;
+      return { g, label, pick: () => { this.setState({ rating: id }); this.toast(g, `Marked ${id}`); }, bg: on ? 'var(--t1)' : 'transparent', fg: on ? 'var(--panel)' : 'var(--t1)', bd: on ? 'var(--t1)' : 'var(--line3)' };
+    });
+
+    const ingest = [
+      { g: '?', c: 'var(--unc)', bg: 'var(--unc-t)', title: '#16 might belong to Hero — full jacket', desc: 'It was taken 8 s after you switched shots and its framing matches #3 (92%).', act: 'Move to Hero', act2: 'Keep here' },
+      { g: '◌', c: 'var(--acc)', bg: 'var(--acc-t)', title: '#17 is still being written', desc: 'The file is 64% written. It\u2019ll be read once its size stops changing.' },
+      { g: '⚠', c: 'var(--ret)', bg: 'var(--ret-t)', title: '#15 is RAW-only (.ORF)', desc: 'There\u2019s no preview to analyse. Set the camera to RAW+JPEG, or skip this file.', act: 'Skip file' },
+      { g: '+', c: 'var(--t1)', bg: 'var(--raised)', title: 'Late RAW attached to #13', desc: 'The .ORF arrived 40 s after the JPEG. It\u2019s now linked, and the verdict is unchanged.' },
+      { g: '↻', c: 'var(--t1)', bg: 'var(--raised)', title: '#14 recovered after restart', desc: 'It was analysed before the app quit. The verdict and your notes were kept.' }
+    ].map(n => Object.assign(n, { hasAct: !!n.act, hasAct2: !!n.act2, act: n.act || '', act2: n.act2 || '' }));
+
+    const VOICE = {
+      firstrun: ['Ready', 'Voice starts with a session', '●', 'var(--t2)', 'var(--raised)', '—', '—'],
+      nophotos: ['Ready', 'Mic idle', '●', 'var(--t2)', 'var(--raised)', '“Is the camera connected?”', 'I can only see files in the watch folder. Take a photo and it\u2019ll appear.'],
+      idle: ['Ready', 'Mic idle', '●', 'var(--t2)', 'var(--raised)', '“What\u2019s this shot for?”', 'Showing the weave up close so readers can judge the fabric.'],
+      analysing: ['Thinking', 'Claude', '…', 'var(--acc)', 'var(--acc-t)', '“Is the logo sharp enough?”', 'I\u2019ll tell you with the verdict for #12.'],
+      retake: ['Speaking', 'Verdict #12 · 0:06', '◀', 'var(--acc)', 'var(--acc-t)', '“Is the logo sharp enough?”', 'Needs retake. Move the light a hand-width camera-left. The trim is glaring.'],
+      regions: ['Ready', 'Mic idle', '●', 'var(--t2)', 'var(--raised)', '“Rename region two to logo.”', 'Done.'],
+      improved: ['Listening', 'Release to send', '●', 'var(--ok)', 'var(--ok-t)', '“Moved the light about fifteen centimetres left.”', 'Improved. The glare on the trim is gone and the logo reads sharper.'],
+      worse: ['Speaking', 'Comparison #13 · 0:05', '◀', 'var(--acc)', 'var(--acc-t)', '“Moved the light closer to the camera.”', 'Worse. The light went frontal. Put it back and slide it left instead.'],
+      mixed: ['Transcribing', 'OpenAI', '≋', 'var(--t1)', 'var(--raised)', '“That was helpful. Lesson: angle matters for the logo.”', 'Mixed. The trim is fixed, but the logo went soft.'],
+      uncertain: ['Speaking', 'Comparison #13 · 0:07', '◀', 'var(--acc)', 'var(--acc-t)', '“Is it better?”', 'I can\u2019t compare fairly. The framing and the light both changed.'],
+      failure: ['Offline', 'Voice needs network', '✕', 'var(--ret)', 'var(--ret-t)', '—', 'Voice is paused until the network is back.'],
+      paused: ['Ready', 'Mic idle', '●', 'var(--t2)', 'var(--raised)', '“Pause coaching.”', 'Paused. Say “resume” when you want verdicts again.'],
+      ingest: ['Transcribing', 'OpenAI', '≋', 'var(--t1)', 'var(--raised)', '“Move sixteen to hero.”', '—']
+    };
+    const vv = VOICE[cmpKey] || VOICE.retake;
+    const voice = { mode: vv[0], sub: vv[1], g: vv[2], c: vv[3], bg: vv[4], q: vv[5], a: vv[6] };
+
+    const used = paused && v === 'paused' ? this.state.callCap : 12;
+    const coach = firstRun
+      ? { glyph: '○', label: 'Coaching off', bg: 'var(--raised)', fg: 'var(--t3)', calls: `0 / ${this.state.callCap}`, cost: '$0.00', pct: 0, meter: 'var(--t3)', used: 0 }
+      : paused
+      ? { glyph: '‖', label: 'Paused', bg: 'var(--unc-t)', fg: 'var(--unc)', calls: `${used} / ${this.state.callCap}`, cost: '$' + (used * 0.028).toFixed(2), pct: Math.min(100, Math.round(used / this.state.callCap * 100)), meter: 'var(--unc)', used }
+      : { glyph: '●', label: 'Coaching on', bg: 'var(--raised)', fg: 'var(--t1)', calls: `12 / ${this.state.callCap}`, cost: '$0.34', pct: Math.round(12 / this.state.callCap * 100), meter: 'var(--t2)', used: 12 };
+    const seg = (on) => ({ bg: on ? 'var(--pri)' : 'transparent', fg: on ? 'var(--pri-ink)' : 'var(--t2)' });
+    const onOff = [['On', false], ['Paused', true]].map(([label, p]) => Object.assign({ label, pick: () => { if (p !== paused) this.togglePause(); } }, seg(p === paused)));
+    const cues = [['sound', 'Sound'], ['spoken', 'Spoken'], ['none', 'None']].map(([id, label]) => Object.assign({ label, pick: () => this.setState({ cue: id }) }, seg(this.state.cue === id)));
+    const cueNote = { sound: 'A short click when a new photo arrives.', spoken: 'Says “Received twelve” in your headphones.', none: 'Silent. Watch for the on-screen “Received” message.' }[this.state.cue];
+
+    const theme = this.state.theme ?? this.props.theme ?? 'dark';
+    const honesty = this.props.honesty ?? 'none';
+    const sc = this.state.scale;
+    const hasPhoto = !isCmp && !['firstrun', 'nophotos', 'idle'].includes(v);
+    return {
+      tabs: Component.VIEWS.map(([id, label], i) => ({ label: (i < 9 ? (i + 1) + ' · ' : '') + label, go: () => this.go(id), bg: id === v ? '#ececec' : 'transparent', fg: id === v ? '#141414' : '#b8b8b8' })),
+      scale: sc, boxW: Math.round(1440 * sc), boxH: Math.round(900 * sc), theme,
+      sun: theme === 'daylight' ? { label: 'Daylight', bg: 'var(--pri)', fg: 'var(--pri-ink)' } : { label: 'Daylight', bg: 'transparent', fg: 'var(--t2)' },
+      toggleTheme: () => this.setState({ theme: theme === 'daylight' ? 'dark' : 'daylight' }),
+      showBand: honesty !== 'none', bandTag: honesty === 'simulated' ? 'SIMULATED' : 'MOCK PROVIDER',
+      bandText: honesty === 'simulated' ? 'Replayed scenario. Nothing here was shot live.' : 'Coach responses are scripted, not real analysis.',
+      net: v === 'failure' ? { glyph: '✕', label: 'Offline', color: 'var(--ret)' } : { glyph: '●', label: 'Claude · online', color: 'var(--t2)' },
+      coach, popOpen: this.state.pop, togglePop: () => this.setState(s => ({ pop: !s.pop })), onOff, cues, cueNote,
+      callCap: this.state.callCap, capUp: () => this.setState(s => ({ callCap: s.callCap + 10 })), capDown: () => this.setState(s => ({ callCap: Math.max(10, s.callCap - 10) })),
+      usdCap: this.state.usdCap, onUsd: e => this.setState({ usdCap: e.target.value }),
+      isFirstRun: firstRun, hasSession: !firstRun,
+      shots, keepers, keeperPct: Math.round(keepers / 7 * 100),
+      showWaiting: noPhotos || v === 'idle',
+      wait: noPhotos ? { title: 'Waiting for the first photo', sub: 'Nothing in this session yet. Take a shot when you\u2019re set.' } : { title: 'Ready for the first frame', sub: 'Fabric close-up · take the shot when you\u2019re set' },
+      showBrief: noPhotos || v === 'idle',
+      isAnalysing: v === 'analysing', isRetake: v === 'retake', isCompare: isCmp, isFailure: v === 'failure', isPaused: v === 'paused', isConfirm: v === 'confirm', isIngest: v === 'ingest', isRegions: v === 'regions',
+      hasPhoto, showInspector: hasPhoto, showCam: hasPhoto && v !== 'regions' && v !== 'ingest',
+      showChanged: ['retake', 'analysing', 'worse', 'mixed', 'uncertain'].includes(v), showAccept: cmpKey === 'improved' && !accepted, accepted,
+      footerIdle: ['nophotos', 'idle', 'failure', 'paused', 'ingest', 'regions'].includes(v),
+      footerNote: { nophotos: 'Photos are read from the watch folder. The app can\u2019t see the camera itself.', idle: 'Take a photo to get the first verdict.', failure: 'Your photos are safe. Only the coach is unavailable.', paused: 'Your photos are safe. Only paid calls are paused.', ingest: 'Ingest issues never block the next shot.', regions: 'Changes apply to the next analysis.' }[v] || '',
+      photoNo: selN, film, filmCount: film.length, filmEmpty: noPhotos,
+      hist: this.bars(d, zone), hd, regionList, zones, patches, zoneCaption: zone ? zDef.cap : '', zoneSwatch: zDef ? zDef.sw : 'transparent',
+      hiEndLabel: coachPoint ? 'Coach points here · pure white' : 'pure white', hiEndC: coachPoint ? 'var(--acc)' : 'var(--t3)',
+      helpOpen: this.state.help, helpLabel: this.state.help ? 'How to read this ▾' : 'How to read this ▸', toggleHelp: () => this.setState(s => ({ help: !s.help })),
+      showGlare: () => this.setState({ pinRegion: 3, pinZone: 'clipHi' }),
+      rects, ghost: this.state.ghost || {}, hasGhost: !!this.state.ghost, regionHint, regionCount: `${regs.length} of 3 regions`,
+      photoRef: this.photoRef, startDraw: e => this.startDraw(e), stopEv: e => e.stopPropagation(),
+      causesOpen: this.state.causes, causesLabel: this.state.causes ? '▾ Other possible causes (2)' : '▸ Other possible causes (2)', toggleCauses: () => this.setState(s => ({ causes: !s.causes })),
+      cam, criteria, cmp: cmp || { after: {}, changes: [], crit: [], pairs: [] }, picks, baseline: this.state.baseline, pickerOpen: this.state.picker, togglePicker: () => this.setState(s => ({ picker: !s.picker })),
+      ratings, ingest, voice, toasts: this.state.toasts,
+      lesson: this.state.lesson, onLesson: e => this.setState({ lesson: e.target.value }), saveLesson: () => this.toast('✓', 'Lesson saved'),
+      changed: this.state.changed, onChanged: e => this.setState({ changed: e.target.value }),
+      onChangedKey: e => { if (e.key === 'Enter' && this.state.changed.trim()) { this.toast('✓', 'Change noted: ' + this.state.changed.trim()); this.setState({ changed: '' }); } },
+      togglePause: () => this.togglePause(),
+      openConfirm: () => this.setState({ view: 'confirm' }), closeConfirm: () => this.setState({ view: 'improved' }),
+      doAccept: () => { this.setState({ view: 'improved', accepted: true }); this.toast('★', 'Keeper accepted · #13', 'KEYBOARD', 'var(--t1)'); }, undoAccept: () => this.setState({ accepted: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

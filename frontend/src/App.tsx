@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
-import type { CoachEvent, Session, SessionState } from "./api/types";
-import { AppContext, useApp, type AppCtx, type ReceivedInfo } from "./AppContext";
+import type { CoachEvent, Session, SessionState, UiTheme } from "./api/types";
+import { AppContext, useApp, type AppCtx, type ReceivedInfo, type Toast, type ToastInput } from "./AppContext";
 import { Header } from "./components/Header";
 import { SessionsTab } from "./components/SessionsTab";
 import { ShootTab } from "./components/ShootTab";
 import { CoverageTab } from "./components/CoverageTab";
 import { DiagnosticsTab } from "./components/DiagnosticsTab";
+import { SetupTab } from "./components/SetupTab";
+import { ShotListTab } from "./components/ShotListTab";
 import { useEventStream } from "./hooks/useEventStream";
 import { Debouncer, eventRelevance } from "./lib/events";
 import { TABS, type Tab } from "./tabs";
@@ -25,6 +27,23 @@ function loadSid(): string | null {
     return null;
   }
 }
+const THEME_KEY = "aperture-ally.theme";
+function loadTheme(): UiTheme {
+  try {
+    return localStorage.getItem(THEME_KEY) === "daylight" ? "daylight" : "studio";
+  } catch {
+    return "studio";
+  }
+}
+function saveTheme(t: UiTheme) {
+  try {
+    localStorage.setItem(THEME_KEY, t);
+  } catch {
+    /* ignore */
+  }
+}
+const TOAST_MS = 3800;
+
 function saveSid(sid: string | null) {
   try {
     if (sid) localStorage.setItem(SID_KEY, sid);
@@ -46,6 +65,9 @@ export function App() {
   sidRef.current = sid;
   const listeners = useRef(new Set<(ev: CoachEvent) => void>());
   const errId = useRef(0);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastId = useRef(0);
+  const [localTheme, setLocalTheme] = useState<UiTheme>(loadTheme);
 
   useEffect(() => {
     const onHash = () => setTabState(tabFromHash());
@@ -168,6 +190,34 @@ export function App() {
     };
   }, []);
 
+  const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  const toast = useCallback(
+    (t: ToastInput) => {
+      const id = ++toastId.current;
+      const next: Toast = { source: "KEYBOARD", tone: "ok", ...t, id };
+      setToasts((list) => [...list, next].slice(-3));
+      window.setTimeout(() => dismissToast(id), TOAST_MS);
+    },
+    [dismissToast],
+  );
+
+  const theme: UiTheme = state?.session.ui_theme ?? localTheme;
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme === "daylight" ? "daylight" : "dark";
+  }, [theme]);
+  const setTheme = useCallback(
+    (t: UiTheme) => {
+      saveTheme(t);
+      setLocalTheme(t);
+      const cur = sidRef.current;
+      if (cur) {
+        setState((st) => (st && st.session.id === cur ? { ...st, session: { ...st.session, ui_theme: t } } : st));
+        void run("Could not save theme", () => api.patchSession(cur, { ui_theme: t }));
+      }
+    },
+    [run],
+  );
+
   const ctx: AppCtx = {
     sid,
     state,
@@ -178,6 +228,11 @@ export function App() {
     received,
     pendingNote,
     setPendingNote,
+    toasts,
+    toast,
+    dismissToast,
+    theme,
+    setTheme,
   };
 
   return (
@@ -207,6 +262,8 @@ export function App() {
         {tab === "sessions" && <SessionsTab sessions={sessions} onOpen={(id) => { setSid(id); setTab("shoot"); }} />}
         {tab === "shoot" && (state ? <ShootTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
         {tab === "coverage" && (state ? <CoverageTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
+        {tab === "shotlist" && (state ? <ShotListTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
+        {tab === "setup" && (state ? <SetupTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
         {tab === "diagnostics" && <DiagnosticsTab />}
       </main>
     </AppContext.Provider>

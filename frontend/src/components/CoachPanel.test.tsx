@@ -1,29 +1,12 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
-import { AppContext, type AppCtx } from "../AppContext";
+import { makeCtx, renderWithCtx } from "../test/ctx";
 import { CoachPanel } from "./CoachPanel";
 import { assessment, baselineCapture, experiment, followUpCapture, shot } from "../test/fixtures";
 
-function ctx(over: Partial<AppCtx> = {}): AppCtx {
-  return {
-    sid: "s1",
-    state: null,
-    refresh: vi.fn(async () => {}),
-    refreshSessions: vi.fn(async () => {}),
-    run: async (_label, fn) => fn(),
-    subscribe: () => () => {},
-    received: null,
-    pendingNote: null,
-    setPendingNote: () => {},
-    ...over,
-  };
-}
-
-function wrap(children: ReactNode, c: AppCtx = ctx()) {
-  return render(<AppContext.Provider value={c}>{children}</AppContext.Provider>);
-}
+const ctx = makeCtx;
+const wrap = renderWithCtx;
 
 afterEach(() => vi.restoreAllMocks());
 

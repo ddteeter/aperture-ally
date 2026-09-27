@@ -1,5 +1,6 @@
 // Small typed fetch client for the Aperture Ally backend. All routes live under /api.
 import type {
+  BaselineCandidate,
   CaptureDetail,
   CapturePatch,
   Capture,
@@ -17,6 +18,7 @@ import type {
   SessionState,
   SetupFields,
   SetupRevision,
+  SetupRevisionSummary,
   Shot,
   ShotPatch,
   TimingSummary,
@@ -115,6 +117,13 @@ export const api = {
     fd.append("auto_coach", String(autoCoach));
     return request<{ capture_ids: string[] }>("POST", `/sessions/${enc(sid)}/uploads`, fd);
   },
+  setupRevisions: (sid: string) => request<SetupRevisionSummary[]>("GET", `/sessions/${enc(sid)}/setup-revisions`),
+  /** Re-read a pending/failed watch-folder file now (clears its retry backoff). */
+  pendingRetry: (sid: string, key: string) =>
+    request<{ ok: boolean }>("POST", `/sessions/${enc(sid)}/pending-files/${enc(key)}/retry`),
+  /** Stop trying to read a pending/failed file; it is recorded as skipped. */
+  pendingSkip: (sid: string, key: string) =>
+    request<{ ok: boolean }>("POST", `/sessions/${enc(sid)}/pending-files/${enc(key)}/skip`),
   coverage: (sid: string) => request<Coverage>("GET", `/sessions/${enc(sid)}/coverage`),
   exports: (sid: string) => request<Record<string, string>>("POST", `/sessions/${enc(sid)}/exports`),
 
@@ -123,6 +132,15 @@ export const api = {
   patchCapture: (cid: string, body: CapturePatch) => request<Capture>("PATCH", `/captures/${enc(cid)}`, body),
   assess: (cid: string, body: { plain?: boolean; speak?: boolean; provider?: string } = {}) =>
     request<{ queued: boolean }>("POST", `/captures/${enc(cid)}/assess`, body),
+  /** Cancel a queued/running analysis for this capture and stop any speech about it. */
+  cancelAnalysis: (cid: string) => request<{ cancelled: boolean }>("POST", `/captures/${enc(cid)}/cancel`),
+  /** Retry a failed analysis now, or arm an automatic retry for when the provider is reachable again. */
+  retryAnalysis: (cid: string, when: "now" | "online") =>
+    request<{ queued: boolean; armed?: boolean }>("POST", `/captures/${enc(cid)}/retry`, { when }),
+  /** Re-read a capture whose file failed to decode (bad file). */
+  rereadCapture: (cid: string) => request<{ ok: boolean }>("POST", `/captures/${enc(cid)}/reread`),
+  baselineCandidates: (cid: string) =>
+    request<BaselineCandidate[]>("GET", `/captures/${enc(cid)}/baseline-candidates`),
   compare: (cid: string, baselineCaptureId: string) =>
     request<{ queued: boolean }>("POST", `/captures/${enc(cid)}/compare`, { baseline_capture_id: baselineCaptureId }),
 
@@ -140,6 +158,12 @@ export const api = {
   voiceCancel: () => request<Record<string, unknown>>("POST", "/voice/cancel"),
   voice: () => request<VoiceSnapshot>("GET", "/voice"),
   coachRepeat: () => request<{ repeating: string }>("POST", "/coach/repeat"),
+  /** Send a typed utterance through the same pipeline as a spoken one (commands and questions). */
+  voiceText: (body: VoiceBody & { text: string }) =>
+    request<{ intent: string | null; answer: string | null; voice_turn_id: string | null }>("POST", "/voice/text", {
+      source: "ui",
+      ...body,
+    }),
   coachStop: () => request<{ stopped: unknown }>("POST", "/coach/stop"),
 
   // diagnostics

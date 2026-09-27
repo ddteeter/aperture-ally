@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#161616;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button{font-family:inherit}
+:focus-visible{outline:2px solid oklch(0.80 0.10 230);outline-offset:2px}
+</style>
+</helmet>
+<div style="max-width:1200px;margin:0 auto;padding:48px 32px 96px;display:flex;flex-direction:column;gap:64px">
+
+  <header style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:22px;height:22px;border-radius:50%;border:2px solid #ececec;display:grid;place-items:center"><div style="width:7px;height:7px;border-radius:50%;background:#ececec"></div></div>
+      <span style="font-size:15px;font-weight:600">Aperture Ally</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c;margin-left:8px">DESIGN SYSTEM · v0.1</span>
+    </div>
+    <h1 style="margin:0;font-size:44px;font-weight:600;letter-spacing:-.015em;line-height:1.1;max-width:820px;text-wrap:pretty">Neutral grey chrome that steps back. The photo is the only thing with colour.</h1>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:14px">
+      <a href="Aperture%20Ally%20Shoot.dc.html">Shoot screen →</a>
+      <a href="Aperture%20Ally%20Workflows.dc.html#coverage">Coverage →</a>
+      <a href="Aperture%20Ally%20Workflows.dc.html#sessions">Sessions →</a>
+      <a href="Aperture%20Ally%20Workflows.dc.html#shots">Shot list editor →</a>
+      <a href="Aperture%20Ally%20Workflows.dc.html#setup">Setup editor →</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:10px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:600">Glance first</span><span style="font-size:14px;color:#b8b8b8;line-height:1.5">The verdict and the one action must read from 3 m away. Everything else can be small.</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:600">Never colour alone</span><span style="font-size:14px;color:#b8b8b8;line-height:1.5">Every status has a glyph and a word. Colour only confirms them.</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:600">Honest by default</span><span style="font-size:14px;color:#b8b8b8;line-height:1.5">Missing data says "not reported". Mock and simulated sessions are striped magenta.</span></div>
+    </div>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">01 · COLOUR — DARK THEME</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+      <sc-for list="{{ neutrals }}" as="c" hint-placeholder-count="9">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="height:64px;border-radius:8px;background:{{ c.v }};box-shadow:inset 0 0 0 1px #333"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px">{{ c.name }}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">{{ c.v }} · {{ c.use }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size:14px;color:#b8b8b8;max-width:760px;line-height:1.5">The photo sits on the darkest surface. Panels are one step lighter, so the eye lands on the photo. Neutrals have zero chroma, so nothing tints how you judge colour.</span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+      <sc-for list="{{ semantics }}" as="c" hint-placeholder-count="5">
+        <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:32px;height:32px;border-radius:8px;background:{{ c.bg }};color:{{ c.v }};display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600">{{ c.g }}</span>
+            <span style="font-size:16px;font-weight:600;color:{{ c.v }}">{{ c.label }}</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#b8b8b8">{{ c.name }}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">{{ c.v }}</span>
+          <span style="font-size:12px;color:#b8b8b8;line-height:1.4">{{ c.use }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size:13px;color:#8c8c8c">The four accents share lightness and chroma. Only the hue changes, so none looks louder than the others. Tints (<span style="font-family:'IBM Plex Mono',monospace">oklch(0.30 0.06 h)</span>) are for icon tiles only, never behind body text.</span>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">01b · DAYLIGHT MODE — FOR SUNLIT SCREENS</span>
+    <span style="font-size:14px;color:#b8b8b8;max-width:780px;line-height:1.55">In sunlight, a MacBook Air (about 500 nits, glossy) reflects more light than dark pixels give off. Daylight mode uses a near-white ground and near-black ink, has only two text levels, and uses heavier weights (500 body, 700 glance). Accents are darker and more saturated. The photo sits on a mid-grey mat, not white. Toggle ☀ in the top bar or the <span style="font-family:'IBM Plex Mono',monospace">theme</span> tweak. Everything is driven by CSS custom properties on <span style="font-family:'IBM Plex Mono',monospace">[data-theme]</span>.</span>
+    <div style="background:#f2f2f2;border-radius:12px;padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;color:#0a0a0a">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;align-content:start">
+        <sc-for list="{{ daylight }}" as="c" hint-placeholder-count="10">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="height:44px;border-radius:7px;background:{{ c.v }};box-shadow:inset 0 0 0 1px #b0b0b0"></div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500">{{ c.name }}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#3d3d3d">{{ c.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#ffffff;border:1px solid #cfcfcf;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;font-weight:500">
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:10px;background:oklch(0.93 0.05 30);color:oklch(0.50 0.18 30);display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:24px">↺</span><span style="font-size:32px;font-weight:700;color:oklch(0.50 0.18 30)">Needs retake</span></div>
+        <span style="font-size:26px;font-weight:600;line-height:1.2">Move the light a hand-width camera-left.</span>
+        <span style="font-size:15px;color:#242424;line-height:1.45">The trim is glaring: 3.1% of it is pure white.</span>
+        <div style="display:flex;gap:8px"><span style="height:40px;padding:0 16px;border-radius:8px;background:#0a0a0a;color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center">★ Accept keeper…</span><span style="height:40px;padding:0 14px;border-radius:8px;border:1px solid #808080;font-size:14px;display:flex;align-items:center">Take another</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;font-size:13px;color:#b8b8b8;line-height:1.5">
+      <span><b style="color:#ececec;font-weight:600">No light-grey text.</b> The lightest text is #3d3d3d (about 10:1 on white), so it survives glare.</span>
+      <span><b style="color:#ececec;font-weight:600">Trust the numbers outdoors.</b> A sunlit screen makes photos look darker than they are. The pure-white % and histogram headline matter more than the preview.</span>
+      <span><b style="color:#ececec;font-weight:600">Lost-detail colours stay the same</b> (red #ff2626 and blue #2659ff) in both themes, so the meaning never changes.</span>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">02 · TYPE — IBM PLEX SANS + PLEX MONO</span>
+    <div style="display:flex;flex-direction:column">
+      <sc-for list="{{ type }}" as="t" hint-placeholder-count="9">
+        <div style="display:grid;grid-template-columns:180px minmax(0,1fr);align-items:baseline;gap:20px;padding:12px 0;border-top:1px solid #262626">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c;line-height:1.5">{{ t.name }}<br>{{ t.spec }}</span>
+          <span style="font-size:{{ t.size }}px;font-weight:{{ t.w }};font-family:{{ t.ff }};letter-spacing:{{ t.ls }};line-height:1.2">{{ t.sample }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size:13px;color:#8c8c8c;max-width:760px;line-height:1.5">Glance sizes are for the coach panel and stage overlays only: the verdict, the action and "Received #N". Exposure numbers and file names use mono so digits line up.</span>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">03 · SPACING, RADII, SIZES</span>
+    <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap">
+      <sc-for list="{{ space }}" as="s" hint-placeholder-count="8">
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+          <div style="width:{{ s }}px;height:{{ s }}px;background:#3a3a3a;border-radius:2px"></div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">{{ s }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;font-size:13px;color:#b8b8b8;line-height:1.5">
+      <span><span style="font-family:'IBM Plex Mono',monospace;color:#ececec">--r-sm 4 · --r-md 8 · --r-lg 10 · --r-xl 14</span><br>Chips 4, buttons 8, cards 10, dialogs 14. Photos get 0–2 so the image stays rectangular.</span>
+      <span><span style="font-family:'IBM Plex Mono',monospace;color:#ececec">control 34 / 40 / 48</span><br>48 px is for Accept, 40 for panel actions, 34 for toolbars. None smaller.</span>
+      <span><span style="font-family:'IBM Plex Mono',monospace;color:#ececec">--line #262626 · 1px</span><br>Use hairline dividers instead of boxes. There are no drop shadows except on dialogs.</span>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">04 · COMPONENTS</span>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:15px;font-weight:600">Status chips</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="9">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:4px;background:#111;color:{{ c.c }}"><span style="font-family:'IBM Plex Mono',monospace">{{ c.g }}</span>{{ c.label }}</span>
+          </sc-for>
+        </div>
+        <span style="font-size:12px;color:#8c8c8c;line-height:1.45">Verdicts: ↺ retake · ✓ usable · ? uncertain. Outcomes: ▲ improved · ▼ worse · ◆ mixed. Coverage: ○ missing · ★ keeper.</span>
+      </div>
+
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:15px;font-weight:600">Buttons</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button style="height:48px;padding:0 18px;border-radius:9px;border:0;background:#e8e8e8;color:#141414;font-size:15px;font-weight:600">★ Accept keeper…</button>
+          <button style="height:40px;padding:0 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#ececec;font-size:14px">Secondary</button>
+          <button style="height:40px;padding:0 12px;border-radius:8px;border:0;background:transparent;color:oklch(0.80 0.10 230);font-size:14px">Text</button>
+          <button style="height:40px;padding:0 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#ececec;font-size:14px;outline:2px solid oklch(0.80 0.10 230);outline-offset:2px">Focused</button>
+        </div>
+        <span style="font-size:12px;color:#8c8c8c;line-height:1.45">Primary is light neutral, not a hue, so it never gets confused with a verdict. Use one per panel at most. Shortcut hints sit inside the button in mono at 70% opacity.</span>
+      </div>
+
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:15px;font-weight:600">Image frame + region overlay</span>
+        <div style="aspect-ratio:4/3;position:relative;background:repeating-linear-gradient(135deg,#262626 0 10px,#2b2b2b 10px 20px);box-shadow:0 0 0 1px #2a2a2a">
+          <div style="position:absolute;left:14%;top:30%;width:34%;height:36%;border:2px solid oklch(0.80 0.10 230)"><span style="position:absolute;left:-2px;top:-22px;background:oklch(0.80 0.10 230);color:#0f1a20;font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px 3px 3px 0">1 Weave</span></div>
+          <div style="position:absolute;left:58%;top:52%;width:28%;height:28%;border:1.5px solid oklch(0.80 0.10 230 / .55)"><span style="position:absolute;left:-2px;top:-22px;background:oklch(0.80 0.10 230 / .55);color:#0f1a20;font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px 3px 3px 0">2 Trim</span></div>
+          <div style="position:absolute;left:62%;top:58%;width:12%;height:6%;background:#ff2626"></div><div style="position:absolute;left:4%;top:86%;width:7%;height:5%;background:#2659ff"></div>
+          <span style="position:absolute;left:8px;top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;background:rgba(0,0,0,.6);padding:2px 6px;border-radius:3px">#12 · P9270012.ORF</span>
+        </div>
+        <span style="font-size:12px;color:#8c8c8c;line-height:1.45">Up to 3 regions. The active region has a 2 px border and the rest are dimmed. Solid red marks pure white and solid blue marks pure black (no detail in either). They only show while you hover a zone or the coach points at it.</span>
+      </div>
+
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <span style="font-size:15px;font-weight:600">Before / after</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#8c8c8c">BEFORE #12 <span style="color:oklch(0.76 0.13 35)">↺</span></span><div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,#262626 0 8px,#2b2b2b 8px 16px)"></div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:#8c8c8c">AFTER #13 <span style="color:oklch(0.79 0.13 150)">✓</span></span><div style="aspect-ratio:4/3;background:repeating-linear-gradient(135deg,#292929 0 8px,#2e2e2e 8px 16px);box-shadow:0 0 0 2px oklch(0.80 0.10 230)"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:oklch(0.79 0.13 150)"><span style="font-family:'IBM Plex Mono',monospace">▲</span>Improved <span style="font-weight:400;color:#b8b8b8;font-size:13px">· logo +36% sharper</span></div>
+        <span style="font-size:12px;color:#8c8c8c;line-height:1.45">Newest is always on the right, with the accent ring. Regions are compared crop to crop, and the old histogram is drawn as an outline over the new one. Sharpness change is relative (“+36% sharper”). Brightness is darker or brighter, with the mean out of 255. EV only appears when exposure was manual.</span>
+      </div>
+
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:15px;font-weight:600">Teaching histogram</span>
+        <div style="display:flex;gap:8px;align-items:flex-start"><span style="width:20px;height:20px;border-radius:5px;background:oklch(0.30 0.06 35);color:oklch(0.76 0.13 35);display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;flex:none">✕</span><span style="font-size:14px;color:oklch(0.76 0.13 35);line-height:1.35">3.1% of the trim is pure white — detail is lost there.</span></div>
+        <div style="display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8c8c8c"><span>▾ pure black</span><span style="color:oklch(0.80 0.10 230)">Coach points here · pure white ▾</span></div>
+        <div style="height:48px;display:flex;align-items:flex-end;gap:1px">
+          <sc-for list="{{ hist }}" as="b" hint-placeholder-count="40"><div style="flex:1;height:{{ b.h }}%;background:{{ b.c }}"></div></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 12fr 14fr 12fr 1fr;font-size:10px;color:#8c8c8c;text-align:center"><span></span><span>Shadows</span><span>Mid-tones</span><span>Highlights</span><span></span></div>
+        <span style="font-size:12px;color:#8c8c8c;line-height:1.45">Marked regions are listed first, whole frame last. The headline and its severity are worked out from the data. A context line explains what shape to expect. The JPEG-not-RAW caveat is always visible.</span>
+      </div>
+
+      <div style="background:#1a1a1a;border:1px solid #262626;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <span style="font-size:15px;font-weight:600">Voice bar states</span>
+        <sc-for list="{{ voice }}" as="v" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:30px;height:30px;border-radius:50%;background:{{ v.bg }};color:{{ v.c }};display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600">{{ v.g }}</span>
+            <span style="font-size:15px;font-weight:600;color:{{ v.c }};width:110px">{{ v.mode }}</span>
+            <span style="font-size:12px;color:#8c8c8c">{{ v.note }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:15px;font-weight:600">Honesty band</span>
+      <div style="height:30px;display:flex;align-items:center;justify-content:center;gap:14px;background:repeating-linear-gradient(135deg,oklch(0.42 0.14 330) 0 12px,oklch(0.36 0.12 330) 12px 24px);color:#fff;font-size:13px;font-weight:600;letter-spacing:.04em;border-radius:6px">
+        <span style="font-family:'IBM Plex Mono',monospace;background:#fff;color:oklch(0.35 0.14 330);padding:1px 8px;border-radius:3px">MOCK PROVIDER</span><span>Coach responses are scripted — not real analysis.</span>
+      </div>
+      <span style="font-size:12px;color:#8c8c8c">Full width under the top bar and can't be dismissed. It's repeated as a tag on every verdict card and in the Sessions list. Stripes plus magenta are used for nothing else. Try the "honesty" tweak on the Shoot screen.</span>
+    </div>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">05 · LAYOUT AT 1440–1680</span>
+      <span style="font-size:14px;line-height:1.6;color:#b8b8b8">Shoot is a 3-column grid: <span style="font-family:'IBM Plex Mono',monospace;color:#ececec">248px | minmax(0,1fr) | 432px</span>. The side columns stay fixed, so every extra pixel above 1440 goes to the photo. At 1680 the stage is about 1000 px wide.</span>
+      <span style="font-size:14px;line-height:1.6;color:#b8b8b8">Vertical budget at 900 px: 48 top bar, then 30 honesty band when needed, then the stage (flex), then the 204 brightness inspector, 92 filmstrip and 60 voice bar. Below 820 px of height, the inspector collapses to its headline row.</span>
+      <span style="font-size:14px;line-height:1.6;color:#b8b8b8">The shot list collapses to a 56 px icon rail with <span style="font-family:'IBM Plex Mono',monospace;color:#ececec">[</span>. The coach panel never collapses, because it holds the glance text.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">06 · KEYBOARD &amp; FOCUS</span>
+      <div style="display:grid;grid-template-columns:90px 1fr;row-gap:6px;font-size:14px;color:#b8b8b8">
+        <sc-for list="{{ keys }}" as="k" hint-placeholder-count="9">
+          <span style="font-family:'IBM Plex Mono',monospace;color:#ececec">{{ k.k }}</span><span>{{ k.d }}</span>
+        </sc-for>
+      </div>
+      <span style="font-size:13px;line-height:1.55;color:#8c8c8c">Focus ring: 2 px accent outline, 2 px offset, via <span style="font-family:'IBM Plex Mono',monospace">:focus-visible</span>. When a verdict arrives, announce it with <span style="font-family:'IBM Plex Mono',monospace">aria-live="polite"</span> and don't move focus. The Accept dialog traps focus, and Esc returns to the Accept button.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">07 · CONTRAST (ON PANEL #1A1A1A)</span>
+      <div style="display:grid;grid-template-columns:1fr auto;row-gap:6px;font-size:14px">
+        <sc-for list="{{ contrast }}" as="c" hint-placeholder-count="7">
+          <span style="color:{{ c.v }}">{{ c.name }}</span><span style="font-family:'IBM Plex Mono',monospace;color:#b8b8b8">{{ c.r }}</span>
+        </sc-for>
+      </div>
+      <span style="font-size:13px;line-height:1.55;color:#8c8c8c">Ratios are approximate. text-3 (#8c8c8c) is the floor for any readable text. Status colours pass AA as text, and each always comes with a glyph and a word. For outdoor shoots, see Daylight mode (section 01b).</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const ok = 'oklch(0.79 0.13 150)', ret = 'oklch(0.76 0.13 35)', unc = 'oklch(0.84 0.12 90)', acc = 'oklch(0.80 0.10 230)', mock = 'oklch(0.72 0.17 330)';
+    const N = (name, v, use) => ({ name, v, use });
+    const hist = Array.from({ length: 40 }, (_, i) => {
+      let h = 3 + 40 * Math.exp(-Math.pow((i - 24) / 6, 2)) + 70 * Math.exp(-Math.pow((i - 34) / 3, 2));
+      let c = '#6a6a6a';
+      if (i === 0) h = 0;
+      if (i === 39) { h = 93; c = '#ff2626'; }
+      return { h: Math.min(100, Math.round(h)), c };
+    });
+    return {
+      neutrals: [N('--bg-stage', '#101010', 'behind photo'), N('--bg-app', '#161616', 'app ground'), N('--bg-panel', '#1a1a1a', 'rails, panels'), N('--bg-raised', '#262626', 'selected rows'), N('--line', '#262626', 'dividers'), N('--line-strong', '#3a3a3a', 'control borders'), N('--text-3', '#8c8c8c', 'labels, meta'), N('--text-2', '#b8b8b8', 'secondary'), N('--text-1', '#ececec', 'primary')],
+      semantics: [
+        { name: '--retake', v: ret, bg: 'oklch(0.30 0.06 35)', g: '↺', label: 'Needs retake', use: 'Retake verdicts, failed criteria, errors, clipped pixels.' },
+        { name: '--usable', v: ok, bg: 'oklch(0.30 0.06 150)', g: '✓', label: 'Usable', use: 'Usable candidates, passed criteria, improved outcomes.' },
+        { name: '--uncertain', v: unc, bg: 'oklch(0.30 0.05 90)', g: '?', label: 'Uncertain', use: 'Uncertain verdicts, mixed outcomes, paused, warnings.' },
+        { name: '--accent', v: acc, bg: 'oklch(0.30 0.05 230)', g: '●', label: 'Interactive', use: 'Regions, focus ring, links, the coach speaking or thinking.' },
+        { name: '--honesty', v: mock, bg: 'oklch(0.30 0.07 330)', g: '▦', label: 'Mock / simulated', use: 'Only for mock and simulated sessions. Always striped.' }
+      ],
+      type: [
+        { name: 'glance-xl', spec: '40 / 600', size: 40, w: 600, ff: 'IBM Plex Sans', ls: '-.01em', sample: 'Received #12' },
+        { name: 'glance-l', spec: '34 / 600', size: 34, w: 600, ff: 'IBM Plex Sans', ls: '-.01em', sample: 'Needs retake' },
+        { name: 'glance-m', spec: '30 / 500', size: 30, w: 500, ff: 'IBM Plex Sans', ls: '-.01em', sample: 'Move the light a hand-width camera-left.' },
+        { name: 'title', spec: '22 / 600', size: 22, w: 600, ff: 'IBM Plex Sans', ls: '0', sample: 'Fabric close-up' },
+        { name: 'body-l', spec: '17 / 400', size: 17, w: 400, ff: 'IBM Plex Sans', ls: '0', sample: 'Photos still arrive and local measurements keep running.' },
+        { name: 'body', spec: '15 / 400', size: 15, w: 400, ff: 'IBM Plex Sans', ls: '0', sample: 'The reflective trim is glaring — 3.1% of it is pure white.' },
+        { name: 'caption', spec: '13 / 400', size: 13, w: 400, ff: 'IBM Plex Sans', ls: '0', sample: 'Photo #12 · verdict in 4.2 s · spoken' },
+        { name: 'label', spec: 'Mono 11 / caps', size: 11, w: 400, ff: 'IBM Plex Mono', ls: '.06em', sample: 'DO THIS · WHY · EXPECT · TRADEOFF' },
+        { name: 'data', spec: 'Mono 14', size: 14, w: 400, ff: 'IBM Plex Mono', ls: '0', sample: '1/125 s · f/5.6 · ISO 200' }
+      ],
+      space: [4, 6, 8, 12, 16, 20, 24, 32],
+      chips: [{ g: '↺', label: 'Needs retake', c: ret }, { g: '✓', label: 'Usable', c: ok }, { g: '?', label: 'Uncertain', c: unc }, { g: '▲', label: 'Improved', c: ok }, { g: '▼', label: 'Worse', c: ret }, { g: '◆', label: 'Mixed', c: unc }, { g: '★', label: 'Keeper', c: '#ececec' }, { g: '○', label: 'Missing', c: '#8c8c8c' }, { g: '⚠', label: 'Bad file', c: ret }],
+      voice: [
+        { mode: 'Ready', g: '●', c: '#b8b8b8', bg: '#262626', note: 'Hold the remote to talk' },
+        { mode: 'Listening', g: '●', c: ok, bg: 'oklch(0.30 0.06 150)', note: 'While the button is held' },
+        { mode: 'Transcribing', g: '≋', c: '#ececec', bg: '#2a2a2a', note: 'Cloud call · provider name shown small' },
+        { mode: 'Thinking', g: '…', c: acc, bg: 'oklch(0.30 0.05 230)', note: 'Waiting on the coach' },
+        { mode: 'Speaking', g: '◀', c: acc, bg: 'oklch(0.30 0.05 230)', note: 'S stops, R repeats' }, { mode: 'Offline', g: '✕', c: ret, bg: 'oklch(0.30 0.06 35)', note: 'Voice needs the network' }
+      ],
+      keys: [{ k: 'Space', d: 'Push-to-talk (mirrors the remote)' }, { k: 'R / S', d: 'Repeat or stop the spoken verdict' }, { k: 'D · C', d: 'Draw a region · clear regions' }, { k: '← →', d: 'Step through the filmstrip' }, { k: '⌘ ↵', d: 'Accept as keeper (opens the confirm)' }, { k: 'P', d: 'Pause or resume coaching' }, { k: 'H', d: 'Toggle the zebra (clipped pixels)' }, { k: '⌘R', d: 'Retry a failed analysis' }, { k: '⌘1–6', d: 'Switch screens' }],
+      contrast: [{ name: 'text-1 #ececec', v: '#ececec', r: '≈ 14.8 : 1' }, { name: 'text-2 #b8b8b8', v: '#b8b8b8', r: '≈ 9.1 : 1' }, { name: 'text-3 #8c8c8c', v: '#8c8c8c', r: '≈ 5.3 : 1' }, { name: 'retake', v: ret, r: '≈ 7.6 : 1' }, { name: 'usable', v: ok, r: '≈ 9.0 : 1' }, { name: 'uncertain', v: unc, r: '≈ 11 : 1' }, { name: 'accent', v: acc, r: '≈ 9.2 : 1' }],
+      hist,
+      daylight: [N('--stage', '#d4d4d4', ''), N('--app', '#f2f2f2', ''), N('--panel', '#ffffff', ''), N('--line', '#cfcfcf', ''), N('--t3', '#3d3d3d', ''), N('--t1', '#0a0a0a', ''), N('--acc', 'oklch(0.47 0.16 245)', ''), N('--ret', 'oklch(0.50 0.18 30)', ''), N('--ok', 'oklch(0.46 0.14 150)', ''), N('--unc', 'oklch(0.50 0.12 70)', '')]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 // Fields the UI does not use are still listed where cheap, but everything nullable is typed as such.
 
 export type ProviderName = "mock" | "openai" | "gemini" | "claude";
+export type UiTheme = "studio" | "daylight";
 export type SessionStatus = "active" | "paused" | "completed";
 
 export interface Session {
@@ -19,6 +20,8 @@ export interface Session {
   paused_reason: string | null;
   budget_usd: number | null;
   max_model_calls: number | null;
+  /** Display theme for this session: Studio (dark, indoor) or Daylight (sunlit screen). */
+  ui_theme: UiTheme;
   status: SessionStatus;
   watch_since: string | null;
   created_at: string;
@@ -325,7 +328,73 @@ export interface Capture {
   latest_assessment: Assessment | null;
   histogram_insights?: HistogramInsights;
   histogram_changes?: { baseline_seq: number; changes: string[] };
+  /** Measured before/after numbers against the baseline (present when the capture has a baseline with evidence). */
+  comparison_metrics?: ComparisonMetrics | null;
+  /** When attribution is ambiguous: the shot this capture more likely belongs to. */
+  attribution_hint?: AttributionHint | null;
+  /** True while an automatic retry is waiting for the provider to come back online. */
+  retry_when_online?: boolean;
 }
+
+/** Framing similarity between two captures, 0..1 (1 = same framing). Below `FRAMING_COMPARABLE` a side-by-side is unfair. */
+export interface FramingMatch {
+  score: number;
+  comparable: boolean;
+}
+
+export interface ScopeDelta {
+  /** Region id, or "global" for the whole frame. */
+  scope: string;
+  label: string;
+  /** Relative sharpness change in percent (laplacian variance ratio), e.g. +36. Null for global or if unmeasurable. */
+  sharpness_change_pct: number | null;
+  mean_before: number;
+  mean_after: number;
+  highlight_clip_before: number;
+  highlight_clip_after: number;
+  shadow_clip_before: number;
+  shadow_clip_after: number;
+  /** Region histograms (same binning as measurements) for overlaying before/after. */
+  histogram_before: number[] | null;
+  histogram_after: number[] | null;
+}
+
+export interface ComparisonMetrics {
+  baseline_capture_id: string;
+  baseline_seq: number;
+  framing: FramingMatch | null;
+  /** Exposure change in EV from EXIF; only when both captures are manual exposure with known values. Positive = brighter. */
+  ev_delta: number | null;
+  ev_note: string | null;
+  regions: ScopeDelta[];
+  global: ScopeDelta | null;
+}
+
+export interface AttributionHint {
+  shot_id: string;
+  shot_title: string;
+  /** Capture in that shot whose framing matched best. */
+  matched_capture_seq: number | null;
+  framing_score: number | null;
+  seconds_after_switch: number | null;
+}
+
+/** GET /captures/{cid}/baseline-candidates — earlier captures of the same shot ranked for "Compare with…". */
+export interface BaselineCandidate {
+  capture_id: string;
+  seq: number;
+  verdict: Verdict | null;
+  framing: FramingMatch | null;
+  is_current_baseline: boolean;
+}
+
+export interface SetupRevisionSummary extends SetupRevision {
+  capture_count: number;
+  first_seq: number | null;
+  last_seq: number | null;
+}
+
+export type ZoneName = "clip_low" | "shadows" | "midtones" | "highlights" | "clip_high";
 
 export interface Experiment {
   id: string;
@@ -404,6 +473,8 @@ export interface Coverage {
 }
 
 export interface PendingFile {
+  /** Stable key for the read-again / skip endpoints. */
+  key: string;
   name: string;
   status: "discovered" | "stabilizing" | "pending_retry" | "failed" | string;
   note: string | null;
@@ -465,6 +536,8 @@ export interface SessionState {
   providers_configured: Record<ProviderName, boolean>;
   pending_change?: string | null;
   usage?: SessionUsage;
+  /** When the watch folder last produced a file (ISO time), for "last file 12 s ago". */
+  last_file_at?: string | null;
 }
 
 /** Paid-call usage and caps for the session (mock calls never count). */
@@ -555,6 +628,7 @@ export interface SessionCreate {
   assess_provider?: ProviderName | null;
   teaching_mode?: boolean;
   simulated?: boolean;
+  ui_theme?: UiTheme;
   setup?: Partial<SetupFields> | null;
 }
 
@@ -572,6 +646,7 @@ export type SessionPatch = Partial<
     | "coaching_paused"
     | "budget_usd"
     | "max_model_calls"
+    | "ui_theme"
   >
 >;
 
@@ -601,4 +676,5 @@ export interface VoiceBody {
 
 export type MockFailMode = "none" | "invalid_once" | "invalid_always" | "unavailable" | "slow";
 
-export type ImageKind = "overview" | "thumb" | "original" | "clip_overlay" | `crop_${string}`;
+/** zone_<ZoneName> is an alpha mask PNG (opaque where the pixel falls in that tonal zone), colourised in CSS via mask-image. */
+export type ImageKind = "overview" | "thumb" | "original" | "clip_overlay" | `zone_${ZoneName}` | `crop_${string}`;

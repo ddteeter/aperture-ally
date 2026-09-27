@@ -1,0 +1,15 @@
+/* Shared primitives (status chips, histogram, buttons). Area-specific styles live next to their components. */
+.hist { display: flex; flex-direction: column; gap: 4px; }
+.hist-plot { position: relative; display: grid; grid-template-columns: 6px 1fr 6px; align-items: end; gap: 2px;
+  background: var(--inset); border: 1px solid var(--line); border-radius: var(--r1); padding: 4px 4px 0; overflow: hidden; }
+.hist-zones { position: absolute; inset: 0; display: grid; grid-template-columns: 8px 16fr 32fr 16fr 8px; }
+.hist-zone:nth-child(2), .hist-zone:nth-child(4) { background: var(--z1); }
+.hist-zone:nth-child(3) { background: var(--z2); }
+.hist-zone.is-active { background: color-mix(in oklch, var(--acc) 14%, transparent); }
+.hist-bars { position: relative; height: 100%; display: flex; align-items: flex-end; gap: 1px; pointer-events: none; }
+.hist-bars > span { flex: 1; border-radius: 1px 1px 0 0; min-width: 1px; }
+.hist-wall { position: relative; width: 6px; border-radius: 1px 1px 0 0; pointer-events: none; }
+.hist-prev { position: absolute; left: 12px; right: 12px; top: 4px; bottom: 0; width: calc(100% - 24px); height: calc(100% - 4px); pointer-events: none; }
+.hist-labels { display: grid; grid-template-columns: 8px 16fr 32fr 16fr 8px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .04em; color: var(--t3); text-transform: uppercase; }
+.hist-labels > span { text-align: center; white-space: nowrap; overflow: hidden; }

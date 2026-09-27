@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0c0c0c;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid oklch(0.80 0.10 230);outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 16px 20px;gap:12px">
+  <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#8c8c8c;letter-spacing:.06em;text-transform:uppercase">Workflows · use the app nav</span>
+  <div style="width:{{ boxW }}px;height:{{ boxH }}px;position:relative;flex:none">
+  <div style="width:1440px;height:900px;transform:scale({{ scale }});transform-origin:0 0;position:absolute;left:0;top:0;background:#161616;display:flex;flex-direction:column;overflow:hidden;border-radius:10px;box-shadow:0 0 0 1px #2a2a2a,0 30px 80px rgba(0,0,0,.5)">
+
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:20px;padding:0 16px;background:#121212;border-bottom:1px solid #262626">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:18px;height:18px;border-radius:50%;border:2px solid #ececec;display:grid;place-items:center"><div style="width:6px;height:6px;border-radius:50%;background:#ececec"></div></div>
+        <span style="font-size:14px;font-weight:600">Aperture Ally</span>
+      </div>
+      <div style="width:1px;height:20px;background:#2e2e2e"></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:14px;font-weight:500">Trail Jacket Review</span><span style="font-size:12px;color:#8c8c8c">Session 3 · Sep 27</span></div>
+      <nav style="display:flex;gap:2px;margin-left:12px">
+        <a href="Aperture%20Ally%20Shoot.dc.html" style="padding:6px 10px;border-radius:6px;color:#b8b8b8;font-size:13px">Shoot</a>
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+          <button onClick="{{ n.go }}" style="padding:6px 10px;border-radius:6px;border:0;background:{{ n.bg }};color:{{ n.fg }};font-size:13px;font-weight:{{ n.w }};cursor:pointer">{{ n.label }}</button>
+        </sc-for>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <span style="font-size:12px;color:#b8b8b8;padding:4px 8px;border:1px solid #2e2e2e;border-radius:6px">● Claude · online</span>
+        <span style="font-size:12px;padding:4px 10px;border-radius:6px;background:#2a2a2a;font-weight:600">● Coaching on <span style="font-family:'IBM Plex Mono',monospace;font-weight:400;color:#b8b8b8;margin-left:6px">12 / 40 · ≈ $0.34</span></span>
+      </div>
+    </div>
+
+    <!-- COVERAGE -->
+    <sc-if value="{{ isCoverage }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 360px">
+        <div style="padding:28px 32px;overflow:auto;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;align-items:flex-end;gap:24px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">COVERAGE · AM I DONE?</span>
+              <span style="font-size:40px;font-weight:600;letter-spacing:-.01em">Not yet — 3 shots still missing</span>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:18px;font-size:14px">
+              <span style="display:flex;align-items:center;gap:6px"><span style="font-family:'IBM Plex Mono',monospace">★</span>{{ covK }} keepers</span>
+              <span style="display:flex;align-items:center;gap:6px;color:oklch(0.79 0.13 150)"><span style="font-family:'IBM Plex Mono',monospace">✓</span>{{ covC }} candidates</span>
+              <span style="display:flex;align-items:center;gap:6px;color:oklch(0.76 0.13 35)"><span style="font-family:'IBM Plex Mono',monospace">↺</span>1 needs retake</span>
+              <span style="display:flex;align-items:center;gap:6px;color:#8c8c8c"><span style="font-family:'IBM Plex Mono',monospace">○</span>3 missing</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px">
+            <sc-for list="{{ coverage }}" as="c" hint-placeholder-count="7">
+              <div style="background:#1c1c1c;border:1px solid #2a2a2a;border-radius:10px;overflow:hidden;display:flex;flex-direction:column">
+                <div style="aspect-ratio:4/3;position:relative;background:{{ c.thumbBg }};display:grid;place-items:center">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">{{ c.thumbLabel }}</span>
+                  <span style="position:absolute;left:8px;top:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 8px;border-radius:5px;background:#0f0f0f;color:{{ c.st.c }}"><span style="font-family:'IBM Plex Mono',monospace">{{ c.st.g }}</span>{{ c.st.label }}</span>
+                </div>
+                <div style="padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;gap:8px;align-items:baseline"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">{{ c.n }}</span><span style="font-size:15px;font-weight:600">{{ c.name }}</span></div>
+                  <span style="font-size:12px;color:#b8b8b8">{{ c.meta }}</span>
+                  <div style="display:flex;gap:12px;align-items:center;margin-top:4px"><a href="Aperture%20Ally%20Shoot.dc.html" style="font-size:13px">{{ c.cta }}</a><sc-if value="{{ c.canRevoke }}" hint-placeholder-val="{{ false }}"><button onClick="{{ c.ask }}" style="margin-left:auto;border:0;background:transparent;color:#b8b8b8;font-size:13px;cursor:pointer;padding:0">Revoke keeper</button></sc-if></div>
+                  <sc-if value="{{ c.confirming }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:6px;padding:10px 12px;border-radius:8px;border:1px solid oklch(0.76 0.13 35);display:flex;flex-direction:column;gap:8px">
+                      <span style="font-size:13px;line-height:1.4">Revoke #{{ c.photo }} as keeper? The shot goes back to candidate. The photo stays.</span>
+                      <div style="display:flex;gap:6px"><button onClick="{{ c.revoke }}" style="height:32px;padding:0 12px;border-radius:7px;border:0;background:#e8e8e8;color:#141414;font-size:13px;font-weight:600;cursor:pointer">Revoke</button><button onClick="{{ c.cancel }}" style="height:32px;padding:0 12px;border-radius:7px;border:1px solid #3a3a3a;background:transparent;color:#ececec;font-size:13px;cursor:pointer">Cancel</button></div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <aside style="background:#1a1a1a;border-left:1px solid #262626;padding:28px 24px;display:flex;flex-direction:column;gap:18px">
+          <span style="font-size:20px;font-weight:600">Export</span>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ exports }}" as="e" hint-placeholder-count="3">
+              <button onClick="{{ e.toggle }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:9px;border:1px solid {{ e.bd }};background:transparent;color:#ececec;cursor:pointer;text-align:left">
+                <span style="width:18px;height:18px;border-radius:4px;border:1.5px solid {{ e.bd }};background:{{ e.fill }};color:#141414;font-size:12px;font-weight:700;display:grid;place-items:center">{{ e.check }}</span>
+                <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:500">{{ e.label }}</span><span style="font-size:12px;color:#8c8c8c">{{ e.desc }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#b8b8b8">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">INCLUDES</span>
+            <span>Keepers only · with verdicts, ratings and your lessons</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:12px">~/Pictures/Tether/trail-jacket-s3/export</span>
+          </div>
+          <div style="border:1px solid oklch(0.84 0.12 90 / .5);border-radius:9px;padding:12px 14px;display:flex;gap:10px;font-size:13px;line-height:1.45"><span style="font-family:'IBM Plex Mono',monospace;color:oklch(0.84 0.12 90);font-weight:600">!</span><span>3 shots have no keeper. They'll be listed as missing in the export.</span></div>
+          <button style="margin-top:auto;height:48px;border-radius:9px;border:0;background:#e8e8e8;color:#141414;font-size:15px;font-weight:600;cursor:pointer">Export 3 files</button>
+        </aside>
+      </div>
+    </sc-if>
+
+    <!-- SESSIONS -->
+    <sc-if value="{{ isSessions }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 520px">
+        <div style="padding:28px 32px;overflow:auto;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:28px;font-weight:600">Sessions</span><span style="font-size:13px;color:#8c8c8c">6 shoots · stored on this Mac</span></div>
+          <div style="display:grid;grid-template-columns:72px minmax(0,1fr) 110px 90px 80px 140px;align-items:center;font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;color:#8c8c8c;padding:0 12px 6px;border-bottom:1px solid #262626;column-gap:14px">
+            <span></span><span>SHOOT</span><span>DATE</span><span>PHOTOS</span><span>KEEPERS</span><span>PROVIDER</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-top:-12px">
+            <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:72px minmax(0,1fr) 110px 90px 80px 140px;align-items:center;column-gap:14px;padding:10px 12px;border-radius:8px;background:{{ s.bg }};cursor:pointer">
+                <div style="width:72px;aspect-ratio:4/3;background:repeating-linear-gradient(135deg,#262626 0 6px,#2b2b2b 6px 12px)"></div>
+                <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:15px;font-weight:500">{{ s.name }}</span><span style="font-size:12px;color:#8c8c8c">{{ s.product }} · {{ s.template }}</span></div>
+                <span style="font-size:13px;color:#b8b8b8">{{ s.date }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:13px">{{ s.photos }}</span>
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:13px">{{ s.keepers }}</span>
+                <span style="justify-self:start;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;background:{{ s.pbg }};color:{{ s.pfg }};font-family:'IBM Plex Mono',monospace">{{ s.provider }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <aside style="background:#1a1a1a;border-left:1px solid #262626;padding:28px 28px;overflow:auto;display:flex;flex-direction:column;gap:18px">
+          <span style="font-size:22px;font-weight:600">New shoot</span>
+          <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#b8b8b8">Name</span><input value="Trail Jacket Review — Session 4" style="height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:15px;padding:0 12px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#b8b8b8">Product</span><input value="Ridgeline 2.5L running shell" style="height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:15px;padding:0 12px"></label>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:13px;color:#b8b8b8">Template</span>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+              <sc-for list="{{ templates }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.pick }}" style="padding:10px 12px;border-radius:8px;border:1px solid {{ t.bd }};background:{{ t.bg }};color:#ececec;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:500">{{ t.label }}</span><span style="font-size:11px;color:#8c8c8c">{{ t.desc }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:13px;color:#b8b8b8">AI provider</span>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+              <sc-for list="{{ providers }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.pick }}" style="padding:10px 12px;border-radius:8px;border:1px solid {{ t.bd }};background:{{ t.bg }};color:#ececec;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:500">{{ t.label }}</span><span style="font-size:11px;color:#8c8c8c">{{ t.desc }}</span></button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ mockPicked }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:8px;background:repeating-linear-gradient(135deg,oklch(0.42 0.14 330) 0 10px,oklch(0.36 0.12 330) 10px 20px);font-size:13px;font-weight:600;color:#fff"><span style="font-family:'IBM Plex Mono',monospace;background:#fff;color:oklch(0.35 0.14 330);padding:1px 6px;border-radius:3px">MOCK PROVIDER</span>Verdicts will be scripted. Labelled on every screen.</div>
+            </sc-if>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#b8b8b8">Watch folder</span>
+            <div style="display:flex;gap:6px"><input value="~/Pictures/Tether/trail-jacket-s4" style="flex:1;height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:0 12px"><button style="height:42px;padding:0 14px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#ececec;font-size:13px;cursor:pointer">Choose…</button></div>
+            <span style="font-size:12px;color:oklch(0.79 0.13 150)">✓ Folder exists and is empty</span>
+          </label>
+          <button onClick="{{ toggleTeach }}" style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:9px;border:1px solid #333;background:transparent;color:#ececec;cursor:pointer;text-align:left">
+            <span style="width:40px;height:24px;border-radius:12px;background:{{ teach.track }};position:relative;flex:none"><span style="position:absolute;top:3px;left:{{ teach.x }}px;width:18px;height:18px;border-radius:50%;background:#ececec"></span></span>
+            <span style="display:flex;flex-direction:column"><span style="font-size:14px;font-weight:500">Teaching mode · {{ teach.label }}</span><span style="font-size:12px;color:#8c8c8c">{{ teach.desc }}</span></span>
+          </button>
+          <button style="height:48px;border-radius:9px;border:0;background:#e8e8e8;color:#141414;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px">Create and start shooting</button>
+        </aside>
+      </div>
+    </sc-if>
+
+    <!-- SHOT LIST EDITOR -->
+    <sc-if value="{{ isShots }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:420px minmax(0,1fr)">
+        <div style="border-right:1px solid #262626;background:#1a1a1a;padding:24px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 6px"><span style="font-size:22px;font-weight:600">Shot list</span><span style="font-size:12px;color:#8c8c8c">Drag or ⌥↑ ⌥↓ to reorder</span></div>
+          <sc-for list="{{ shotRows }}" as="s" hint-placeholder-count="7">
+            <div onClick="{{ s.pick }}" style="display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:8px;background:{{ s.bg }};cursor:pointer">
+              <span style="font-family:'IBM Plex Mono',monospace;color:#6a6a6a;font-size:14px;cursor:grab">⋮⋮</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c;width:14px">{{ s.n }}</span>
+              <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:500">{{ s.name }}</span><span style="font-size:12px;color:#8c8c8c">{{ s.crit }} criteria</span></span>
+              <button onClick="{{ s.up }}" aria-label="Move up" style="width:28px;height:28px;border-radius:6px;border:1px solid #333;background:transparent;color:#b8b8b8;cursor:pointer">↑</button>
+              <button onClick="{{ s.down }}" aria-label="Move down" style="width:28px;height:28px;border-radius:6px;border:1px solid #333;background:transparent;color:#b8b8b8;cursor:pointer">↓</button>
+            </div>
+          </sc-for>
+          <button style="height:40px;border-radius:8px;border:1px dashed #3a3a3a;background:transparent;color:#b8b8b8;font-size:14px;cursor:pointer;margin-top:4px">+ Add shot</button>
+        </div>
+        <div style="padding:28px 40px;overflow:auto;display:flex;flex-direction:column;gap:20px;max-width:820px">
+          <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#b8b8b8">Shot name</span><input value="{{ sel.name }}" style="height:46px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:20px;font-weight:500;padding:0 14px"></label>
+          <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:#b8b8b8">Purpose — why this shot exists for the reader</span><textarea style="height:72px;resize:none;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:15px;line-height:1.45;padding:10px 14px">Show the ripstop weave up close so readers can judge the fabric.</textarea></label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;color:#b8b8b8">Must show</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:13px;padding:5px 8px 5px 12px;border:1px solid #3a3a3a;border-radius:16px;display:flex;gap:8px;align-items:center">Ripstop texture <span style="color:#8c8c8c">×</span></span>
+              <span style="font-size:13px;padding:5px 8px 5px 12px;border:1px solid #3a3a3a;border-radius:16px;display:flex;gap:8px;align-items:center">Chest logo <span style="color:#8c8c8c">×</span></span>
+              <span style="font-size:13px;padding:5px 8px 5px 12px;border:1px solid #3a3a3a;border-radius:16px;display:flex;gap:8px;align-items:center">Reflective trim <span style="color:#8c8c8c">×</span></span>
+              <span style="font-size:13px;padding:5px 12px;border:1px dashed #3a3a3a;border-radius:16px;color:#8c8c8c">+ Add</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:#b8b8b8">Acceptance criteria</span><span style="font-size:12px;color:#8c8c8c">Free text · 2–3 work best · the coach checks each one</span></div>
+            <div style="display:flex;gap:10px;align-items:center"><span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;width:14px">1</span><input value="Weave texture sharp across the main panel" style="flex:1;height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:14px;padding:0 12px"></div>
+            <div style="display:flex;gap:10px;align-items:center"><span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;width:14px">2</span><input value="Logo and zipper pull legible" style="flex:1;height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:14px;padding:0 12px"></div>
+            <div style="display:flex;gap:10px;align-items:center"><span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;width:14px">3</span><input value="No clipped highlights on reflective trim" style="flex:1;height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:14px;padding:0 12px"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px"><button style="height:42px;padding:0 18px;border-radius:8px;border:0;background:#e8e8e8;color:#141414;font-size:14px;font-weight:600;cursor:pointer">Save shot</button><button style="height:42px;padding:0 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#ececec;font-size:14px;cursor:pointer">Duplicate</button><button style="height:42px;padding:0 16px;border-radius:8px;border:0;background:transparent;color:oklch(0.76 0.13 35);font-size:14px;cursor:pointer;margin-left:auto">Delete shot</button></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- SETUP -->
+    <sc-if value="{{ isSetup }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 320px">
+        <div style="padding:28px 40px;overflow:auto;display:flex;flex-direction:column;gap:22px">
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:28px;font-weight:600">Setup</span><span style="font-size:14px;color:#b8b8b8">The coach only suggests changes your setup allows. Edit any time — it versions itself.</span></div>
+          <div style="display:grid;grid-template-columns:220px minmax(0,520px);row-gap:18px;column-gap:24px;align-items:center">
+            <sc-for list="{{ setup }}" as="q" hint-placeholder-count="6">
+              <span style="font-size:15px;font-weight:500">{{ q.label }}</span>
+              <div style="display:flex;background:#141414;border:1px solid #2e2e2e;border-radius:9px;padding:3px;gap:3px">
+                <sc-for list="{{ q.opts }}" as="o" hint-placeholder-count="3">
+                  <button onClick="{{ o.pick }}" style="flex:1;height:38px;border:0;border-radius:7px;background:{{ o.bg }};color:{{ o.fg }};font-size:14px;font-weight:{{ o.w }};cursor:pointer">{{ o.label }}</button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:764px">
+            <span style="font-size:15px;font-weight:500">Gear available</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ gear }}" as="g" hint-placeholder-count="8">
+                <button onClick="{{ g.toggle }}" style="height:36px;padding:0 14px;border-radius:18px;border:1px solid {{ g.bd }};background:{{ g.bg }};color:{{ g.fg }};font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px"><span style="font-family:'IBM Plex Mono',monospace">{{ g.mark }}</span>{{ g.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:220px minmax(0,520px);row-gap:18px;column-gap:24px;align-items:start">
+            <span style="font-size:15px;font-weight:500;padding-top:11px">Intended crop</span>
+            <div style="display:flex;flex-direction:column;gap:6px"><input value="4:5 for the blog, room above the logo" style="height:42px;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:14px;padding:0 12px"><span style="font-size:12px;color:#8c8c8c">Free text. The coach judges framing against it.</span></div>
+            <span style="font-size:15px;font-weight:500;padding-top:11px">Notes</span>
+            <textarea style="height:76px;resize:none;background:#141414;border:1px solid #333;border-radius:8px;color:#ececec;font-size:14px;line-height:1.45;padding:10px 12px">LED panel on a stand, camera-left. Jacket on a foam-board form, zipped to the chin.</textarea>
+          </div>
+          <div style="display:flex;gap:8px"><button style="height:42px;padding:0 18px;border-radius:8px;border:0;background:#e8e8e8;color:#141414;font-size:14px;font-weight:600;cursor:pointer">Save as v4</button><span style="font-size:13px;color:#8c8c8c;align-self:center">Photos from now on are coached with v4</span></div>
+        </div>
+        <aside style="background:#1a1a1a;border-left:1px solid #262626;padding:28px 22px;display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">VERSIONS</span>
+          <div style="padding:12px 14px;border-radius:9px;background:#262626;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:600">v3 · current</span><span style="font-size:12px;color:#8c8c8c">14:10</span></div><span style="font-size:12px;color:#b8b8b8">Light changed to movable · photos #8–#13</span></div>
+          <div style="padding:12px 14px;border-radius:9px;border:1px solid #2a2a2a;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px">v2</span><span style="font-size:12px;color:#8c8c8c">13:42</span></div><span style="font-size:12px;color:#8c8c8c">Added reflector · photos #4–#7</span></div>
+          <div style="padding:12px 14px;border-radius:9px;border:1px solid #2a2a2a;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between"><span style="font-size:14px">v1</span><span style="font-size:12px;color:#8c8c8c">13:20</span></div><span style="font-size:12px;color:#8c8c8c">Session start · photos #1–#3</span></div>
+        </aside>
+      </div>
+    </sc-if>
+
+    <!-- DIAGNOSTICS -->
+    <sc-if value="{{ isDiag }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;min-height:0;padding:28px 40px;overflow:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-content:start">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-size:22px;font-weight:600">Health</span>
+          <sc-for list="{{ health }}" as="h" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #262626">
+              <span style="width:24px;height:24px;border-radius:6px;background:{{ h.bg }};color:{{ h.c }};display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600">{{ h.g }}</span>
+              <span style="flex:1;font-size:14px">{{ h.label }}</span>
+              <span style="font-size:12px;color:#8c8c8c;font-family:'IBM Plex Mono',monospace">{{ h.detail }}</span>
+            </div>
+          </sc-for>
+          <span style="font-size:22px;font-weight:600;margin-top:12px">Timings <span style="font-size:13px;font-weight:400;color:#8c8c8c">last 20 photos</span></span>
+          <div style="display:grid;grid-template-columns:1fr 80px 80px;font-size:14px;row-gap:8px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">STEP</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">MEDIAN</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8c8c8c">SLOWEST</span>
+            <span>Capture → received</span><span style="font-family:'IBM Plex Mono',monospace">0.8 s</span><span style="font-family:'IBM Plex Mono',monospace">1.4 s</span>
+            <span>Local measurements</span><span style="font-family:'IBM Plex Mono',monospace">0.3 s</span><span style="font-family:'IBM Plex Mono',monospace">0.5 s</span>
+            <span>Coach verdict</span><span style="font-family:'IBM Plex Mono',monospace">4.1 s</span><span style="font-family:'IBM Plex Mono',monospace">9.8 s</span>
+            <span>Speech starts</span><span style="font-family:'IBM Plex Mono',monospace">0.6 s</span><span style="font-family:'IBM Plex Mono',monospace">1.1 s</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <span style="font-size:22px;font-weight:600">Remote button test</span>
+          <button onClick="{{ pressKey }}" style="height:200px;border-radius:14px;border:2px {{ keyTest.border }};background:{{ keyTest.bg }};color:#ececec;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer">
+            <span style="font-size:40px;font-weight:600;color:{{ keyTest.c }}">{{ keyTest.title }}</span>
+            <span style="font-size:14px;color:#b8b8b8">{{ keyTest.sub }}</span>
+          </button>
+          <span style="font-size:22px;font-weight:600;margin-top:8px">Replay a scenario</span>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ replays }}" as="r" hint-placeholder-count="3">
+              <button onClick="{{ r.pick }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:9px;border:1px solid {{ r.bd }};background:{{ r.bg }};color:#ececec;cursor:pointer;text-align:left">
+                <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ r.bd }};display:grid;place-items:center;flex:none"><span style="width:8px;height:8px;border-radius:50%;background:{{ r.dot }}"></span></span>
+                <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font-family:'IBM Plex Mono',monospace;font-size:14px">{{ r.id }}</span><span style="font-size:12px;color:#8c8c8c">{{ r.desc }}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button onClick="{{ startReplay }}" style="height:40px;padding:0 16px;border-radius:8px;border:0;background:#e8e8e8;color:#141414;font-size:14px;font-weight:600;cursor:pointer">{{ replayBtn }}</button>
+            <span style="display:flex;align-items:center;gap:8px;font-size:12px;color:#b8b8b8"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:2px 6px;border-radius:3px;background:oklch(0.72 0.17 330);color:#1a0716">SIMULATED</span>Any replay marks the session SIMULATED until it ends.</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;coverage&quot;,&quot;sessions&quot;,&quot;shots&quot;,&quot;setup&quot;,&quot;diagnostics&quot;],&quot;default&quot;:&quot;coverage&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  static TABS = [['coverage', 'Coverage'], ['shots', 'Shot list'], ['setup', 'Setup'], ['sessions', 'Sessions'], ['diagnostics', 'Diagnostics']];
+  state = {
+    tab: null, scale: 1, exp: { json: true, md: true, sheet: true }, template: 'apparel', provider: 'claude', teach: true,
+    shotOrder: [0, 1, 2, 3, 4, 5, 6], selShot: 1,
+    revoked: {}, asking: null, replay: 'basic_loop', replaying: false,
+    setup: { light: 'Continuous', move: 'Movable', subject: 'Still', support: 'Tripod', exposure: 'Manual', iso: 'Manual' },
+    gear: { 'LED panel': 1, 'Softbox': 1, 'White foam board': 1, 'Black card': 1, 'Diffuser': 0, 'Macro lens': 1, 'Clamp': 1, 'Flash': 0 },
+    key: 0
+  };
+  componentDidMount() {
+    this.fit = () => { const s = Math.min((window.innerWidth - 32) / 1440, (window.innerHeight - 64) / 900); this.setState({ scale: Math.max(0.3, Math.min(s, 1.2)) }); };
+    this.fit(); window.addEventListener('resize', this.fit);
+    this.onHash = () => { const h = location.hash.slice(1); if (Component.TABS.some(t => t[0] === h)) this.setState({ tab: h }); };
+    this.onHash(); window.addEventListener('hashchange', this.onHash);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.fit); window.removeEventListener('hashchange', this.onHash); }
+  renderVals() {
+    const ok = 'oklch(0.79 0.13 150)', ret = 'oklch(0.76 0.13 35)', unc = 'oklch(0.84 0.12 90)', acc = 'oklch(0.80 0.10 230)';
+    const tab = this.state.tab ?? this.props.screen ?? 'coverage';
+    const ST = { keeper: { g: '★', label: 'Keeper', c: '#ececec' }, candidate: { g: '✓', label: 'Candidate', c: ok }, retake: { g: '↺', label: 'Needs retake', c: ret }, missing: { g: '○', label: 'Missing', c: '#8c8c8c' } };
+    const SHOTS = [['Hero — full jacket', 'keeper', 3], ['Fabric close-up', 'keeper', 3], ['Zipper & pulls', 'keeper', 2], ['Reflective trim, low light', 'missing', 2], ['Pocket detail', 'retake', 3], ['Fit on model — front', 'missing', 3], ['Packed size', 'missing', 2]];
+    const meta = { keeper: ['#3 · 1/125 s · f/5.6', '#13 · 1/125 s · f/5.6', '#7 · 1/60 s · f/8'], retake: '4 attempts · last: glare on zip', missing: 'No photos yet' };
+    let ki = 0; const kPhotos = [3, 13, 7];
+    const coverage = SHOTS.map(([name, st0], i) => {
+      const isK = st0 === 'keeper', kIdx = isK ? ki++ : -1;
+      const st = isK && this.state.revoked[i] ? 'candidate' : st0;
+      return {
+      n: i + 1, name, st: ST[st], photo: isK ? kPhotos[kIdx] : '',
+      canRevoke: st === 'keeper' && this.state.asking !== i, confirming: st === 'keeper' && this.state.asking === i,
+      ask: () => this.setState({ asking: i }), cancel: () => this.setState({ asking: null }),
+      revoke: () => this.setState(s => ({ asking: null, revoked: Object.assign({}, s.revoked, { [i]: true }) })),
+      meta: isK && st === 'keeper' ? meta.keeper[kIdx] : st === 'candidate' ? 'Keeper revoked · #' + kPhotos[kIdx] + ' is a candidate' : meta[st],
+      cta: st === 'missing' ? 'Shoot this →' : st === 'retake' ? 'Retake →' : st === 'candidate' ? 'Pick a keeper →' : 'Change keeper →',
+      thumbBg: st === 'missing' ? '#141414' : 'repeating-linear-gradient(135deg,#262626 0 10px,#2b2b2b 10px 20px)',
+      thumbLabel: st === 'missing' ? 'no keeper' : st === 'keeper' ? 'keeper thumbnail' : 'latest attempt'
+    }; });
+    const covK = coverage.filter(c => c.st === ST.keeper).length, covC = coverage.filter(c => c.st === ST.candidate).length;
+    const REP = [['basic_loop', 'Receive → verdict → retake → compare, 6 photos'], ['ingest_stress', 'Bursts, truncated and RAW-only files, late RAW'], ['stale_switch', 'Photos that land just after you switch shots']];
+    const replays = REP.map(([id, desc]) => { const on = this.state.replay === id; return { id, desc, bd: on ? '#b8b8b8' : '#333', bg: on ? '#222' : 'transparent', dot: on ? '#ececec' : 'transparent', pick: () => this.setState({ replay: id }) }; });
+    const EXP = [['json', 'JSON', 'Full session data for the blog tooling'], ['md', 'Markdown', 'Shot notes, verdicts and lessons'], ['sheet', 'Contact sheet', 'One JPEG image of keepers, 3 × 3']];
+    const exports = EXP.map(([id, label, desc]) => { const on = this.state.exp[id]; return { label, desc, check: on ? '✓' : '', fill: on ? '#ececec' : 'transparent', bd: on ? '#8c8c8c' : '#333', toggle: () => this.setState(s => ({ exp: Object.assign({}, s.exp, { [id]: !s.exp[id] }) })) }; });
+
+    const SESS = [
+      ['Trail Jacket Review — Session 3', 'Ridgeline 2.5L shell', 'Apparel detail', 'Today', 15, '3 / 7', 'Claude'],
+      ['Trail Jacket Review — Session 2', 'Ridgeline 2.5L shell', 'Apparel detail', 'Sep 24', 38, '4 / 7', 'Claude'],
+      ['Tempo shorts', 'Stride 5" short', 'Apparel detail', 'Sep 18', 22, '5 / 5', 'Gemini'],
+      ['Carbon racer — hero set', 'Vela Pro 3', 'Shoe product', 'Sep 11', 41, '6 / 6', 'OpenAI'],
+      ['UI walkthrough', 'Sample jacket', 'Apparel detail', 'Sep 09', 12, '2 / 7', 'MOCK'],
+      ['Tether dry run', '—', 'Custom', 'Sep 08', 30, '0 / 3', 'SIMULATED']
+    ];
+    const sessions = SESS.map(([name, product, template, date, photos, keepers, provider], i) => {
+      const flag = provider === 'MOCK' || provider === 'SIMULATED';
+      return { name, product, template, date, photos, keepers, provider: provider === 'MOCK' ? 'MOCK PROVIDER' : provider, bg: i === 0 ? '#222' : 'transparent', pbg: flag ? 'oklch(0.72 0.17 330)' : '#262626', pfg: flag ? '#1a0716' : '#b8b8b8' };
+    });
+    const opt = (list, cur, key) => list.map(([id, label, desc]) => ({ label, desc, pick: () => this.setState({ [key]: id }), bd: cur === id ? '#b8b8b8' : '#333', bg: cur === id ? '#262626' : 'transparent' }));
+    const templates = opt([['apparel', 'Apparel detail', '7 shots'], ['shoe', 'Shoe product', '6 shots'], ['custom', 'Blank', 'Start empty']], this.state.template, 'template');
+    const providers = opt([['claude', 'Claude', 'Cloud · paid'], ['openai', 'OpenAI', 'Cloud · paid'], ['gemini', 'Gemini', 'Cloud · paid'], ['mock', 'Mock', 'Scripted · free']], this.state.provider, 'provider');
+    const teach = this.state.teach
+      ? { label: 'On', desc: 'Coach explains why and names the concept', track: acc, x: 19 }
+      : { label: 'Off', desc: 'Just the action — faster to hear', track: '#3a3a3a', x: 3 };
+
+    const order = this.state.shotOrder;
+    const move = (pos, d) => () => { const o = order.slice(), j = pos + d; if (j < 0 || j >= o.length) return; [o[pos], o[j]] = [o[j], o[pos]]; this.setState({ shotOrder: o }); };
+    const shotRows = order.map((si, pos) => ({ n: pos + 1, name: SHOTS[si][0], crit: SHOTS[si][2], bg: si === this.state.selShot ? '#262626' : 'transparent', pick: () => this.setState({ selShot: si }), up: e => { e.stopPropagation(); move(pos, -1)(); }, down: e => { e.stopPropagation(); move(pos, 1)(); } }));
+
+    const SQ = [['light', 'Light type', ['Continuous', 'Flash', 'Natural', 'Mixed', 'Unknown']], ['move', 'Light position', ['Movable', 'Fixed']], ['subject', 'Subject movement', ['Still', 'Moving', 'Unknown']], ['support', 'Camera support', ['Tripod', 'Handheld']], ['exposure', 'Exposure', ['Manual', 'Auto']], ['iso', 'ISO', ['Manual', 'Auto']]];
+    const setup = SQ.map(([k, label, opts]) => ({ label, opts: opts.map(o => { const on = this.state.setup[k] === o; return { label: o, bg: on ? '#e8e8e8' : 'transparent', fg: on ? '#141414' : '#b8b8b8', w: on ? 600 : 400, pick: () => this.setState(s => ({ setup: Object.assign({}, s.setup, { [k]: o }) })) }; }) }));
+    const gear = Object.keys(this.state.gear).map(g => { const on = !!this.state.gear[g]; return { label: g, mark: on ? '✓' : '+', bd: on ? '#8c8c8c' : '#333', bg: on ? '#262626' : 'transparent', fg: on ? '#ececec' : '#8c8c8c', toggle: () => this.setState(s => ({ gear: Object.assign({}, s.gear, { [g]: s.gear[g] ? 0 : 1 }) })) }; });
+
+    const H = (g, label, detail, kind) => ({ g, label, detail, c: kind === 'ok' ? ok : kind === 'warn' ? unc : ret, bg: kind === 'ok' ? 'oklch(0.30 0.06 150)' : kind === 'warn' ? 'oklch(0.30 0.05 90)' : 'oklch(0.30 0.06 35)' });
+    const health = [H('✓', 'Watch folder: last file 12 s ago', '15 files · readable', 'ok'), H('✓', 'Network', '380 ms to Claude', 'ok'), H('✓', 'Transcription', 'OpenAI · reachable', 'ok'), H('✓', 'Speech out', 'system voice', 'ok'), H('!', 'Microphone', 'AirPods · low input level', 'warn'), H('✓', 'Budget', '12 / 40 calls', 'ok')];
+    const keyTest = this.state.key === 0
+      ? { title: 'Press your button', sub: 'Waiting for the remote… (or press Space)', c: '#ececec', bg: '#1a1a1a', border: 'dashed #3a3a3a' }
+      : { title: '✓ Got it', sub: `Received “PageDown” · ${this.state.key} press${this.state.key > 1 ? 'es' : ''} · hold = push-to-talk works`, c: ok, bg: 'oklch(0.24 0.04 150)', border: `solid ${ok}` };
+
+    const sc = this.state.scale;
+    return {
+      scale: sc, boxW: Math.round(1440 * sc), boxH: Math.round(900 * sc),
+      nav: Component.TABS.map(([id, label]) => ({ label, go: () => { this.setState({ tab: id }); history.replaceState(null, '', '#' + id); }, bg: id === tab ? '#262626' : 'transparent', fg: id === tab ? '#ececec' : '#b8b8b8', w: id === tab ? 500 : 400 })),
+      isCoverage: tab === 'coverage', isSessions: tab === 'sessions', isShots: tab === 'shots', isSetup: tab === 'setup', isDiag: tab === 'diagnostics',
+      coverage, exports, sessions, templates, providers, mockPicked: this.state.provider === 'mock', teach, toggleTeach: () => this.setState(s => ({ teach: !s.teach })),
+      covK, covC, replays, replayBtn: this.state.replaying ? 'Stop replay' : 'Start replay', startReplay: () => this.setState(s => ({ replaying: !s.replaying })), shotRows, sel: { name: SHOTS[this.state.selShot][0] }, setup, gear, health, keyTest, pressKey: () => this.setState(s => ({ key: s.key + 1 }))
+    };
+  }
+}
+</script>
+</body>
+</html>
