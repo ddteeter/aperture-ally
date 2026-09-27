@@ -20,7 +20,8 @@ INTERESTING = re.compile(
     r"Exposure|FNumber|ISO|Flash|WhiteBalance|Metering|Program|FocalLength|Model|Make|Software|Firmware|"
     r"PreviewImage|ThumbnailImage|SubjectDistance|FocusDistance)", re.IGNORECASE)
 PRIVATE = re.compile(r"(Serial|GPS|Owner|Artist|Copyright|Author|Creator|UniqueID|ImageUniqueID|InternalSerial|"
-                     r"BodySerial|LensSerial|CameraID|UserComment|Location|City|Country)", re.IGNORECASE)
+                     r"BodySerial|LensSerial|CameraID|UserComment|Location|City|Country|SourceFile|Directory)",
+                     re.IGNORECASE)
 
 
 def scrub(tags: dict[str, Any]) -> dict[str, Any]:

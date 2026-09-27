@@ -167,6 +167,9 @@ def test_inspect_scrubs_identifying_tags(fx):
     from aperture_ally.photo_inspect import inspect_file, scrub
 
     assert scrub({"SerialNumber": "X", "GPSLatitude": 1, "Model": "E-M1"}) == {"Model": "E-M1"}
+    # ExifTool's own path tags carry the macOS user name and folder names.
+    assert scrub({"SourceFile": "/Users/me/x.JPG", "File:System:Directory": "/Users/me", "File:System:FileName": "x.JPG"}) \
+        == {"File:System:FileName": "x.JPG"}
     r = inspect_file(fx / "P9260009.JPG")
     assert r["normalized"]["orientation"] == 6 and r["evidence"]["oriented_size"] == [2400, 1600]
     raw = inspect_file(fx / "P9260010.ORF")
