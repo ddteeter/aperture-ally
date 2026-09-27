@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, imageUrl } from "../../api/client";
 import type { Assessment, BaselineCandidate, Capture, Experiment, ScopeDelta, Shot } from "../../api/types";
 import { useApp } from "../../AppContext";
+import { useDismiss } from "../ShootStatus";
 import { Histogram } from "../../ui/Histogram";
 import { comparisonMeta, criterionMeta, verdictMeta } from "../../ui/status";
 import { TONE_COLOR, evLabel, modelLine, regionPair, startingPoint, whatChanged, type ChangeRow } from "./model";
@@ -327,6 +328,9 @@ function BaselinePicker({ capture, baselineSeq, defaultOpen }: { capture: Captur
   const [open, setOpen] = useState(defaultOpen);
   const [cands, setCands] = useState<BaselineCandidate[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  useDismiss(open, () => setOpen(false), wrap, btn);
 
   useEffect(() => {
     if (!open || cands) return;
@@ -353,8 +357,8 @@ function BaselinePicker({ capture, baselineSeq, defaultOpen }: { capture: Captur
   };
 
   return (
-    <div className="cp-picker">
-      <button type="button" className="cp-btn cp-btn-s" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+    <div className="cp-picker" ref={wrap}>
+      <button ref={btn} type="button" className="cp-btn cp-btn-s" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         Compare with… <strong>#{baselineSeq}</strong> <span aria-hidden="true">▾</span>
       </button>
       {open && (

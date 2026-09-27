@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ComparisonMetrics, SessionState } from "../api/types";
@@ -254,6 +254,31 @@ describe("CoachPanel", () => {
       "POST /api/captures/cap-2/compare",
     ]);
     expect(c.toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Comparing #2 with #0" }));
+  });
+
+  it("closes the Compare with… picker on Esc (without cancelling voice) and on a click outside", async () => {
+    const f = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("[]"));
+    const unc = assessment({
+      result: { ...assessment().result!, verdict: "uncertain", comparison: { baseline_capture_id: "cap-1", outcome: "uncertain", evidence: "Framing moved." } },
+    });
+    const cap = followUpCapture(unc, {
+      comparison_metrics: { baseline_capture_id: "cap-1", baseline_seq: 1, framing: { score: 0.64, comparable: false }, ev_delta: null, ev_note: null, regions: [], global: null },
+    });
+    renderWithCtx(<CoachPanel capture={cap} shot={shot} captures={[baselineCapture, cap]} experiments={[]} keeper={null} />, ctxWith());
+    const btn = screen.getByRole("button", { name: /Compare with/ });
+    expect(btn).toHaveAttribute("aria-expanded", "true");
+    const esc = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    const later = vi.fn();
+    window.addEventListener("keydown", later);
+    act(() => void document.body.dispatchEvent(esc));
+    window.removeEventListener("keydown", later);
+    expect(btn).toHaveAttribute("aria-expanded", "false");
+    expect(later).not.toHaveBeenCalled(); // Esc belonged to the picker, not the voice bar underneath
+    await userEvent.click(btn);
+    expect(btn).toHaveAttribute("aria-expanded", "true");
+    fireEvent.mouseDown(document.body);
+    expect(btn).toHaveAttribute("aria-expanded", "false");
+    f.mockRestore();
   });
 
   it("requires the confirm dialog before accepting a keeper, then shows Undo", async () => {
