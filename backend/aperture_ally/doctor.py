@@ -129,10 +129,12 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
 
 
 def print_checks(checks: list[dict[str, Any]]) -> int:
-    icon = {"ok": "✔", "warn": "!", "fail": "✘"}
+    from .term import status_line, verdict_line
+
     for c in checks:
-        line = f" {icon[c['status']]} {c['name']}: {c['detail']}"
-        if c["status"] != "ok" and c["fix"]:
-            line += f"\n     → {c['fix']}"
-        print(line)
+        print(status_line(c["status"], c["name"], c["detail"], fix=c["fix"] if c["status"] != "ok" else None))
+    fails = sum(c["status"] == "fail" for c in checks)
+    warns = sum(c["status"] == "warn" for c in checks)
+    summary = f"{fails} problem(s), {warns} warning(s)" if fails or warns else "All checks passed"
+    print("\n" + verdict_line(summary, "fail" if fails else "warn" if warns else "ok"))
     return 1 if any(c["status"] == "fail" for c in checks) else 0

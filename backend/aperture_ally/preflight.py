@@ -20,6 +20,7 @@ from typing import Any
 
 from .config import Settings
 from .domain.models import SessionStatus, utcnow
+from .term import status_line, use_color, verdict_line
 
 GO, WARN, NO_GO, SKIP = "go", "warn", "no_go", "skipped"
 MIN_FREE_GB, WARN_FREE_GB = 1.0, 5.0
@@ -34,12 +35,14 @@ class Preflight:
         self.session_prefix = session_prefix
         self.providers_override = providers
         self.ask, self.out = ask, out
+        # Colour only when writing to a real terminal through print (tests pass their own `out`).
+        self.color = out is print and use_color()
         self.results: list[dict[str, Any]] = []
 
     def add(self, name: str, status: str, detail: str = "", **data: Any) -> None:
         self.results.append({"name": name, "status": status, "detail": detail, **data})
-        icon = {GO: "✔", WARN: "!", NO_GO: "✘", SKIP: "–"}[status]
-        self.out(f" {icon} {name}: {detail}")
+        level = {GO: "ok", WARN: "warn", NO_GO: "fail", SKIP: "skip"}[status]
+        self.out(status_line(level, name, detail, color=self.color))
 
     def confirm(self, question: str) -> bool | None:
         if not self.interactive:
@@ -285,6 +288,8 @@ class Preflight:
         path = out_dir / f"preflight-{time.strftime('%Y%m%d-%H%M%S')}.json"
         path.write_text(json.dumps(report, indent=2, default=str))
         warns = sum(1 for r in self.results if r["status"] == WARN)
-        self.out(f"\n{'GO' if verdict == GO else 'NO-GO'} — {warns} warning(s). Saved {path}")
+        head = "GO" if verdict == GO else "NO-GO"
+        level = "fail" if verdict == NO_GO else "warn" if warns else "ok"
+        self.out(f"\n{verdict_line(f'{head} — {warns} warning(s).', level, color=self.color)} Saved {path}")
         report["path"] = str(path)
         return report
