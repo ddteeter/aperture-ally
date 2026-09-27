@@ -26,6 +26,7 @@ exact steps in [Owner steps](#owner-steps).
 | 3 | OM Capture file behaviour (fswatch) | BLOCKED (owner): prepared; one setting found (dated subfolders) |
 | 3 | `inspect` on a real E-M1 II ORF + JPEG | PASS (and a privacy fix, `8eca25a`) |
 | 3 | M1 30-press ingestion gate | BLOCKED (owner) |
+| 3b | Direct USB control without OM Capture (libgphoto2 probe) | BLOCKED (owner): prepared, owner step 3b |
 | 4 | Every tab, Studio + Daylight, Chrome + WebKit, screenshots | PASS, with a layout bug fixed (`ed0a966`) |
 | 4 | Fonts offline | PASS (bundled, no external URLs); a Wi-Fi-off reload by hand is still to do |
 | 4 | Keyboard map (all keys, never while typing) | **FAIL → fixed** (`6cc2461`): Space PTT dead after a mouse click in Chrome |
@@ -270,6 +271,30 @@ Opus 5.5 ≈ $0.08–0.12, gpt-6-sol ≈ $0.04–0.06, gemini-3.8-flash ≈ $0.0
 3. Take 5 shots in RAW+JPEG (2 slow, 3 quick), then Ctrl-C and send me the log. It will show temp-then-rename vs
    final names, JPEG/ORF order and delay, sidecars, and rewrites.
 4. Then the 30-press gate in hardware-checks.md §1.
+
+**3b. Can we drop OM Capture? (≈ 20 min, free, at the camera).** Background: Olympus publishes no USB protocol
+or desktop SDK. libgphoto2 (open source, reverse-engineered PTP + Olympus extensions) lists the E-M1 Mark II
+with capture and live view, and has OM-D settings for aperture, shutter speed, ISO, exposure compensation,
+focus mode and image quality. Known open report: "PTP General Error" on `--capture-image` (E-M1 II,
+libgphoto2 2.5.23, marked pending-fixed). This probe decides whether the app could talk to the camera itself:
+for ingestion, for self-shots (live view on the laptop, remote trigger), and for changing aperture.
+
+1. `brew install gphoto2`. **Quit OM Capture.** Camera: USB mode **RAW/Control**, RAW+JPEG, plugged in.
+2. `gphoto2 --auto-detect && gphoto2 --summary | head -40`. If it says the device is busy/claimed, macOS's
+   own camera service has it: `killall -9 ptpcamerad` and retry. Note whether that was needed.
+3. **Camera-initiated shots (replaces the watch folder):**
+   `mkdir -p ~/gp-test && cd ~/gp-test && gphoto2 --wait-event-and-download=60s`, then press the shutter 3 times
+   (1 slow, 2 quick). Do both the JPEG and the ORF arrive? How long after each press? Do the camera's buttons
+   and dials still work in this mode?
+4. **Remote trigger (the 8BitDo button would call this):** `time gphoto2 --capture-image-and-download` × 3. Note
+   the time and any "PTP General Error".
+5. **Settings:** `gphoto2 --list-config > ~/gp-config.txt`, then `gphoto2 --get-config aperture`, then
+   `gphoto2 --set-config aperture=<one of the listed choices>` and check the camera's screen changed. Repeat
+   for `shutterspeed`, `iso`, `exposurecompensation`. (Aperture only changes in A or M mode.)
+6. **Live view:** `gphoto2 --capture-preview` (one frame, saves a JPEG: note size/time), then
+   `gphoto2 --capture-movie=10s --stdout > lv.mjpg` and note the frame rate (`ls -l`, or open in VLC).
+7. Send me the terminal output, `~/gp-config.txt` (remove serials if shown) and your notes; delete `~/gp-test`.
+   Don't send the photos.
 
 **4. Safari, offline, sun.**
 - Open `http://127.0.0.1:8765` in Safari. Check each tab in both themes (`L`), then compare with
