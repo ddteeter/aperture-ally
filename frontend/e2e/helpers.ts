@@ -11,7 +11,7 @@ export async function createSession(page: Page, name: string, opts: { simulated?
   await form.getByRole("button", { name: "Create and start shooting" }).click();
   // Creating opens the session on the Shoot tab.
   await expect(page.getByRole("link", { name: "Shoot" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByLabel("Current session")).toHaveValue(/.+/);
+  await expect(page.getByTestId("session-name")).toHaveText(name);
   await expect(page.getByTestId("mock-banner")).toContainText("MOCK PROVIDER");
-  await expect(page.getByTestId("connection-status")).toContainText("Live updates connected");
+  await expect(page.getByTestId("connection-status")).toContainText("Mock · online");
 }

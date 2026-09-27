@@ -14,17 +14,17 @@ test("push-to-talk: hold the button with a queued mock transcript → listening 
   await page.getByRole("link", { name: "Shoot" }).click();
   const ptt = page.getByTestId("ptt");
   await expect(ptt).toBeEnabled();
-  await expect(page.getByTestId("voice-state")).toContainText("Idle");
+  await expect(page.getByTestId("voice-state")).toContainText("Voice: Ready");
 
   await ptt.hover();
   await page.mouse.down();
-  await expect(page.getByTestId("voice-state")).toContainText("Listening…");
-  await expect(ptt).toHaveText("Release to send");
+  await expect(page.getByTestId("voice-state")).toContainText("Voice: Listening");
+  await expect(ptt).toContainText("Release to send");
   await page.waitForTimeout(700);
-  await expect(page.getByTestId("voice-state")).toContainText(/held \d\.\ds/);
+  await expect(page.getByTestId("voice-state")).toContainText(/\d\.\d s/);
   await page.mouse.up();
 
   await expect(page.getByTestId("voice-transcript")).toContainText("Why does the glare matter here?");
   await expect(page.getByTestId("voice-answer")).toContainText("mock answer to: Why does the glare matter here?");
-  await expect(page.getByTestId("voice-state")).not.toContainText("Listening…");
+  await expect(page.getByTestId("voice-state")).not.toContainText("Listening");
 });

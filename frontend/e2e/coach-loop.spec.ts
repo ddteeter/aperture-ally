@@ -4,7 +4,7 @@ import { createSession } from "./helpers";
 test("replay basic_loop → comparison improved → accept keeper with confirm → coverage accepted", async ({ page }) => {
   test.setTimeout(180_000);
   await createSession(page, `E2E replay ${Date.now()}`, { simulated: true });
-  await expect(page.getByText("SIMULATED", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("mock-banner")).toContainText("SIMULATED");
 
   // Run the replay from the Diagnostics tab control.
   await page.getByRole("link", { name: "Diagnostics" }).click();
@@ -18,22 +18,21 @@ test("replay basic_loop → comparison improved → accept keeper with confirm �
   const coach = page.getByTestId("coach-panel");
   await expect(coach.getByRole("heading", { name: "Coach — photo #2" })).toBeVisible();
   await expect(coach.getByTestId("comparison")).toContainText("Comparison vs #1");
-  await expect(coach.getByTestId("comparison")).toContainText("improved");
+  await expect(coach.getByTestId("comparison")).toContainText("Improved");
   await expect(page.getByTestId("before-after")).toBeVisible();
-  await expect(page.getByTestId("received")).toContainText("Received ✓ photo #");
+  await expect(page.getByTestId("received")).toContainText("Received photo #");
 
   // Hero shot: AI verdict is advisory; the shot stays unresolved until Drew accepts a keeper.
   await page.getByRole("radio", { name: /Hero/ }).check();
   await expect(coach.getByRole("heading", { name: "Coach — photo #7" })).toBeVisible();
-  await expect(coach).toContainText("No keeper yet");
-  await coach.getByRole("button", { name: "Accept photo #7 as keeper for Hero (3/4 lateral)" }).click();
+  await coach.getByTestId("keeper").getByRole("button", { name: /Accept #7 as keeper/ }).click();
   // Explicit confirm step.
-  await expect(coach.getByText("Accept photo #7 as the keeper for Hero (3/4 lateral)?")).toBeVisible();
-  await coach.getByRole("button", { name: "Yes, accept photo #7" }).click();
-  await expect(coach).toContainText("Current keeper: photo #7");
-  await expect(coach).toContainText("✓ Photo #7 is the accepted keeper.");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Accept #7 as the keeper for Hero (3/4 lateral)?");
+  await dialog.getByRole("button", { name: /Accept keeper/ }).click();
+  await expect(coach.getByTestId("keeper")).toContainText("Keeper accepted · #7");
 
-  await page.getByRole("link", { name: "Coverage" }).click();
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Coverage" }).click();
   const row = page.getByTestId("coverage-row-Hero (3/4 lateral)");
   await expect(row).toContainText("Keeper");
   await expect(row).toContainText("#7");

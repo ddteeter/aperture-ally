@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api/client";
 import type { CoachEvent, Session, SessionState, UiTheme } from "./api/types";
 import { AppContext, useApp, type AppCtx, type ReceivedInfo, type Toast, type ToastInput } from "./AppContext";
-import { Header } from "./components/Header";
+import { Header, HonestyBand } from "./components/Header";
+import { Toasts } from "./components/Toasts";
 import { SessionsTab } from "./components/SessionsTab";
 import { ShootTab } from "./components/ShootTab";
 import { CoverageTab } from "./components/CoverageTab";
@@ -11,6 +12,7 @@ import { SetupTab } from "./components/SetupTab";
 import { ShotListTab } from "./components/ShotListTab";
 import { useEventStream } from "./hooks/useEventStream";
 import { Debouncer, eventRelevance } from "./lib/events";
+import { useShortcuts } from "./lib/keys";
 import { TABS, type Tab } from "./tabs";
 
 
@@ -235,37 +237,68 @@ export function App() {
     setTheme,
   };
 
+  const togglePause = useCallback(() => {
+    const cur = sidRef.current;
+    if (!cur || !state || state.session.id !== cur) return;
+    const p = !state.session.coaching_paused;
+    toast(p ? { glyph: "‖", text: "Paused", tone: "unc" } : { glyph: "●", text: "Coaching resumed" });
+    void run(p ? "Pause coaching" : "Resume coaching", async () => {
+      await api.patchSession(cur, { coaching_paused: p });
+      await refresh();
+    });
+  }, [state, toast, run, refresh]);
+
+  useShortcuts((s) => {
+    if (s.kind === "tab") {
+      const t = TABS[s.index];
+      if (t) setTab(t.id);
+      return true;
+    }
+    if (s.kind === "theme") {
+      const next = theme === "daylight" ? "studio" : "daylight";
+      setTheme(next);
+      toast({ glyph: "☀", text: next === "daylight" ? "Daylight mode" : "Studio mode", tone: "neutral" });
+      return true;
+    }
+    // While paused, the coach panel's "Resume coaching (P)" owns the key on Shoot.
+    if (s.kind === "pause" && state && (!state.session.coaching_paused || tab !== "shoot")) {
+      togglePause();
+      return true;
+    }
+    return false;
+  });
+
+  const noSession = <NoSession onSessions={() => setTab("sessions")} />;
   return (
     <AppContext.Provider value={ctx}>
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      <Header
-        sessions={sessions}
-        sid={sid}
-        onSelectSession={setSid}
-        connection={connection}
-        tab={tab}
-        onTab={setTab}
-      />
-      <div className="alerts" role="alert" aria-live="assertive">
-        {errors.map((e) => (
-          <div key={e.id} className="alert alert-error">
-            <span>{e.text}</span>
-            <button type="button" onClick={() => setErrors((x) => x.filter((y) => y.id !== e.id))}>
-              Dismiss
-            </button>
-          </div>
-        ))}
+      <div className="app">
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+        <Header sessions={sessions} connection={connection} tab={tab} onTab={setTab} />
+        <HonestyBand />
+        <div className="alerts" role="alert" aria-live="assertive">
+          {errors.map((e) => (
+            <div key={e.id} className="alert alert-error">
+              <span>
+                <span className="glyph" aria-hidden="true">!</span> {e.text}
+              </span>
+              <button type="button" onClick={() => setErrors((x) => x.filter((y) => y.id !== e.id))}>
+                Dismiss
+              </button>
+            </div>
+          ))}
+        </div>
+        <main id="main" tabIndex={-1} className={`app-main tab-${tab}`}>
+          {tab === "sessions" && <SessionsTab sessions={sessions} onOpen={(id) => { setSid(id); setTab("shoot"); }} />}
+          {tab === "shoot" && (state ? <ShootTab /> : sid ? noSession : <FirstRun onTab={setTab} />)}
+          {tab === "coverage" && (state ? <CoverageTab /> : noSession)}
+          {tab === "shotlist" && (state ? <ShotListTab /> : noSession)}
+          {tab === "setup" && (state ? <SetupTab /> : noSession)}
+          {tab === "diagnostics" && <DiagnosticsTab />}
+        </main>
+        <Toasts onShoot={tab === "shoot" && !!state} />
       </div>
-      <main id="main" tabIndex={-1} className={`tab-${tab}`}>
-        {tab === "sessions" && <SessionsTab sessions={sessions} onOpen={(id) => { setSid(id); setTab("shoot"); }} />}
-        {tab === "shoot" && (state ? <ShootTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
-        {tab === "coverage" && (state ? <CoverageTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
-        {tab === "shotlist" && (state ? <ShotListTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
-        {tab === "setup" && (state ? <SetupTab /> : <NoSession onSessions={() => setTab("sessions")} />)}
-        {tab === "diagnostics" && <DiagnosticsTab />}
-      </main>
     </AppContext.Provider>
   );
 }
@@ -273,16 +306,52 @@ export function App() {
 function NoSession({ onSessions }: { onSessions: () => void }) {
   const { sid } = useApp();
   return (
-    <section className="panel">
-      <h2>{sid ? "Loading session…" : "No session selected"}</h2>
+    <section className="no-session">
+      <h2>{sid ? "Loading shoot…" : "No shoot open"}</h2>
       {!sid && (
-        <p>
-          Create or open a session first.{" "}
-          <button type="button" onClick={onSessions}>
+        <>
+          <p className="muted">Start a new shoot or open a past one first.</p>
+          <button type="button" className="primary btn-l" onClick={onSessions}>
             Go to Sessions
           </button>
-        </p>
+        </>
       )}
+    </section>
+  );
+}
+
+/** Shown on Shoot when no session exists yet. */
+export function FirstRun({ onTab }: { onTab: (t: Tab) => void }) {
+  return (
+    <section className="first-run" aria-labelledby="first-run-h">
+      <div className="first-run-inner">
+        <h1 id="first-run-h">Start a shoot to begin coaching</h1>
+        <ol>
+          <li>
+            <span className="mono">1</span>
+            <span>Name the shoot and the product you’re reviewing.</span>
+          </li>
+          <li>
+            <span className="mono">2</span>
+            <span>Point it at the folder your tether software saves into.</span>
+          </li>
+          <li>
+            <span className="mono">3</span>
+            <span>Pick a shot and take a photo. It shows up here in about a second.</span>
+          </li>
+        </ol>
+        <div className="first-run-actions">
+          <button type="button" className="primary btn-xl" onClick={() => onTab("sessions")}>
+            New shoot
+          </button>
+          <button type="button" className="btn-xl" onClick={() => onTab("sessions")}>
+            Open a past shoot
+          </button>
+          <button type="button" className="btn-text" onClick={() => onTab("diagnostics")}>
+            Try a replay scenario (marked SIMULATED)
+          </button>
+        </div>
+      </div>
     </section>
   );
 }

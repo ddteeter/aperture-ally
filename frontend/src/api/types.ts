@@ -26,6 +26,13 @@ export interface Session {
   watch_since: string | null;
   created_at: string;
   updated_at: string;
+  /** Shot-list template the session started from ("empty" = none); null for sessions created before it was stored. */
+  template?: TemplateName | null;
+  /** Summary counts, present in GET /sessions list items only. */
+  shot_count?: number;
+  capture_count?: number;
+  /** Active (non-revoked) keepers. */
+  keeper_count?: number;
 }
 
 export interface Criterion {
@@ -191,6 +198,8 @@ export interface Evidence {
   crops: Crop[];
   measurements: Measurements | null;
   has_clip_overlay?: boolean;
+  /** zone_* alpha masks can be requested (generated on first request). */
+  has_zone_masks?: boolean;
 }
 
 export type Verdict = "usable_candidate" | "needs_retake" | "uncertain" | string;

@@ -1,26 +1,36 @@
-import { useState } from "react";
+import { type KeyboardEvent as RKeyboardEvent, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { Criterion, Shot } from "../api/types";
 import { useApp } from "../AppContext";
+import { isAnalysing, splitList } from "../lib/format";
 import { nextCriterionId } from "../lib/regions";
-import { splitList } from "../lib/format";
-import { Chip } from "./Chip";
+import { CAPTURE_STATE, shotStateMeta, type StatusMeta } from "../ui/status";
 
-export function ShotList() {
+/** Shot rail: the shot list with glyph statuses and the coverage meter. Collapses to a 56 px rail with `[`. */
+export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?: boolean; onToggleCollapsed?: () => void }) {
   const { state, sid, run, refresh } = useApp();
-  // Optimistic selection so the radio responds immediately; the snapshot stays authoritative.
+  // Optimistic selection so the row responds immediately; the snapshot stays authoritative.
   const [pendingActive, setPendingActive] = useState<string | null>(null);
+  const rows = useRef<(HTMLButtonElement | null)[]>([]);
   if (!state || !sid) return null;
   const activeId = pendingActive ?? state.session.active_shot_id;
   const cov = new Map(state.coverage.shots.map((c) => [c.shot_id, c]));
+  const keepers = state.coverage.shots.filter((c) => c.state === "accepted").length;
+  const total = state.shots.length;
 
   const setActive = async (shotId: string) => {
+    if (shotId === activeId) return;
     setPendingActive(shotId);
     await run("Set active shot", async () => {
       await api.setActiveShot(sid, shotId);
       await refresh();
     });
     setPendingActive(null);
+  };
+
+  const statusOf = (shot: Shot): StatusMeta => {
+    const analysing = state.captures.some((c) => c.shot_id === shot.id && isAnalysing(c));
+    return analysing ? CAPTURE_STATE.analysing : shotStateMeta(cov.get(shot.id)?.state ?? "missing");
   };
 
   const nextUnresolved = () => {
@@ -32,47 +42,108 @@ export function ShotList() {
   };
   const anyUnresolved = state.coverage.shots.some((c) => !c.resolved);
 
+  const onRowKey = (e: RKeyboardEvent, i: number) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const j = (i + (e.key === "ArrowDown" ? 1 : -1) + state.shots.length) % state.shots.length;
+    rows.current[j]?.focus();
+    void setActive(state.shots[j].id);
+  };
+
   return (
-    <section className="panel" aria-labelledby="shots-h">
-      <h2 id="shots-h">Shots</h2>
-      <fieldset className="shot-list">
-        <legend className="sr-only">Active shot</legend>
-        {state.shots.map((shot) => {
-          const c = cov.get(shot.id);
+    <aside className={collapsed ? "shot-rail is-collapsed" : "shot-rail"} aria-labelledby="shots-h">
+      <div className="rail-head">
+        <h2 id="shots-h" className={collapsed ? "sr-only" : "label-caps"}>
+          Shot list
+        </h2>
+        {!collapsed && (
+          <a className="rail-edit" href="#shotlist">
+            Edit
+          </a>
+        )}
+        <button
+          type="button"
+          className="rail-toggle"
+          aria-label={collapsed ? "Expand shot list" : "Collapse shot list"}
+          aria-expanded={!collapsed}
+          aria-keyshortcuts="["
+          title={collapsed ? "Expand shot list ([)" : "Collapse shot list ([)"}
+          onClick={onToggleCollapsed}
+        >
+          <span aria-hidden="true">{collapsed ? "»" : "«"}</span>
+        </button>
+      </div>
+      <div className="rail-list" role="radiogroup" aria-labelledby="shots-h">
+        {state.shots.map((shot, i) => {
+          const st = statusOf(shot);
           const active = shot.id === activeId;
+          const n = i + 1;
           return (
-            <div key={shot.id} className={active ? "shot shot-active" : "shot"} data-testid={`shot-${shot.ordinal}`}>
-              <label className="shot-radio">
-                <input
-                  type="radio"
-                  name="active-shot"
-                  checked={active}
-                  onChange={() => void setActive(shot.id)}
-                />
-                <span className="shot-title">{shot.title}</span>
-                {active && <span className="badge badge-active">ACTIVE</span>}
-              </label>
-              <div className="shot-meta">
-                <Chip value={c?.state ?? "missing"} />
-                {c?.keeper ? (
-                  <span className="small">keeper #{c.keeper.capture_seq ?? "?"}</span>
-                ) : null}
-                <span className="small muted">{c?.captures ?? 0} photo(s)</span>
-                {shot.needs_retake && <span className="badge badge-warn">needs retake (marked)</span>}
-              </div>
-              <details className="shot-edit">
-                <summary>Edit shot</summary>
-                <ShotEditor key={shot.id + shot.updated_at} shot={shot} />
-              </details>
-            </div>
+            <button
+              key={shot.id}
+              ref={(el) => {
+                rows.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              tabIndex={active || (!activeId && i === 0) ? 0 : -1}
+              className={active ? "rail-row is-active" : "rail-row"}
+              data-testid={`shot-${shot.ordinal}`}
+              title={collapsed ? `${n} ${shot.title} · ${st.word}` : undefined}
+              onClick={() => void setActive(shot.id)}
+              onKeyDown={(e) => onRowKey(e, i)}
+            >
+              <span className="rail-line">
+                <span className="rail-n mono" aria-hidden="true">{n}</span>
+                <span className={collapsed ? "sr-only" : "rail-title"}>{shot.title}</span>
+                <span className="rail-glyph glyph" style={{ color: st.color }} aria-hidden="true">
+                  {st.glyph}
+                </span>
+                <span className="sr-only">, {st.word}</span>
+              </span>
+              {active && !collapsed && (
+                <span className="rail-detail">
+                  {shot.purpose && <span className="rail-purpose">{shot.purpose}</span>}
+                  <span className="rail-chip" style={{ color: st.color }}>
+                    <span className="glyph" aria-hidden="true">{st.glyph}</span>
+                    {st.word}
+                    {cov.get(shot.id)?.keeper?.capture_seq != null && ` · #${cov.get(shot.id)!.keeper!.capture_seq}`}
+                  </span>
+                </span>
+              )}
+            </button>
           );
         })}
-      </fieldset>
-      <button type="button" className="wide" onClick={nextUnresolved} disabled={!anyUnresolved}>
-        Next unresolved shot
-      </button>
-      {!anyUnresolved && <p className="small">All shots have accepted keepers.</p>}
-    </section>
+        {state.shots.length === 0 && !collapsed && (
+          <p className="rail-empty small muted">
+            No shots yet. <a href="#shotlist">Add shots</a>
+          </p>
+        )}
+      </div>
+      {!collapsed && anyUnresolved && (
+        <button type="button" className="btn-text rail-next" onClick={nextUnresolved}>
+          Next unresolved shot →
+        </button>
+      )}
+      <a className="rail-coverage" href="#coverage" aria-label={`Coverage: ${keepers} of ${total} keepers`}>
+        {collapsed ? (
+          <span className="mono small">
+            {keepers}/{total}
+          </span>
+        ) : (
+          <span className="rail-coverage-line">
+            <span>Coverage</span>
+            <span className="muted">
+              {keepers} / {total} keepers
+            </span>
+          </span>
+        )}
+        <span className="rail-meter" aria-hidden="true">
+          <span style={{ width: `${total ? Math.round((keepers / total) * 100) : 0}%` }} />
+        </span>
+      </a>
+    </aside>
   );
 }
 

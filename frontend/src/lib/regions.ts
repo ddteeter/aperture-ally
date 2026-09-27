@@ -76,3 +76,19 @@ export function nextCriterionId(existing: { id: string }[]): string {
   while (used.has(`c${n}`)) n++;
   return `c${n}`;
 }
+
+/** Append a drawn rect as a new region ("Region N"); null when the shot already has MAX_REGIONS. */
+export function addRegion(existing: Region[], rect: NormRect, label?: string): Region[] | null {
+  const id = nextRegionId(existing);
+  if (!id) return null;
+  return [...existing, { id, label: label ?? `Region ${existing.length + 1}`, ...rect }];
+}
+
+export function removeRegion(existing: Region[], id: string): Region[] {
+  return existing.filter((r) => r.id !== id);
+}
+
+export function renameRegion(existing: Region[], id: string, label: string): Region[] {
+  const t = label.trim();
+  return existing.map((r) => (r.id === id && t ? { ...r, label: t } : r));
+}

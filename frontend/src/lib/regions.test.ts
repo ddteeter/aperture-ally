@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextCriterionId, nextRegionId, normalizeDrag } from "./regions";
+import { addRegion, MAX_REGIONS, nextCriterionId, nextRegionId, normalizeDrag, removeRegion, renameRegion } from "./regions";
 
 describe("normalizeDrag", () => {
   const displayed = { width: 800, height: 533.33 };
@@ -60,5 +60,29 @@ describe("ids", () => {
     expect(nextCriterionId([])).toBe("c1");
     expect(nextCriterionId([{ id: "c1" }, { id: "c3" }])).toBe("c4");
     expect(nextCriterionId([{ id: "custom" }])).toBe("c1");
+  });
+});
+
+describe("addRegion / renameRegion / removeRegion", () => {
+  const rect = { x: 0.1, y: 0.1, w: 0.2, h: 0.2 };
+  it("adds up to three regions, then refuses", () => {
+    let list = addRegion([], rect)!;
+    expect(list).toEqual([{ id: "r1", label: "Region 1", ...rect }]);
+    list = addRegion(list, rect)!;
+    list = addRegion(list, rect)!;
+    expect(list.map((r) => r.id)).toEqual(["r1", "r2", "r3"]);
+    expect(list).toHaveLength(MAX_REGIONS);
+    expect(addRegion(list, rect)).toBeNull();
+  });
+  it("reuses a freed id after a delete", () => {
+    const three = addRegion(addRegion(addRegion([], rect)!, rect)!, rect)!;
+    const two = removeRegion(three, "r2");
+    expect(two.map((r) => r.id)).toEqual(["r1", "r3"]);
+    expect(addRegion(two, rect)!.at(-1)!.id).toBe("r2");
+  });
+  it("renames in place and ignores blank names", () => {
+    const list = addRegion([], rect)!;
+    expect(renameRegion(list, "r1", "  Toe box logo ")[0].label).toBe("Toe box logo");
+    expect(renameRegion(list, "r1", "   ")[0].label).toBe("Region 1");
   });
 });
