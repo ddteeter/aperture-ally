@@ -84,7 +84,9 @@ class Settings(BaseSettings):
     openai_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = Field(
         None, description="reasoning.effort; None = model default (medium on gpt-6/gpt-5.6). Sweep it in evals")
     openai_image_detail: Literal["low", "high", "auto", "original"] = "high"
-    gemini_media_resolution: Literal["low", "medium", "high"] = "high"
+    gemini_media_resolution: Literal["low", "medium", "high", "ultra_high"] = "high"
+    gemini_thinking_level: Literal["minimal", "low", "medium", "high"] | None = Field(
+        None, description="thinking_config.thinking_level; None = model default. minimal is not valid on 3.8-flash")
     model_timeout_s: float = 45.0
     max_model_concurrency: int = 2
     auto_coach: bool = True

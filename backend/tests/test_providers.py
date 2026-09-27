@@ -87,6 +87,12 @@ async def test_gemini_request_shape(fx):
     assert blobs and blobs[0].inline_data.mime_type == "image/jpeg"
     assert str(blobs[0].media_resolution.level).endswith("HIGH")
     assert resp.usage["input_tokens"] == 900 and resp.model_resolved == "configured-gemini-001"
+    # Thinking is billed as output and shares the output budget.
+    assert resp.usage["output_tokens"] == 130 and resp.usage["reasoning_tokens"] == 10
+    assert cfg.max_output_tokens >= 16000 and cfg.thinking_config is None
+    p.thinking_level = "low"
+    await p.generate(_req(fx))
+    assert str(seen["config"].thinking_config.thinking_level).endswith("LOW")
 
 
 def test_registry_refuses_unconfigured_providers(tmp_path):

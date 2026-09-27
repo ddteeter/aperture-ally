@@ -2,6 +2,10 @@
 
 Uses ``response_mime_type=application/json`` + ``response_json_schema`` and per-image
 ``media_resolution``. Verified against the installed SDK's type signatures, not live calls.
+
+Thinking tokens share ``max_output_tokens`` and are billed as output, so ``output_tokens`` here is
+candidates + thoughts (as OpenAI and Claude report it). ``thinking_level`` is optional; None = the
+model's default (medium on gemini-3.8-flash, minimal on gemini-3.5-flash-lite).
 """
 
 from __future__ import annotations
@@ -12,14 +16,15 @@ from pathlib import Path
 from ..prompt import ModelRequest
 from .base import ModelResponse, ProviderError, ProviderUnavailable, repair_message
 
-_RES = {"low": "MEDIA_RESOLUTION_LOW", "medium": "MEDIA_RESOLUTION_MEDIUM", "high": "MEDIA_RESOLUTION_HIGH"}
+_RES = {"low": "MEDIA_RESOLUTION_LOW", "medium": "MEDIA_RESOLUTION_MEDIUM", "high": "MEDIA_RESOLUTION_HIGH",
+        "ultra_high": "MEDIA_RESOLUTION_ULTRA_HIGH"}
 
 
 class GeminiProvider:
     name = "gemini"
 
     def __init__(self, api_key: str, model: str, *, media_resolution: str = "high", timeout_s: float = 45.0,
-                 max_output_tokens: int = 2000):
+                 max_output_tokens: int = 16000, thinking_level: str | None = None):
         from google import genai
         from google.genai import types
 
@@ -27,6 +32,7 @@ class GeminiProvider:
         self.model = model
         self.media_resolution = media_resolution
         self.max_output_tokens = max_output_tokens
+        self.thinking_level = thinking_level
         self.timeout_s = timeout_s
         self.client = genai.Client(api_key=api_key,
                                    http_options=types.HttpOptions(timeout=int(timeout_s * 1000)))
@@ -49,6 +55,7 @@ class GeminiProvider:
             response_mime_type="application/json",
             response_json_schema=req.schema,
             max_output_tokens=self.max_output_tokens,
+            thinking_config=t.ThinkingConfig(thinking_level=self.thinking_level) if self.thinking_level else None,
         )
         t0 = time.monotonic()
         try:
@@ -64,11 +71,13 @@ class GeminiProvider:
         um = resp.usage_metadata
         usage = {}
         if um:
-            usage = {"input_tokens": um.prompt_token_count, "output_tokens": um.candidates_token_count,
+            usage = {"input_tokens": um.prompt_token_count,
+                     "output_tokens": (um.candidates_token_count or 0) + (um.thoughts_token_count or 0),
                      "reasoning_tokens": um.thoughts_token_count, "total_tokens": um.total_token_count}
         text = resp.text or ""
         if not text:
-            raise ProviderError(f"empty response (finish/prompt feedback: {resp.prompt_feedback})")
+            finish = getattr((getattr(resp, "candidates", None) or [None])[0], "finish_reason", None)
+            raise ProviderError(f"empty response (finish_reason: {finish}; prompt feedback: {resp.prompt_feedback})")
         return ModelResponse(text=text, model_resolved=resp.model_version or self.model, usage=usage,
                              response_id=getattr(resp, "response_id", None),
                              latency_ms=(time.monotonic() - t0) * 1000)

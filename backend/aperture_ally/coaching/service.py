@@ -87,7 +87,8 @@ class ProviderRegistry:
             from .providers.gemini_adapter import GeminiProvider
 
             p = GeminiProvider(s.gemini_api_key.get_secret_value(), s.gemini_model,
-                               media_resolution=s.gemini_media_resolution, timeout_s=s.model_timeout_s)
+                               media_resolution=s.gemini_media_resolution, timeout_s=s.model_timeout_s,
+                               thinking_level=s.gemini_thinking_level)
         elif name == "claude":
             if not s.claude_model:
                 raise ProviderUnavailable("Claude not configured: set APERTURE_ALLY_CLAUDE_MODEL")
