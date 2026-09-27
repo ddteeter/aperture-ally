@@ -291,6 +291,10 @@ for ingestion, for self-shots (live view on the laptop, remote trigger), and for
 5. **Settings:** `gphoto2 --list-config > ~/gp-config.txt`, then `gphoto2 --get-config aperture`, then
    `gphoto2 --set-config aperture=<one of the listed choices>` and check the camera's screen changed. Repeat
    for `shutterspeed`, `iso`, `exposurecompensation`. (Aperture only changes in A or M mode.)
+   Bracketing: `gphoto2 --get-config drivemode` (no bracketing choice is known to libgphoto2), and search
+   `~/gp-config.txt` for `d110`/`d111` (Olympus AE-bracketing frames/step; defined in libgphoto2 but not
+   named). Then set AE bracketing on the camera (e.g. 5 frames, 1 EV), repeat step 3 and note whether all
+   frames arrive and in what order.
 6. **Live view:** `gphoto2 --capture-preview` (one frame, saves a JPEG: note size/time), then
    `gphoto2 --capture-movie=10s --stdout > lv.mjpg` and note the frame rate (`ls -l`, or open in VLC).
 7. Send me the terminal output, `~/gp-config.txt` (remove serials if shown) and your notes; delete `~/gp-test`.
