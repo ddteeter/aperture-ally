@@ -17,14 +17,15 @@ From the owner's library (454 E-M1 II ORFs, `~/Pictures/Lightroom Saved Photos`,
 - DriveMode also marks WB, FL, MF, ISO, "AE Auto" and focus brackets (bit mask); focus bracketing is a
   different use (stacking) and stays out of scope except for grouping.
 
-## Open question for the owner (decides the keeper model)
+## Keeper model: both (owner, 2026-09-27)
 
-**Do you bracket to pick the best frame, or to merge (HDR) later?**
-- Pick-best → the keeper is one frame of the set (today's model, plus a set-aware picker).
-- Merge → the keeper is the *set*; coverage should resolve a shot to all frames, and advice should judge
-  whether the set *covers* the scene's range (e.g. "−2 still clips the toe highlight: add a −3 frame").
-
-The plan below assumes pick-best and marks where merge would differ.
+Sometimes one frame of the set is the best result, sometimes merging the set (HDR) is. So a keeper can be
+**a frame** or **the whole set**, and the coach suggests which:
+- **Frame** when one frame keeps detail in every marked region without clipping ("Frame 3, −0.7 EV").
+- **Merge** when no single frame does but the set covers the range: the darkest frame holds the
+  highlights and the brightest the shadows ("No single frame holds both the toe and the heel shadow;
+  merge the set"). Also say when even the set falls short ("−2 still clips the toe: add a −3 frame").
+- The owner decides; Coverage resolves a shot to a frame or to all frames of a set, and exports list them.
 
 ## Design
 
@@ -48,7 +49,8 @@ The plan below assumes pick-best and marks where merge would differ.
 - **Optional model call per set** (setting, off by default): the base overview + the chosen frame's
   crops + a per-frame measurement table; the schema gains `bracket_choice {frame, reason}`. Bump
   `PROMPT_VERSION`; add bracket cases to the offline eval before enabling.
-- Merge variant: judge coverage of the range instead ("the darkest frame still clips 0.8% on the toe").
+- The same summary decides frame vs merge (above): per region, is there one frame that holds it, and does
+  one frame hold all regions?
 
 ### 3. Comparison and experiments
 - Retake comparison is **set to set**: base vs base for "what changed"; plus the chosen frame of each set.
@@ -60,8 +62,9 @@ The plan below assumes pick-best and marks where merge would differ.
 - Filmstrip: one stacked thumb per set with an "AE ×5" badge; expand to show frames labelled by EV.
 - Coach panel on a set: base-frame verdict + the "which frame" line; a frame strip (−2 … +2) that
   switches the photo, with brightness inspector per frame; "Compare frames" shows base vs chosen.
-- Keeper: "Accept frame 3 as keeper" within the set (merge: "Accept set").
-- Coverage/exports: keeper frame plus "from AE ×5 set #12"; contact sheet shows the chosen frame.
+- Keeper: "Accept frame 3" or "Accept set (merge)", with the coach's suggestion pre-selected.
+- Coverage/exports: keeper frame plus "from AE ×5 set #12", or all frames of a merge set (listed in
+  order with EV); contact sheet shows the chosen frame or the base frame marked "merge ×5".
 
 ### 5. Tests and replay
 - Unit: set open/close rules (missed shot 1, idle close, shot switch, interleaved late RAW, recovered).
@@ -73,7 +76,7 @@ The plan below assumes pick-best and marks where merge would differ.
 
 ## Tasks (in order)
 
-1. Owner answers pick-best vs merge.
+1. (done) Keeper model: frame or set.
 2. Set derivation + persistence + API fields (backend, tests).
 3. Local "which frame" summary + event + speech line (backend, tests).
 4. Set-to-set comparison and experiment linkage (backend, tests).
