@@ -511,6 +511,8 @@ export interface VoiceSnapshot {
   turn: VoiceTurn | null;
   repeats_ignored: number;
   at: string;
+  /** Speech-to-text backend ("openai" | "mock"); always a cloud call when not the mock. */
+  transcriber?: string | null;
 }
 
 export interface ProviderHealth {

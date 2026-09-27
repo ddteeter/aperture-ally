@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "../api/client";
-import type { Assessment, Capture, Experiment, Keeper, Shot } from "../api/types";
+import type { Capture, Experiment, Keeper, Shot } from "../api/types";
 import { useApp } from "../AppContext";
-import { humanize, isAnalysing, ms } from "../lib/format";
-import { Chip } from "./Chip";
+import { isAnalysing } from "../lib/format";
+import { ComparisonView } from "./coach/ComparisonView";
+import { CameraExif, ChangeNoteInput, KeeperActions, type KeeperMode } from "./coach/Footer";
+import { KeeperDialog } from "./coach/KeeperDialog";
+import { AnalysingView, BadFileCard, BriefView, FailureCard, IngestNotices, NoVerdict, PausedCard } from "./coach/States";
+import { useKey } from "./coach/useKey";
+import { VerdictView } from "./coach/VerdictView";
+import "./coach.css";
 
 export interface CoachPanelProps {
   capture: Capture | null;
@@ -13,429 +19,130 @@ export interface CoachPanelProps {
   keeper: Keeper | null;
 }
 
-export function CoachPanel({ capture, shot, captures, experiments, keeper }: CoachPanelProps) {
-  const { run, refresh } = useApp();
-  const la = capture?.latest_assessment ?? null;
-  const analysing = capture ? isAnalysing(capture) : false;
-  const seq = (id: string | null | undefined) => captures.find((c) => c.id === id)?.seq ?? "?";
-  const related = capture
-    ? experiments.filter((e) => e.baseline_capture_id === capture.id || e.follow_up_capture_id === capture.id)
-    : [];
+export type CoachMode = "brief" | "analysing" | "verdict" | "comparison" | "failure" | "bad_file" | "no_verdict";
 
-  const reviewAgain = () =>
-    capture &&
-    run("Review again", async () => {
-      await api.assess(capture.id, {});
+/** Which body the panel shows for the selected capture. */
+export function coachMode(capture: Capture | null): CoachMode {
+  if (!capture) return "brief";
+  if (isAnalysing(capture)) return "analysing";
+  const la = capture.latest_assessment;
+  if (la?.status === "completed" && la.result) return la.kind === "compare" && la.result.comparison ? "comparison" : "verdict";
+  if (la?.status === "failed") return "failure";
+  if (capture.processing_state === "failed") return "bad_file";
+  return "no_verdict";
+}
+
+export function CoachPanel({ capture, shot, captures, experiments, keeper }: CoachPanelProps) {
+  const { state, run, refresh, toast } = useApp();
+  const [confirming, setConfirming] = useState(false);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const changeRef = useRef<HTMLInputElement>(null);
+
+  const mode = coachMode(capture);
+  const la = capture?.latest_assessment ?? null;
+  const session = state?.session;
+  const paused = !!session && (session.coaching_paused || !!state?.usage?.exceeded);
+  const activeShot = state?.shots.find((s) => s.id === session?.active_shot_id) ?? null;
+  const briefShot = shot ?? activeShot;
+  const experiment =
+    (capture && experiments.find((e) => e.follow_up_capture_id === capture.id)) ??
+    (la && experiments.find((e) => e.comparison_assessment_id === la.id)) ??
+    null;
+
+  const seqOf = (id: string | null | undefined) => captures.find((c) => c.id === id)?.seq ?? null;
+  const isKeeper = !!capture && keeper?.capture_id === capture.id;
+  const usable = la?.status === "completed" && la.result?.verdict === "usable_candidate";
+  const keeperMode: KeeperMode =
+    !capture || !shot || capture.processing_state === "failed"
+      ? { kind: "none" }
+      : isKeeper
+        ? { kind: "accepted", seq: capture.seq }
+        : { kind: "offer", seq: capture.seq, primary: usable && mode !== "analysing" };
+
+  useKey(
+    { key: "Enter", mod: true },
+    (e) => {
+      e.preventDefault();
+      setConfirming(true);
+    },
+    keeperMode.kind === "offer" && !confirming,
+  );
+
+  const accept = async (notes: string) => {
+    if (!capture || !shot) return;
+    const r = await run("Accept keeper", () => api.acceptKeeper(shot.id, capture.id, notes.trim() || undefined));
+    if (r) {
+      setConfirming(false);
+      toast({ glyph: "★", text: `Keeper accepted · #${capture.seq}`, source: "KEYBOARD", tone: "neutral" });
       await refresh();
-    });
+    }
+  };
+  const undo = async () => {
+    if (!shot || !capture) return;
+    const r = await run("Revoke keeper", () => api.revokeKeeper(shot.id));
+    if (r) {
+      toast({ glyph: "↺", text: `Keeper revoked · #${capture.seq}`, source: "KEYBOARD", tone: "neutral" });
+      await refresh();
+    }
+  };
+
+  const heading = capture ? `Coach — photo #${capture.seq}` : "Coach";
+  const spoken = mode === "verdict" || mode === "comparison" ? la?.result?.spoken_text : null;
 
   return (
-    <section className="panel coach" aria-labelledby="coach-h" data-testid="coach-panel">
-      <h2 id="coach-h">Coach{capture ? ` — photo #${capture.seq}` : ""}</h2>
-
-      {/* Always-present live region so new advice is announced. */}
-      <div aria-live="polite" aria-atomic="true" className="spoken" data-testid="coach-spoken">
-        {analysing ? (
-          <p className="analysing">
-            <span className="spinner" aria-hidden="true" /> Analysing…
-          </p>
-        ) : la?.status === "completed" && la.result ? (
-          <p className="spoken-text">{la.result.spoken_text}</p>
-        ) : null}
+    <section className="cp" aria-labelledby="coach-h" data-testid="coach-panel">
+      <h2 id="coach-h" className="cp-sr">
+        {heading}
+      </h2>
+      {/* Always present so new advice is announced; the visible text is below. */}
+      <div aria-live="polite" aria-atomic="true" className="cp-sr" data-testid="coach-spoken">
+        {mode === "analysing" ? `Analysing photo #${capture?.seq}…` : spoken}
       </div>
 
-      {!capture && <p>Select a photo to see coaching.</p>}
-      {capture && !la && !analysing && (
-        <p className="muted">
-          {capture.processing_state === "failed"
-            ? `This photo could not be processed: ${capture.error ?? "unknown error"}`
-            : "Not analysed yet."}
-        </p>
+      <div className="cp-body">
+        {paused && <PausedCard />}
+        <IngestNotices capture={capture} pending={state?.pending_files ?? []} />
+
+        {mode === "brief" &&
+          (briefShot ? <BriefView shot={briefShot} /> : <p className="cp-hint">Pick a shot to see its brief.</p>)}
+        {mode === "analysing" && capture && <AnalysingView capture={capture} la={la} shot={shot} />}
+        {mode === "verdict" && capture && la && <VerdictView capture={capture} a={la} shot={shot} />}
+        {mode === "comparison" && capture && la && (
+          <ComparisonView capture={capture} a={la} shot={shot} captures={captures} experiment={experiment} />
+        )}
+        {mode === "failure" && capture && la && <FailureCard capture={capture} la={la} />}
+        {mode === "bad_file" && capture && dismissed !== capture.id && (
+          <BadFileCard capture={capture} onDismiss={() => setDismissed(capture.id)} />
+        )}
+        {mode === "no_verdict" && capture && <NoVerdict capture={capture} paused={paused} />}
+
+        {capture && !shot && mode !== "bad_file" && (
+          <p className="cp-hint">This photo isn’t assigned to a shot, so it can’t be a keeper. Reassign it in the filmstrip.</p>
+        )}
+        {capture && mode !== "bad_file" && <CameraExif capture={capture} />}
+      </div>
+
+      <div className="cp-foot">
+        <KeeperActions
+          mode={keeperMode}
+          onOpen={() => setConfirming(true)}
+          onUndo={() => void undo()}
+          onTakeAnother={() => changeRef.current?.focus()}
+        />
+        <ChangeNoteInput inputRef={changeRef} />
+        {mode === "failure" && <p className="cp-hint">Your photos are safe. Only the coach is unavailable.</p>}
+        {mode === "bad_file" && <p className="cp-hint">File problems never block the next shot.</p>}
+      </div>
+
+      {confirming && capture && shot && (
+        <KeeperDialog
+          capture={capture}
+          shot={shot}
+          replacesSeq={keeper && keeper.capture_id !== capture.id ? seqOf(keeper.capture_id) : null}
+          onAccept={(n) => void accept(n)}
+          onClose={() => setConfirming(false)}
+        />
       )}
-
-      {la?.status === "failed" && !analysing && (
-        <div className="coach-failed" role="alert">
-          <p>
-            <strong>Analysis failed:</strong> {la.error ?? "unknown error"}
-          </p>
-          {la.error?.startsWith("AI unavailable") && (
-            <p>The AI is unavailable right now. Local features — measurements, crops, before/after, keepers and coverage — still work.</p>
-          )}
-          <button
-            type="button"
-            className="primary"
-            onClick={() =>
-              capture &&
-              run("Retry analysis", async () => {
-                await api.assess(capture.id, {});
-                await refresh();
-              })
-            }
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {la?.status === "completed" && la.result && !analysing && (
-        <AssessmentView a={la} shot={shot} seqOf={seq} />
-      )}
-
-      {capture && (
-        <div className="button-row">
-          <button type="button" onClick={() => void reviewAgain()} disabled={analysing}>
-            Review again
-          </button>
-          <button type="button" onClick={() => void run("Repeat advice", () => api.coachRepeat())}>
-            Repeat last advice
-          </button>
-          <button type="button" onClick={() => void run("Stop speech", () => api.coachStop())}>
-            Stop speech
-          </button>
-        </div>
-      )}
-
-      {related.map((e) => (
-        <ExperimentCard key={e.id + e.updated_at} e={e} seqOf={seq} />
-      ))}
-
-      {capture && <KeeperControl capture={capture} shot={shot} keeper={keeper} seqOf={seq} />}
     </section>
-  );
-}
-
-export function AssessmentView({
-  a,
-  shot,
-  seqOf,
-}: {
-  a: Assessment;
-  shot: Shot | null;
-  seqOf: (id: string | null | undefined) => number | string;
-}) {
-  const r = a.result!;
-  const pa = r.primary_action;
-  const critText = (id: string) => shot?.criteria.find((c) => c.id === id)?.text ?? "(criterion no longer on shot)";
-  const tokens = a.usage ? `${a.usage.input_tokens ?? 0} in / ${a.usage.output_tokens ?? 0} out tokens` : "tokens n/a";
-  return (
-    <div className="assessment">
-      <p className="verdict-line">
-        <Chip value={r.verdict} label="AI verdict" /> <span className="small muted">(advisory — only you accept keepers)</span>
-      </p>
-
-      {r.comparison && (
-        <div className="comparison" data-testid="comparison">
-          <h3>
-            Comparison vs #{seqOf(r.comparison.baseline_capture_id)}: <Chip value={r.comparison.outcome} kind={`cmp-${r.comparison.outcome}`} />
-          </h3>
-          <p>{r.comparison.evidence}</p>
-        </div>
-      )}
-
-      {pa && (
-        <div className="primary-action">
-          <h3>Next change</h3>
-          <p className="instruction">
-            <strong>{pa.instruction}</strong>
-          </p>
-          <dl className="kv">
-            <dt>Why</dt>
-            <dd>{pa.explanation}</dd>
-            <dt>Expected effect</dt>
-            <dd>{pa.expected_effect}</dd>
-            {pa.tradeoff && (
-              <>
-                <dt>Trade-off</dt>
-                <dd>{pa.tradeoff}</dd>
-              </>
-            )}
-            {pa.hold_constant && (
-              <>
-                <dt>Keep the same</dt>
-                <dd>{pa.hold_constant}</dd>
-              </>
-            )}
-            {pa.prerequisites.length > 0 && (
-              <>
-                <dt>Only if</dt>
-                <dd>{pa.prerequisites.join("; ")}</dd>
-              </>
-            )}
-          </dl>
-        </div>
-      )}
-
-      {a.exposure_note && (
-        <div className="exposure-note">
-          <h3>Exposure</h3>
-          {a.exposure_note.applicable ? (
-            <p>{a.exposure_note.note}</p>
-          ) : (
-            <>
-              <p>Exposure equivalence not applied:</p>
-              <ul>
-                {a.exposure_note.reasons.map((x, i) => (
-                  <li key={i}>{x}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
-
-      {r.criterion_results.length > 0 && (
-        <div className="table-wrap">
-          <table className="compact-table">
-            <caption>Criteria</caption>
-            <thead>
-              <tr>
-                <th scope="col">Criterion</th>
-                <th scope="col">Result</th>
-                <th scope="col">Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.criterion_results.map((cr) => (
-                <tr key={cr.criterion_id}>
-                  <th scope="row">
-                    {cr.criterion_id}: {critText(cr.criterion_id)}
-                  </th>
-                  <td>
-                    <Chip value={cr.result} kind={`res-${cr.result}`} />
-                  </td>
-                  <td>{cr.evidence}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {r.observations.length > 0 && (
-        <div>
-          <h3>Observations</h3>
-          <ul className="observations">
-            {r.observations.map((o, i) => (
-              <li key={i}>
-                <span className="badge">{o.severity}</span> {o.observation}{" "}
-                <span className="small muted">
-                  ({o.region_id ? `region ${o.region_id}, ` : ""}from {humanize(o.evidence_source)})
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {r.alternative_causes.length > 0 && (
-        <p>
-          <strong>Could also be:</strong> {r.alternative_causes.join("; ")}
-        </p>
-      )}
-      {r.question_for_user && (
-        <p className="question">
-          <strong>Coach asks:</strong> {r.question_for_user}
-        </p>
-      )}
-      {r.teaching_prompt && (
-        <p className="teaching">
-          <strong>Think about it:</strong> {r.teaching_prompt}
-        </p>
-      )}
-      {a.warnings.length > 0 && (
-        <ul className="warnings">
-          {a.warnings.map((w, i) => (
-            <li key={i}>Warning: {w}</li>
-          ))}
-        </ul>
-      )}
-
-      <p className="meta small muted" data-testid="coach-meta">
-        {a.provider} · {a.model_resolved ?? a.model_requested ?? "model n/a"} · prompt {a.prompt_version} ·{" "}
-        {ms(a.timings?.total_ms)} · {tokens} ·{" "}
-        {a.cost_estimate_usd != null ? `~$${a.cost_estimate_usd.toFixed(4)}` : "cost n/a"} · speech{" "}
-        {humanize(a.speech_status)} · {a.kind} ({a.trigger})
-        {a.repair_attempted ? " · output repaired once" : ""}
-      </p>
-    </div>
-  );
-}
-
-type Tri = "yes" | "no" | "unknown";
-const toTri = (b: boolean | null): Tri => (b === true ? "yes" : b === false ? "no" : "unknown");
-const fromTri = (t: Tri): boolean | null => (t === "yes" ? true : t === "no" ? false : null);
-
-export function ExperimentCard({ e, seqOf }: { e: Experiment; seqOf: (id: string | null | undefined) => number | string }) {
-  const { run, refresh } = useApp();
-  const [actual, setActual] = useState(e.actual_change ?? "");
-  const [rating, setRating] = useState<string>(e.user_rating ?? "");
-  const [improved, setImproved] = useState<Tri>(toTri(e.criterion_improved));
-  const [worsened, setWorsened] = useState<Tri>(toTri(e.other_criteria_worsened));
-  const [lesson, setLesson] = useState(e.lesson ?? "");
-  const [saved, setSaved] = useState(false);
-  const id = `exp-${e.id}`;
-  return (
-    <details className="experiment" open>
-      <summary>
-        <h3 className="inline-h">
-          Experiment: #{seqOf(e.baseline_capture_id)} → {e.follow_up_capture_id ? `#${seqOf(e.follow_up_capture_id)}` : "next photo"}
-        </h3>
-      </summary>
-      <dl className="kv">
-        <dt>Suggested</dt>
-        <dd>{e.suggested_adjustment}</dd>
-        {e.held_constant && (
-          <>
-            <dt>Held constant</dt>
-            <dd>{e.held_constant}</dd>
-          </>
-        )}
-        {e.intended_effect && (
-          <>
-            <dt>Intended effect</dt>
-            <dd>{e.intended_effect}</dd>
-          </>
-        )}
-        <dt>AI comparison</dt>
-        <dd>{e.comparison_outcome ? <Chip value={e.comparison_outcome} kind={`cmp-${e.comparison_outcome}`} /> : "not compared yet"}</dd>
-      </dl>
-      <form
-        className="form-grid compact"
-        onSubmit={async (ev) => {
-          ev.preventDefault();
-          const r = await run("Save experiment", () =>
-            api.patchExperiment(e.id, {
-              actual_change: actual.trim() || null,
-              user_rating: (rating || null) as Experiment["user_rating"],
-              criterion_improved: fromTri(improved),
-              other_criteria_worsened: fromTri(worsened),
-              lesson: lesson.trim() || null,
-            }),
-          );
-          if (r) {
-            setSaved(true);
-            await refresh();
-          }
-        }}
-      >
-        <label>
-          What I actually changed
-          <input value={actual} onChange={(x) => setActual(x.target.value)} />
-        </label>
-        <label>
-          Was the advice…
-          <select value={rating} onChange={(x) => setRating(x.target.value)}>
-            <option value="">not rated</option>
-            <option value="helpful">helpful</option>
-            <option value="neutral">neutral</option>
-            <option value="harmful">harmful</option>
-          </select>
-        </label>
-        <label htmlFor={`${id}-imp`}>
-          Did the targeted criterion improve?
-          <select id={`${id}-imp`} value={improved} onChange={(x) => setImproved(x.target.value as Tri)}>
-            <option value="unknown">unknown</option>
-            <option value="yes">yes</option>
-            <option value="no">no</option>
-          </select>
-        </label>
-        <label htmlFor={`${id}-wor`}>
-          Did other criteria get worse?
-          <select id={`${id}-wor`} value={worsened} onChange={(x) => setWorsened(x.target.value as Tri)}>
-            <option value="unknown">unknown</option>
-            <option value="yes">yes</option>
-            <option value="no">no</option>
-          </select>
-        </label>
-        <label>
-          Lesson — explain in your own words
-          <textarea rows={2} value={lesson} onChange={(x) => setLesson(x.target.value)} />
-        </label>
-        <div>
-          <button type="submit">Save experiment notes</button> {saved && <span role="status">Saved.</span>}
-        </div>
-      </form>
-    </details>
-  );
-}
-
-export function KeeperControl({
-  capture,
-  shot,
-  keeper,
-  seqOf,
-}: {
-  capture: Capture;
-  shot: Shot | null;
-  keeper: Keeper | null;
-  seqOf: (id: string | null | undefined) => number | string;
-}) {
-  const { run, refresh } = useApp();
-  const [confirming, setConfirming] = useState(false);
-  const [notes, setNotes] = useState("");
-  if (!shot) {
-    return <p className="small muted">This photo isn't assigned to a shot, so it can't be a keeper. Reassign it in the filmstrip.</p>;
-  }
-  const isKeeper = keeper?.capture_id === capture.id;
-  return (
-    <div className="keeper" data-testid="keeper">
-      <h3>Keeper for {shot.title}</h3>
-      {keeper ? (
-        <p>
-          Current keeper: <strong>photo #{seqOf(keeper.capture_id)}</strong>{" "}
-          <span className="small muted">(accepted {new Date(keeper.accepted_at).toLocaleTimeString()} via {keeper.source})</span>{" "}
-          <button
-            type="button"
-            onClick={() =>
-              run("Revoke keeper", async () => {
-                await api.revokeKeeper(shot.id);
-                await refresh();
-              })
-            }
-          >
-            Revoke keeper
-          </button>
-        </p>
-      ) : (
-        <p className="small">No keeper yet — the shot stays unresolved until you accept one.</p>
-      )}
-      {!isKeeper &&
-        (confirming ? (
-          <form
-            className="confirm"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const r = await run("Accept keeper", () => api.acceptKeeper(shot.id, capture.id, notes.trim() || undefined));
-              if (r) {
-                setConfirming(false);
-                setNotes("");
-                await refresh();
-              }
-            }}
-          >
-            <p role="status">
-              Accept photo #{capture.seq} as the keeper for <strong>{shot.title}</strong>?
-              {keeper ? ` This replaces photo #${seqOf(keeper.capture_id)}.` : ""}
-            </p>
-            <label>
-              Notes (optional)
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </label>
-            <div className="button-row">
-              <button type="submit" className="primary">
-                Yes, accept photo #{capture.seq}
-              </button>
-              <button type="button" onClick={() => setConfirming(false)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <button type="button" className="wide" onClick={() => setConfirming(true)}>
-            Accept photo #{capture.seq} as keeper for {shot.title}
-          </button>
-        ))}
-      {isKeeper && <p className="ok-line">✓ Photo #{capture.seq} is the accepted keeper.</p>}
-    </div>
   );
 }

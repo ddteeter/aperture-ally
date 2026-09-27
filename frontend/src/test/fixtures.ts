@@ -140,3 +140,57 @@ export const experiment: Experiment = {
 };
 
 export type { AppCtxLike };
+
+// --- session snapshot (coach panel / voice bar tests) -------------------------------------------
+export const makeCapture = capture;
+
+export function sessionState(extra: Partial<import("../api/types").SessionState> = {}): import("../api/types").SessionState {
+  return {
+    session: {
+      id: "s1",
+      name: "Trail shoe review",
+      product: "Trail shoe",
+      watch_folder: "/tmp/watch",
+      output_folder: "/tmp/out",
+      active_shot_id: shot.id,
+      current_setup_revision_id: null,
+      assess_provider: "claude",
+      teaching_mode: true,
+      simulated: false,
+      coaching_paused: false,
+      paused_reason: null,
+      budget_usd: null,
+      max_model_calls: 40,
+      ui_theme: "studio",
+      status: "active",
+      watch_since: null,
+      created_at: "2026-09-26T10:00:00Z",
+      updated_at: "2026-09-26T10:00:00Z",
+    },
+    shots: [shot],
+    setup: null,
+    setup_revisions: 1,
+    captures: [],
+    experiments: [],
+    keepers: [],
+    coverage: { session_id: "s1", generated_at: "2026-09-26T10:00:00Z", shots: [], resolved: 0, total: 1, unresolved: [], complete: false },
+    pending_files: [],
+    voice: { state: "idle", turn: null, repeats_ignored: 0, at: "2026-09-26T10:00:00Z" },
+    watching: true,
+    provider_health: {},
+    providers_configured: { mock: true, openai: false, gemini: false, claude: true },
+    pending_change: null,
+    usage: {
+      paid_calls: 12,
+      capped_calls: 12,
+      max_model_calls: 40,
+      estimated_cost_usd: 0.34,
+      budget_usd: null,
+      unpriced_calls: 0,
+      exceeded: false,
+      reason: null,
+      note: null,
+    },
+    ...extra,
+  };
+}
