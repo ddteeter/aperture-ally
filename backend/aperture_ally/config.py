@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     claude_effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
         None, description="output_config.effort; None = API default. Lower = faster/cheaper; sweep it in evals")
     claude_refusal_fallback: bool = Field(True, description='server-side fallbacks: "default" on safety declines')
+    openai_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = Field(
+        None, description="reasoning.effort; None = model default (medium on gpt-6/gpt-5.6). Sweep it in evals")
     openai_image_detail: Literal["low", "high", "auto", "original"] = "high"
     gemini_media_resolution: Literal["low", "medium", "high"] = "high"
     model_timeout_s: float = 45.0

@@ -79,7 +79,8 @@ class ProviderRegistry:
             from .providers.openai_adapter import OpenAIProvider
 
             p = OpenAIProvider(s.openai_api_key.get_secret_value(), s.openai_model,
-                               image_detail=s.openai_image_detail, timeout_s=s.model_timeout_s)
+                               image_detail=s.openai_image_detail, timeout_s=s.model_timeout_s,
+                               effort=s.openai_effort)
         elif name == "gemini":
             if not s.gemini_api_key or not s.gemini_model:
                 raise ProviderUnavailable("Gemini not configured: set GEMINI_API_KEY and APERTURE_ALLY_GEMINI_MODEL")

@@ -3,6 +3,10 @@
 Images are sent as base64 data URLs with a configurable ``detail`` level; structured output uses
 ``text.format = {type: json_schema, strict: true}``. ``store=False`` so no conversation state is kept
 server-side; the single repair attempt re-sends the input plus the failed output and the errors.
+
+Reasoning models spend ``max_output_tokens`` on reasoning before any visible output; the docs advise
+reserving ~25k while experimenting, otherwise the response comes back ``incomplete`` with no JSON.
+``effort`` (``reasoning.effort``) is optional; None = the model's default (medium on current models).
 """
 
 from __future__ import annotations
@@ -17,12 +21,13 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, api_key: str, model: str, *, image_detail: str = "high", timeout_s: float = 45.0,
-                 max_output_tokens: int = 2000):
+                 max_output_tokens: int = 25000, effort: str | None = None):
         from openai import AsyncOpenAI
 
         self.model = model
         self.image_detail = image_detail
         self.max_output_tokens = max_output_tokens
+        self.effort = effort
         self.client = AsyncOpenAI(api_key=api_key, timeout=timeout_s, max_retries=1)
 
     def _input(self, req: ModelRequest) -> list[dict]:
@@ -36,6 +41,9 @@ class OpenAIProvider:
         import openai
 
         t0 = time.monotonic()
+        kwargs: dict = {}
+        if self.effort:
+            kwargs["reasoning"] = {"effort": self.effort}
         try:
             resp = await self.client.responses.create(
                 model=self.model,
@@ -44,6 +52,7 @@ class OpenAIProvider:
                 text={"format": {"type": "json_schema", "name": req.schema_name, "schema": req.schema, "strict": True}},
                 max_output_tokens=self.max_output_tokens,
                 store=False,
+                **kwargs,
             )
         except (openai.APIConnectionError, openai.APITimeoutError, openai.AuthenticationError,
                 openai.PermissionDeniedError, openai.RateLimitError) as exc:

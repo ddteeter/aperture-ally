@@ -32,6 +32,8 @@ async def test_openai_request_shape_and_usage(fx):
     p.client.responses.create = create
     resp = await p.generate(_req(fx))
     assert seen["model"] == "configured-model" and seen["store"] is False
+    # Reasoning shares max_output_tokens with the JSON; 2000 returned `incomplete` with no output.
+    assert seen["max_output_tokens"] >= 25000 and "reasoning" not in seen
     assert seen["text"]["format"]["type"] == "json_schema" and seen["text"]["format"]["strict"] is True
     content = seen["input"][0]["content"]
     img = next(c for c in content if c["type"] == "input_image")
@@ -41,6 +43,10 @@ async def test_openai_request_shape_and_usage(fx):
 
     await p.repair(_req(fx), resp, ["bad region"])
     assert seen["input"][-2]["role"] == "assistant" and "bad region" in seen["input"][-1]["content"]
+
+    p.effort = "low"
+    await p.generate(_req(fx))
+    assert seen["reasoning"] == {"effort": "low"}
 
 
 async def test_openai_connection_error_is_unavailable(fx):
