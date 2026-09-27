@@ -80,6 +80,7 @@ On the M4 MacBook Air, 2026-09-27 (`./scripts/check.sh`):
 
 ## Remaining gates (in order)
 
+Next session: [docs/shoot-runsheet.md](docs/shoot-runsheet.md) (session 0 setup, then shoot 1 with Claude as co-pilot).
 Start with docs/local-verification.md: it covers the checks the cloud build could not do (model ids and
 prices from the official docs, macOS audio/keys, OM Capture file behaviour, the UI on the real screen,
 M4 performance, framing calibration on real photos).
