@@ -6,10 +6,12 @@ selected on the displayed overview maps to the same pixels in the full-resolutio
 
 from __future__ import annotations
 
+import hashlib
 import io
 import logging
 import threading
 import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +21,7 @@ from PIL import Image, ImageCms, ImageOps
 
 from ..domain.models import Region
 from . import measurements as M
-from .framing import write_signature
+from .framing import signature_file, write_signature
 
 log = logging.getLogger(__name__)
 Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -31,20 +33,47 @@ class DecodeError(Exception):
     pass
 
 
-def verify_decodable(path: Path) -> tuple[int, int]:
-    """Fully decode a JPEG/TIFF/PNG; raises DecodeError for truncated/partial files."""
+# Decodes handed from ingest's readiness check to the evidence build, keyed by the file's SHA-256, so a
+# photo is decoded once on the way to the model. Content-addressed: the hash-verified copy the evidence
+# is built from has the same bytes as the source that was checked. Single use, at most two held (~60 MB each).
+_DECODED: OrderedDict[str, Image.Image] = OrderedDict()
+_DECODED_MAX = 2
+_decoded_lock = threading.Lock()
+
+
+def _take_decoded(sha: str) -> Image.Image | None:
+    with _decoded_lock:
+        return _DECODED.pop(sha, None)
+
+
+def verify_decodable(path: Path, keep: bool = False) -> tuple[int, int]:
+    """Fully decode a JPEG/TIFF/PNG; raises DecodeError for truncated/partial files.
+
+    ``keep=True`` holds the decoded image for the evidence build of the same bytes (see _DECODED).
+    """
     try:
-        with Image.open(path) as im:
-            im.load()
-            return im.size
+        data = path.read_bytes()
+        im = Image.open(io.BytesIO(data))
+        im.load()
     except Exception as exc:
         raise DecodeError(str(exc)) from exc
+    if keep:
+        with _decoded_lock:
+            _DECODED[hashlib.sha256(data).hexdigest()] = im
+            while len(_DECODED) > _DECODED_MAX:
+                _DECODED.popitem(last=False)
+    return im.size
 
 
 def load_oriented_srgb(path: Path) -> tuple[Image.Image, dict[str, Any]]:
     info: dict[str, Any] = {}
-    with Image.open(path) as im:
+    data = path.read_bytes()
+    im = _take_decoded(hashlib.sha256(data).hexdigest())
+    info["_decode_reused"] = im is not None
+    if im is None:
+        im = Image.open(io.BytesIO(data))
         im.load()
+    with im:
         info["orientation_tag"] = im.getexif().get(274)
         oriented = ImageOps.exif_transpose(im)
         icc = im.info.get("icc_profile")
@@ -114,10 +143,17 @@ def ensure_clip_overlay(image_path: Path, overview: dict[str, Any], out: Path) -
 
 
 def prewarm_overlays(image_path: Path, overview: dict[str, Any], clip_overlay: Path) -> None:
-    """Lost-detail overlay + all zone masks from one decode, so the first hover is instant.
+    """Framing signature, lost-detail overlay and all zone masks, so comparisons and the first hover are instant.
 
     Runs on a background worker after the capture is handed to coaching; nothing here feeds the model.
+    (A comparison that arrives first computes the signature itself; framing._signature handles the miss.)
     """
+    ov = Path(overview["path"])
+    if not signature_file(ov).exists():
+        try:
+            write_signature(ov)
+        except Exception:
+            log.exception("framing signature failed")
     paths = zone_mask_paths(clip_overlay)
     with _overlay_lock(clip_overlay):
         if clip_overlay.exists() and all(p.exists() for p in paths.values()):
@@ -195,6 +231,7 @@ def build_evidence(
     clock = time.perf_counter
     t0 = clock()
     img, color_info = load_oriented_srgb(image_path)
+    t["decode_reused"] = float(color_info.pop("_decode_reused"))
     W, H = img.size
     arr = np.asarray(img)
     t["decode_orient_color_ms"] = (clock() - t0) * 1000
@@ -206,12 +243,6 @@ def build_evidence(
                 if scale < 1 else img)
     _save_jpeg(overview, out_dir / "overview.jpg")
     t["overview_thumb_ms"] = (clock() - t0) * 1000
-    t0 = clock()
-    try:
-        write_signature(out_dir / "overview.jpg")  # framing comparisons then only load this small file
-    except Exception:
-        log.exception("framing signature failed")
-    t["framing_signature_ms"] = (clock() - t0) * 1000
     t0 = clock()
     thumb = overview.copy()
     thumb.thumbnail((360, 360), Image.Resampling.LANCZOS)

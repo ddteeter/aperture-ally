@@ -217,3 +217,9 @@ async def test_overlays_are_prewarmed_in_the_background(h, fx):
     # No UI request made: the first hover must find the files already there.
     await h.wait(lambda: overlay.exists() and all(p.exists() for p in zone_mask_paths(overlay).values()), 10,
                  "prewarmed overlay + zone masks")
+    # The framing signature is built there too (it only feeds UI comparisons, not the model request) ...
+    from aperture_ally.imaging.framing import signature_file
+
+    assert signature_file(Path(cap.evidence["overview"]["path"])).exists()
+    # ... and the evidence build reused the readiness check's decode instead of decoding again.
+    assert cap.timings["evidence"]["decode_reused"] == 1.0

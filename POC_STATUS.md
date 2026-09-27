@@ -36,7 +36,7 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Shot/setup snapshot at first detection, ambiguity flag, reassignment | Implemented | tests |
 | Restart recovery (recovered captures never spoken; interrupted analyses failed) | Implemented | tests |
 | Overview/crops orientation-normalized, region selection, measurements | Implemented | `test_imaging.py` |
-| 20 MP local evidence time | Measured on the M4 | median 310 ms / max 396 ms on 12 real E-M1 II JPEGs; framing score ≤ 3 ms; zone masks 345–400 ms on first hover |
+| 20 MP local evidence time | Measured on the M4 | median 310 ms / max 396 ms on 12 real E-M1 II JPEGs; now ~190 ms (decode reused from the readiness check, framing signature moved to the background); framing score ≤ 3 ms; zone masks prewarmed in the background (~350 ms, off the path) |
 | Assessment schema (strict), semantic validation, one repair, visible failure | Implemented | `test_domain.py`, `test_coaching.py` |
 | OpenAI Responses adapter | Implemented | shape re-checked against docs 2026-09-27; output budget raised for reasoning, optional effort; **no live call made** |
 | Gemini adapter | Implemented | shape re-checked against docs 2026-09-27; thinking counted as output, budget raised, optional thinking level; **no live call made** |

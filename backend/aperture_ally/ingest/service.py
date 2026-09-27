@@ -26,6 +26,7 @@ from collections.abc import Awaitable, Callable
 from concurrent.futures import Executor, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -426,7 +427,7 @@ class IngestService:
                 if rawmod.rawpy_available():
                     await self._run(rawmod.verify_raw, path)
             else:
-                await self._run(verify_decodable, path)
+                await self._run(partial(verify_decodable, keep=True), path)  # decode reused by the evidence build
             return True
         except (DecodeError, rawmod.RawUnsupported):
             return False

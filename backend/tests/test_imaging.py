@@ -114,3 +114,18 @@ def test_raw_unsupported_is_reported(tmp_path):
     with pytest.raises(RawUnsupported):
         make_preview(fake, tmp_path / "p.jpg")
     assert not Path(tmp_path / "p.jpg").exists()
+
+
+def test_decode_is_handed_over_only_for_identical_bytes(fx, tmp_path):
+    from aperture_ally.imaging.evidence import load_oriented_srgb, verify_decodable
+
+    src = fx / "P9260002.JPG"
+    copy = tmp_path / "copy.jpg"
+    copy.write_bytes(src.read_bytes())
+    verify_decodable(src, keep=True)
+    assert load_oriented_srgb(copy)[1]["_decode_reused"] is True    # same bytes (the hash-verified copy)
+    assert load_oriented_srgb(copy)[1]["_decode_reused"] is False   # single use
+    verify_decodable(src, keep=True)
+    other = fx / "P9260003.JPG"
+    assert load_oriented_srgb(other)[1]["_decode_reused"] is False  # different bytes never get it
+    assert verify_decodable(src) == verify_decodable(src, keep=False)  # default keeps nothing
