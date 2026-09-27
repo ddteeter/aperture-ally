@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import logging
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -94,11 +95,40 @@ def write_clip_overlay(arr: np.ndarray, size: tuple[int, int], path: Path) -> No
     tmp.replace(path)
 
 
+_overlay_locks: dict[str, threading.Lock] = {}
+_overlay_locks_guard = threading.Lock()
+
+
+def _overlay_lock(clip_overlay: Path) -> threading.Lock:
+    """One writer per capture's overlay files (a hover and the background prewarm can race)."""
+    with _overlay_locks_guard:
+        return _overlay_locks.setdefault(str(clip_overlay), threading.Lock())
+
+
 def ensure_clip_overlay(image_path: Path, overview: dict[str, Any], out: Path) -> Path:
-    if not out.exists():
-        img, _ = load_oriented_srgb(image_path)
-        write_clip_overlay(np.asarray(img), (overview["width"], overview["height"]), out)
+    with _overlay_lock(out):
+        if not out.exists():
+            img, _ = load_oriented_srgb(image_path)
+            write_clip_overlay(np.asarray(img), (overview["width"], overview["height"]), out)
     return out
+
+
+def prewarm_overlays(image_path: Path, overview: dict[str, Any], clip_overlay: Path) -> None:
+    """Lost-detail overlay + all zone masks from one decode, so the first hover is instant.
+
+    Runs on a background worker after the capture is handed to coaching; nothing here feeds the model.
+    """
+    paths = zone_mask_paths(clip_overlay)
+    with _overlay_lock(clip_overlay):
+        if clip_overlay.exists() and all(p.exists() for p in paths.values()):
+            return
+        img, _ = load_oriented_srgb(image_path)
+        arr = np.asarray(img)
+        size = (overview["width"], overview["height"])
+        if not clip_overlay.exists():
+            write_clip_overlay(arr, size, clip_overlay)
+        if not all(p.exists() for p in paths.values()):
+            write_zone_masks(arr, size, paths)
 
 
 ZONES = ("clip_low", "shadows", "midtones", "highlights", "clip_high")
@@ -143,11 +173,12 @@ def write_zone_masks(arr: np.ndarray, size: tuple[int, int], paths: dict[str, Pa
 
 
 def ensure_zone_mask(image_path: Path, overview: dict[str, Any], clip_overlay: Path, zone: str) -> Path:
-    """Path of one zone mask; all five are written together on the first request."""
+    """Path of one zone mask; all five are written together (normally already by prewarm_overlays)."""
     paths = zone_mask_paths(clip_overlay)
-    if not paths[zone].exists():
-        img, _ = load_oriented_srgb(image_path)
-        write_zone_masks(np.asarray(img), (overview["width"], overview["height"]), paths)
+    with _overlay_lock(clip_overlay):
+        if not paths[zone].exists():
+            img, _ = load_oriented_srgb(image_path)
+            write_zone_masks(np.asarray(img), (overview["width"], overview["height"]), paths)
     return paths[zone]
 
 
@@ -237,7 +268,7 @@ def build_evidence(
         "height": H,
         "overview": {"path": str(out_dir / "overview.jpg"), "width": overview.width, "height": overview.height},
         "thumb": str(out_dir / "thumb.jpg"),
-        "clip_overlay": str(out_dir / "clip_overlay.png"),  # generated on first request (off the latency path)
+        "clip_overlay": str(out_dir / "clip_overlay.png"),  # prewarmed in the background after coaching starts
         "crops": crops,
         "measurements": measurements,
         "timings": {k: round(v, 2) for k, v in t.items()},

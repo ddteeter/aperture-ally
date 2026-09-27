@@ -203,3 +203,17 @@ async def test_in_camera_bracket_coaches_only_the_base_frame(make_harness, fx):
     assert len(h.speech.spoken) == 1 and not h.speech.cancelled  # frames 2–3 didn't cut off the advice
     skipped = [e["capture_id"] for e in h.app.bus.recent if e["type"] == "analysis.skipped"]
     assert skipped == [caps[2].id, caps[3].id]
+
+
+async def test_overlays_are_prewarmed_in_the_background(h, fx):
+    from aperture_ally.imaging.evidence import zone_mask_paths
+
+    s = await h.session()
+    await h.use_shot(s, "Upper", "mesh")
+    h.drop(s, fx / "P9260002.JPG")
+    (cap,) = await h.n_captures(s, 1)
+    cap = await h.app.store.get(Capture, cap.id)
+    overlay = Path(cap.evidence["clip_overlay"])
+    # No UI request made: the first hover must find the files already there.
+    await h.wait(lambda: overlay.exists() and all(p.exists() for p in zone_mask_paths(overlay).values()), 10,
+                 "prewarmed overlay + zone masks")

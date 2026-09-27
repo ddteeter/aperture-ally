@@ -23,7 +23,7 @@ import os
 import stat
 import time
 from collections.abc import Awaitable, Callable
-from concurrent.futures import Executor
+from concurrent.futures import Executor, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -33,7 +33,7 @@ from ..config import Settings
 from ..domain.models import Capture, ProcessingState, Session, ShotRequirement, utcnow
 from ..events import EventBus
 from ..imaging import raw as rawmod
-from ..imaging.evidence import DecodeError, verify_decodable
+from ..imaging.evidence import DecodeError, prewarm_overlays, verify_decodable
 from ..imaging.metadata import MetadataReader
 from ..imaging.pipeline import ensure_evidence
 from ..runtime import ContextTracker
@@ -145,6 +145,8 @@ class IngestService:
         self.settings = settings
         self.tracker = tracker
         self.executor = executor
+        # One low-priority worker for work nothing waits on (photo overlays), so it never delays evidence.
+        self.background = ThreadPoolExecutor(max_workers=1, thread_name_prefix="bg")
         self.metadata = metadata
         self.on_ready = on_ready
         self._inflight: dict[tuple[str, str], asyncio.Task] = {}
@@ -596,7 +598,25 @@ class IngestService:
                          shot_id=cap.shot_id, recovered=cap.recovered, ambiguous=cap.attribution_ambiguous)
         ok = await self._refresh_evidence(cap)
         if ok:
-            await self.on_ready(await self.store.get(Capture, cap.id), det.auto_coach)
+            ready = await self.store.get(Capture, cap.id)
+            await self.on_ready(ready, det.auto_coach)
+            if ready:
+                self._prewarm_overlays(ready)
+
+    def _prewarm_overlays(self, cap: Capture) -> None:
+        """Lost-detail overlay + zone masks in the background, after coaching has been handed the photo."""
+        ev = cap.evidence or {}
+        if not (ev.get("clip_overlay") and ev.get("image_path") and ev.get("overview")):
+            return
+        image, overview, out = Path(ev["image_path"]), ev["overview"], Path(ev["clip_overlay"])
+
+        def run() -> None:
+            try:
+                prewarm_overlays(image, overview, out)
+            except Exception:
+                log.exception("overlay prewarm failed for %s", cap.id)  # on-demand generation still works
+
+        self.background.submit(run)
 
     async def _refresh_evidence(self, cap: Capture) -> bool:
         shot = await self.store.get(ShotRequirement, cap.shot_id) if cap.shot_id else None
@@ -737,5 +757,6 @@ class IngestService:
 
     async def close(self) -> None:
         await self.stop_watching()
+        self.background.shutdown(wait=False, cancel_futures=True)
         for t in list(self._inflight.values()):
             t.cancel()
