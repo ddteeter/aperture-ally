@@ -59,15 +59,45 @@ export function decidePttKey(input: PttKeyInput, state: PttKeyState): PttDecisio
  * Elements that should keep Space/Escape for themselves: text inputs, textareas, selects,
  * contenteditable, and other interactive controls (so keyboard users can still press buttons and
  * tick checkboxes). An element marked `data-ptt-key-target` (the PTT button) is exempt.
+ *
+ * Buttons, links, checkboxes and radios only keep the keys when they were focused *by keyboard*
+ * (not by a pointer press). Chrome focuses a button on mouse click (Safari doesn't), so without this, holding
+ * Space after clicking a thumbnail, a tab or a shot in the rail re-clicked it instead of talking.
  */
-export function isEditableTarget(target: EventTarget | null): boolean {
+export function isEditableTarget(target: EventTarget | null, keyboardFocused: (el: HTMLElement) => boolean = isKeyboardFocused): boolean {
   if (!target || typeof (target as Element).closest !== "function") return false;
   const el = target as HTMLElement;
   if (el.closest("[data-ptt-key-target]")) return false;
   if (el.isContentEditable) return true;
   const tag = el.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (tag === "BUTTON" || tag === "A" || tag === "SUMMARY") return true;
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (tag === "INPUT") return !CONTROL_INPUTS.has((el as HTMLInputElement).type) || keyboardFocused(el);
   const role = el.getAttribute("role");
-  return role === "button" || role === "textbox" || role === "checkbox" || role === "radio" || role === "tab";
+  if (role === "textbox") return true;
+  const control = tag === "BUTTON" || tag === "A" || tag === "SUMMARY" ||
+    role === "button" || role === "checkbox" || role === "radio" || role === "tab";
+  return control && keyboardFocused(el);
+}
+
+const CONTROL_INPUTS = new Set(["checkbox", "radio", "button", "submit", "reset"]);
+
+/*
+ * Focus origin. :focus-visible can't be used: Chrome switches the focused element to :focus-visible on
+ * the very keydown we are classifying. So remember which element was focused by a pointer press.
+ */
+let pointerDownAt = -Infinity;
+let pointerFocused: EventTarget | null = null;
+if (typeof document !== "undefined") {
+  document.addEventListener("pointerdown", () => (pointerDownAt = performance.now()), true);
+  document.addEventListener("keydown", () => (pointerDownAt = -Infinity), true);
+  document.addEventListener("focusin", (e) => {
+    pointerFocused = performance.now() - pointerDownAt < 1000 ? e.target : null;
+    pointerDownAt = -Infinity;
+  }, true);
+}
+
+/** Focus arrived by keyboard (or can't tell: then behave as before and let the control keep the key). */
+function isKeyboardFocused(el: HTMLElement): boolean {
+  if (el !== el.ownerDocument.activeElement) return true;
+  return el !== pointerFocused;
 }

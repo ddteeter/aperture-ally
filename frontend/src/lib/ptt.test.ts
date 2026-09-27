@@ -112,4 +112,33 @@ describe("isEditableTarget", () => {
     expect(isEditableTarget(ptt)).toBe(false);
     expect(isEditableTarget(null)).toBe(false);
   });
+
+  it("lets mouse-focused buttons, links and radios pass Space to push-to-talk; text fields always keep it", () => {
+    const mouse = () => false;
+    const btn = document.createElement("button");
+    const a = document.createElement("a");
+    const radio = Object.assign(document.createElement("input"), { type: "radio" });
+    const text = Object.assign(document.createElement("input"), { type: "text" });
+    const ta = document.createElement("textarea");
+    expect(isEditableTarget(btn, mouse)).toBe(false);
+    expect(isEditableTarget(a, mouse)).toBe(false);
+    expect(isEditableTarget(radio, mouse)).toBe(false);
+    expect(isEditableTarget(text, mouse)).toBe(true);
+    expect(isEditableTarget(ta, mouse)).toBe(true);
+    const keyboard = () => true;
+    expect(isEditableTarget(btn, keyboard)).toBe(true);
+    expect(isEditableTarget(radio, keyboard)).toBe(true);
+  });
+
+  it("tracks focus origin: a clicked button passes Space through, a tabbed-to button keeps it", () => {
+    const btn = document.createElement("button");
+    document.body.append(btn);
+    btn.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    btn.focus();
+    expect(isEditableTarget(btn)).toBe(false);
+    btn.blur();
+    btn.focus(); // no pointer press: keyboard (or script) focus
+    expect(isEditableTarget(btn)).toBe(true);
+    btn.remove();
+  });
 });
