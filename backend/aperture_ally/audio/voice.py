@@ -35,14 +35,52 @@ _REPEAT_RX = re.compile(r"^\s*(please\s+)?(repeat( that)?|say (that|it) again|wh
 _NEXT_RX = re.compile(r"^\s*(go to\s+)?(the\s+)?next shot\W*$", re.IGNORECASE)
 
 
+_PAUSE_RX = re.compile(r"^\s*(please\s+)?((pause|stop|mute)\s+(the\s+)?(coaching|coach|advice|tips)|(be\s+)?quiet(\s+please)?)\W*$",
+                       re.IGNORECASE)
+_RESUME_RX = re.compile(r"^\s*(please\s+)?(resume|start|unmute|restart|continue)\s+(the\s+)?(coaching|coach|advice|tips)\W*$",
+                        re.IGNORECASE)
+_HELPFUL_RX = re.compile(r"^\s*((that|it|this)\s+(really\s+)?(helped|worked|was helpful|made it better)|helpful|good (tip|advice))\W*$",
+                         re.IGNORECASE)
+_NEUTRAL_RX = re.compile(r"^\s*((that|it|this)\s+(didn'?t|did not)\s+(help|work|change anything|make a difference)|"
+                         r"no (difference|change)|not helpful)\W*$", re.IGNORECASE)
+_HARMFUL_RX = re.compile(r"^\s*((that|it|this)\s+made it worse|(that|it|this)\s+was (wrong|bad advice)|(bad|wrong) (tip|advice))\W*$",
+                         re.IGNORECASE)
+_LESSON_RX = re.compile(r"^\s*(?:(?:the\s+)?lesson(?:\s+(?:is|was))?|note)\s*[:,\-]?\s+(?P<text>.{3,})$", re.IGNORECASE)
+_CHANGE_RX = re.compile(
+    r"^\s*i\s+(?:just\s+)?(moved|changed|rotated|raised|lowered|turned|switched|set|added|removed|opened|closed|"
+    r"stopped|swapped|used|put|shifted|tilted|angled|brought|pulled|pushed|refocused|focused|reframed|zoomed|dimmed|"
+    r"brightened|softened|diffused)\b", re.IGNORECASE)
+
+
+def parse_command(transcript: str) -> tuple[str, str | None]:
+    """Map a transcript to (intent, payload). Anything unrecognised is a question for the coach."""
+    t = transcript.strip()
+    if _ACCEPT_RX.match(t):
+        return "accept_keeper", None
+    if _REPEAT_RX.match(t):
+        return "repeat", None
+    if _NEXT_RX.match(t):
+        return "next_shot", None
+    if _PAUSE_RX.match(t):
+        return "pause_coaching", None
+    if _RESUME_RX.match(t):
+        return "resume_coaching", None
+    if _HARMFUL_RX.match(t):
+        return "rate", "harmful"
+    if _NEUTRAL_RX.match(t):
+        return "rate", "neutral"
+    if _HELPFUL_RX.match(t):
+        return "rate", "helpful"
+    m = _LESSON_RX.match(t)
+    if m:
+        return "lesson", m.group("text").strip()
+    if _CHANGE_RX.match(t) and "?" not in t:
+        return "change_note", t.rstrip(".")
+    return "question", None
+
+
 def classify(transcript: str) -> str:
-    if _ACCEPT_RX.match(transcript):
-        return "accept_keeper"
-    if _REPEAT_RX.match(transcript):
-        return "repeat"
-    if _NEXT_RX.match(transcript):
-        return "next_shot"
-    return "question"
+    return parse_command(transcript)[0]
 
 
 class VoiceController:
@@ -214,7 +252,7 @@ class VoiceController:
                 await self.store.put(turn)
                 self.set_state(AudioState.idle, reason="empty transcript")
                 return
-            turn.intent = classify(text)
+            turn.intent, turn.meta["command_payload"] = parse_command(text)
             turn.status = "answering"
             await self.store.put(turn)
             self.bus.publish("voice.transcript", session_id=turn.session_id, turn_id=turn.id, transcript=text,
@@ -243,9 +281,17 @@ class VoiceController:
             raise
         except Exception as exc:
             log.exception("voice turn failed")
+            from ..coaching.budget import BudgetExceeded
             from ..coaching.providers.base import ProviderUnavailable
 
             offline = isinstance(exc, ProviderUnavailable | TimeoutError)
+            if isinstance(exc, BudgetExceeded):
+                turn.status, turn.error = "error", f"Budget reached: {exc}"
+                await self.store.put(turn)
+                self.set_state(AudioState.error, error=turn.error)
+                await self.audio.speak("The coaching budget is used up, so I can't answer. Raise it in the app.",
+                                       guard, {"session_id": turn.session_id, "voice_turn_id": turn.id, "kind": "notice"})
+                return
             turn.status = "error"
             turn.error = ("AI unavailable: " if offline else "") + str(exc)
             await self.store.put(turn)
@@ -273,6 +319,31 @@ class VoiceController:
             shot = await self.app.advance_shot(session.id)
             msg = f"Next shot: {shot.title}. {shot.purpose}" if shot else "Every shot has an accepted keeper."
             return msg, msg
+        if turn.intent == "pause_coaching":
+            await self.app.set_coaching_paused(session.id, True, reason="paused by voice")
+            msg = "Coaching paused. Photos are still saved."
+            return msg, msg
+        if turn.intent == "resume_coaching":
+            s2 = await self.app.set_coaching_paused(session.id, False)
+            msg = "Coaching resumed."
+            if s2.paused_reason and s2.paused_reason.startswith("budget"):
+                msg = "The coaching budget is still used up. Raise it in the app to continue."
+            return msg, msg
+        if turn.intent in ("rate", "lesson"):
+            exp = await self.app.experiment_for_feedback(session.id, cap)
+            if exp is None:
+                return "There's no advice to rate yet.", "No experiment found to attach this to."
+            payload = turn.meta.get("command_payload") or ""
+            if turn.intent == "rate":
+                exp = await self.app.update_experiment(exp.id, {"user_rating": payload})
+                short = " ".join(exp.suggested_adjustment.split()[:8])
+                return f"Marked {payload}: {short}.", f"Rated '{exp.suggested_adjustment}' as {payload}."
+            lesson = f"{exp.lesson} | {payload}" if exp.lesson else payload
+            await self.app.update_experiment(exp.id, {"lesson": lesson})
+            return "Lesson saved.", f"Lesson saved on '{exp.suggested_adjustment}': {payload}"
+        if turn.intent == "change_note":
+            await self.app.set_change_note(session.id, turn.meta.get("command_payload") or turn.transcript)
+            return "Noted for the next photo.", f"Change note for the next photo: {turn.transcript}"
         if turn.intent == "accept_keeper":
             if cap is None or not cap.shot_id:
                 return "There's no current photo to accept.", "No current photo; nothing accepted."

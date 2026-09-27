@@ -9,7 +9,7 @@ After each block run `uv run aperture-ally export --session <id>` and keep the `
 your notes: it holds every stage timing, raw model call and speech/key event needed for tuning later
 ([telemetry.md](telemetry.md)).
 
-Before each block: `cd backend && uv run aperture-ally doctor` shows no ✘, and the app runs with
+Before each block: `cd backend && uv run aperture-ally preflight` ends with GO (it includes `doctor`), and the app runs with
 `./scripts/dev.sh`. Keep `Diagnostics` open in a second browser window.
 
 Suggested kit for timing: a phone that records 120/240 fps video, placed so one frame shows the camera

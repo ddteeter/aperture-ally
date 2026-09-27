@@ -53,7 +53,7 @@ class SessionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     product: str = ""
     watch_folder: str | None = None
-    template: Literal["running_shoe", "empty"] | None = "running_shoe"
+    template: Literal["running_shoe", "running_apparel", "empty"] | None = "running_shoe"
     assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
     teaching_mode: bool = True
     simulated: bool = False
@@ -67,6 +67,9 @@ class SessionPatch(BaseModel):
     assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
     teaching_mode: bool | None = None
     status: SessionStatus | None = None
+    coaching_paused: bool | None = None
+    budget_usd: float | None = Field(None, ge=0)
+    max_model_calls: int | None = Field(None, ge=0)
 
 
 class ShotBody(BaseModel):
@@ -148,6 +151,7 @@ async def _capture_or_404(app: ApertureAllyApp, cid: str) -> Capture:
 
 def _capture_view(c: Capture, latest: Assessment | None) -> dict[str, Any]:
     d = c.model_dump()
+    d["exif_raw_tag_count"] = len(d.pop("exif_raw", {}) or {})
     ev = d.pop("evidence", {}) or {}
     d["evidence"] = {
         "available": bool(ev),
@@ -195,6 +199,7 @@ async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
         "voice": app.voice.snapshot(),
         "watching": app.ingest.watched_session_id == sid,
         "pending_change": app.tracker.get(sid).pending_change,
+        "usage": await app.usage(sid),
         "provider_health": app.providers.health,
         "providers_configured": app.providers.configured(),
     }
@@ -233,8 +238,12 @@ async def get_session(sid: str, request: Request):
 async def patch_session(sid: str, body: SessionPatch, request: Request):
     app = app_of(request)
     await _session_or_404(app, sid)
+    patch = body.model_dump(exclude_unset=True)
+    paused = patch.pop("coaching_paused", None)
     try:
-        s = await app.update_session(sid, body.model_dump(exclude_unset=True))
+        s = await app.update_session(sid, patch) if patch else await app.get_session(sid)
+        if paused is not None:
+            s = await app.set_coaching_paused(sid, paused, reason="paused in the app")
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     return s.model_dump()
@@ -293,9 +302,7 @@ async def change_note(sid: str, body: ChangeNote, request: Request):
     """'What I changed' — attached to the next capture of the active shot (used in comparison)."""
     app = app_of(request)
     await _session_or_404(app, sid)
-    app.tracker.get(sid).pending_change = (body.text or "").strip() or None
-    app.bus.publish("session.change_note", session_id=sid, text=body.text)
-    return {"pending_change": app.tracker.get(sid).pending_change}
+    return {"pending_change": await app.set_change_note(sid, body.text)}
 
 
 @router.get("/events/recent")

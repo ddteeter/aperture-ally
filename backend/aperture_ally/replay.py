@@ -109,7 +109,14 @@ class ReplayRunner:
         return summary
 
     # --- steps ---------------------------------------------------------------------------
+    def _shot(self, title: str) -> str:
+        if title not in self.shots:
+            raise RuntimeError(f"replay step needs shot '{title}', but this session's shot list has "
+                               f"{sorted(self.shots)} — replay scenarios use the running_shoe template")
+        return self.shots[title]
+
     async def _select_shot(self, step):
+        self._shot(step["shot"])
         await self._j("PATCH", f"/api/sessions/{self.session_id}/active-shot", json={"shot_id": self.shots[step["shot"]]})
         # Like a person walking back to the camera: shots right after a switch are (correctly) flagged
         # ambiguous, which would badge every replay photo. Override with {"settle_s": 0} to test that.

@@ -15,6 +15,10 @@ export interface Session {
   assess_provider: ProviderName;
   teaching_mode: boolean;
   simulated: boolean;
+  coaching_paused: boolean;
+  paused_reason: string | null;
+  budget_usd: number | null;
+  max_model_calls: number | null;
   status: SessionStatus;
   watch_since: string | null;
   created_at: string;
@@ -423,6 +427,21 @@ export interface SessionState {
   watching: boolean;
   provider_health: Record<string, ProviderHealth>;
   providers_configured: Record<ProviderName, boolean>;
+  pending_change?: string | null;
+  usage?: SessionUsage;
+}
+
+/** Paid-call usage and caps for the session (mock calls never count). */
+export interface SessionUsage {
+  paid_calls: number;
+  capped_calls: number;
+  max_model_calls: number | null;
+  estimated_cost_usd: number;
+  budget_usd: number | null;
+  unpriced_calls: number;
+  exceeded: boolean;
+  reason: string | null;
+  note: string | null;
 }
 
 export interface DoctorCheck {
@@ -496,15 +515,28 @@ export interface SessionCreate {
   name: string;
   product?: string;
   watch_folder?: string | null;
-  template?: "running_shoe" | "empty";
+  template?: TemplateName;
   assess_provider?: ProviderName | null;
   teaching_mode?: boolean;
   simulated?: boolean;
   setup?: Partial<SetupFields> | null;
 }
 
+export type TemplateName = "running_shoe" | "running_apparel" | "empty";
+
 export type SessionPatch = Partial<
-  Pick<Session, "name" | "product" | "watch_folder" | "assess_provider" | "teaching_mode" | "status">
+  Pick<
+    Session,
+    | "name"
+    | "product"
+    | "watch_folder"
+    | "assess_provider"
+    | "teaching_mode"
+    | "status"
+    | "coaching_paused"
+    | "budget_usd"
+    | "max_model_calls"
+  >
 >;
 
 export type ShotPatch = Partial<

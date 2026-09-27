@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { api } from "../api/client";
-import type { ProviderName, Session } from "../api/types";
+import type { ProviderName, Session, TemplateName } from "../api/types";
 import { useApp, useCoachEvents } from "../AppContext";
 import { shortTime } from "../lib/format";
 
@@ -85,7 +85,7 @@ function CreateSession({
   const [product, setProduct] = useState("");
   const [watch, setWatch] = useState("");
   const [provider, setProvider] = useState<ProviderName | "">("");
-  const [template, setTemplate] = useState<"running_shoe" | "empty">("running_shoe");
+  const [template, setTemplate] = useState<TemplateName>("running_apparel");
   const [teaching, setTeaching] = useState(true);
   const [simulated, setSimulated] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -147,7 +147,8 @@ function CreateSession({
         </label>
         <label>
           Shot list template
-          <select value={template} onChange={(e) => setTemplate(e.target.value as "running_shoe" | "empty")}>
+          <select value={template} onChange={(e) => setTemplate(e.target.value as TemplateName)}>
+            <option value="running_apparel">Running apparel (8 shots)</option>
             <option value="running_shoe">Running shoe (6 shots)</option>
             <option value="empty">Empty</option>
           </select>

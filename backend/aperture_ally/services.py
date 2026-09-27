@@ -16,7 +16,15 @@ from .audio.recording import (
     SoundDeviceRecorder,
     Transcriber,
 )
-from .audio.speech import AudioController, MockSpeech, NullSpeech, SaySpeech, SpeechBackend
+from .audio.speech import (
+    AudioController,
+    CuePlayer,
+    MockCuePlayer,
+    MockSpeech,
+    NullSpeech,
+    SaySpeech,
+    SpeechBackend,
+)
 from .audio.voice import VoiceController
 from .coaching.providers.base import Provider
 from .coaching.service import CoachingService, ProviderRegistry
@@ -46,13 +54,19 @@ from .telemetry.recorder import (
     startup_snapshot,
 )
 from .telemetry.timing import Timer
-from .templates import shoe_shots
+from .templates import TEMPLATES, template_shots
 
 log = logging.getLogger(__name__)
 
 
 class NotFound(Exception):
     pass
+
+
+def build_cues(settings: Settings):
+    if settings.speech_provider == "say":
+        return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound})
+    return MockCuePlayer()
 
 
 def build_speech(settings: Settings) -> SpeechBackend:
@@ -81,7 +95,7 @@ def build_transcriber(settings: Settings) -> Transcriber:
 class ApertureAllyApp:
     def __init__(self, settings: Settings, *, providers: dict[str, Provider] | None = None,
                  speech: SpeechBackend | None = None, recorder: Recorder | None = None,
-                 transcriber: Transcriber | None = None, store: Store | None = None):
+                 transcriber: Transcriber | None = None, store: Store | None = None, cues=None):
         self.settings = settings
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         self.store_sync = store or Store(settings.db_path)
@@ -106,6 +120,9 @@ class ApertureAllyApp:
                                         tracker=self.tracker, executor=self.executor, providers=self.providers,
                                         audio=self.audio, session_root=self.session_root,
                                         recorder=self.telemetry_calls)
+        self.coaching.on_budget_exceeded = self._budget_exceeded
+        self.cues = cues or build_cues(settings)
+        self.bus.sinks.append(self._cue_sink)
         self.ingest = IngestService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
                                     tracker=self.tracker, executor=self.executor, metadata=self.metadata,
                                     on_ready=self.coaching.on_capture_ready)
@@ -196,11 +213,15 @@ class ApertureAllyApp:
                 await self.voice.toggle(sid, source="global_key")
             elif action == "cancel":
                 await self.voice.cancel("cancel key")
+            elif action == "pause_toggle" and sid:
+                s = await self.set_coaching_paused(sid, not active.coaching_paused, reason="paused by remote key")
+                msg = "Coaching paused." if s.coaching_paused else "Coaching resumed."
+                await self.audio.speak(msg, lambda: True, {"session_id": sid, "kind": "notice"})
             elif action == "learned":
                 self.bus.publish("keys.learned", key=self.keys.tracker.learned if self.keys else None)
 
         self.keys = GlobalKeyListener(self.settings.ptt_key, self.settings.cancel_key, self.settings.ptt_mode,
-                                      dispatch, self.voice.listener_failed)
+                                      dispatch, self.voice.listener_failed, self.settings.pause_key)
         loop = asyncio.get_running_loop()
         self.keys.tracker.on_log = lambda entry: loop.call_soon_threadsafe(
             self.telemetry.record, "keys.event", {**entry, "mode": self.settings.ptt_mode, "source": "global"})
@@ -239,8 +260,8 @@ class ApertureAllyApp:
         rev = SetupRevision(session_id=s.id, revision=1, **SetupFields(**(setup or {})).model_dump())
         await self.store.put(rev)
         s.current_setup_revision_id = rev.id
-        if template == "running_shoe":
-            for i, shot in enumerate(shoe_shots()):
+        if template in TEMPLATES:
+            for i, shot in enumerate(template_shots(template)):
                 await self.store.put(ShotRequirement(session_id=s.id, ordinal=i, **shot))
         shots = await self.store.shots(s.id)
         s.active_shot_id = shots[0].id if shots else None
@@ -252,7 +273,8 @@ class ApertureAllyApp:
 
     async def update_session(self, session_id: str, patch: dict[str, Any]) -> Session:
         s = await self.get_session(session_id)
-        allowed = {"name", "product", "watch_folder", "assess_provider", "teaching_mode", "status"}
+        allowed = {"name", "product", "watch_folder", "assess_provider", "teaching_mode", "status",
+                   "coaching_paused", "budget_usd", "max_model_calls"}
         rewatch = False
         for k, v in patch.items():
             if k not in allowed:
@@ -276,6 +298,89 @@ class ApertureAllyApp:
             await self.ingest.watch(s)
         self.bus.publish("session.updated", session_id=s.id)
         return s
+
+    # --- coaching control, feedback, cues ----------------------------------------------------
+    async def set_coaching_paused(self, session_id: str, paused: bool, reason: str | None = None) -> Session:
+        s = await self.get_session(session_id)
+        if paused:
+            s.coaching_paused, s.paused_reason = True, reason or "paused"
+        else:
+            summary = await self.usage(session_id)
+            if summary["exceeded"]:
+                s.coaching_paused, s.paused_reason = True, f"budget: {summary['reason']}"
+            else:
+                s.coaching_paused, s.paused_reason = False, None
+        s.updated_at = utcnow()
+        await self.store.put(s)
+        self.bus.publish("session.coaching", session_id=session_id, paused=s.coaching_paused, reason=s.paused_reason)
+        return s
+
+    async def usage(self, session_id: str) -> dict:
+        from .coaching.budget import usage_summary
+
+        s = await self.get_session(session_id)
+        return usage_summary(await self.store.model_calls(session_id), s, self.settings)
+
+    async def _budget_exceeded(self, session_id: str, reason: str) -> None:
+        s = await self.get_session(session_id)
+        if s.coaching_paused and (s.paused_reason or "").startswith("budget"):
+            return  # already paused for budget: announce once
+        await self.set_coaching_paused(session_id, True, reason=f"budget: {reason}")
+        await self.audio.speak("Coaching paused: the session budget is used up. Photos are still saved.",
+                               lambda: True, {"session_id": session_id, "kind": "notice"})
+
+    async def experiment_for_feedback(self, session_id: str, capture: Capture | None):
+        """The experiment a spoken rating refers to: the one this photo followed up, else the latest advice."""
+        exps = await self.store.experiments(session_id)
+        if capture:
+            for e in reversed(exps):
+                if e.follow_up_capture_id == capture.id:
+                    return e
+            for e in reversed(exps):
+                if e.baseline_capture_id == capture.id:
+                    return e
+            shot_exps = [e for e in exps if e.shot_id == capture.shot_id]
+            if shot_exps:
+                return shot_exps[-1]
+        return exps[-1] if exps else None
+
+    async def update_experiment(self, experiment_id: str, patch: dict[str, Any]):
+        from .domain.models import Experiment
+
+        def apply(e: Experiment) -> None:
+            for k, v in patch.items():
+                setattr(e, k, v)
+
+        e = await self.store.update(Experiment, experiment_id, apply)
+        if e is None:
+            raise NotFound(f"experiment {experiment_id}")
+        self.bus.publish("experiment.updated", session_id=e.session_id, experiment_id=e.id, **patch)
+        return e
+
+    async def set_change_note(self, session_id: str, text: str | None) -> str | None:
+        ctx = self.tracker.get(session_id)
+        ctx.pending_change = (text or "").strip() or None
+        self.bus.publish("session.change_note", session_id=session_id, text=ctx.pending_change)
+        return ctx.pending_change
+
+    def _cue_sink(self, event: dict) -> None:
+        """Audible confirmations for someone looking through the camera, not at the screen."""
+        mode = self.settings.received_cue
+        if mode == "none":
+            return
+        t, p = event["type"], event.get("payload") or {}
+        if t == "capture.ready" and not p.get("recovered"):
+            if mode == "speech" and not self.audio.speaking:
+                task = asyncio.get_running_loop().create_task(self.audio.speak(
+                    f"Got {p.get('seq')}.", lambda: True,
+                    {"session_id": event.get("session_id"), "capture_id": event.get("capture_id"), "kind": "cue"}))
+                self.coaching.tasks.add(task)
+                task.add_done_callback(self.coaching.tasks.discard)
+            else:
+                self.cues.play("received")
+        elif t in ("capture.failed", "capture.ingest_failed") or (
+                t == "analysis.failed" and not str(p.get("error", "")).startswith("Budget")):
+            self.cues.play("failure")
 
     async def set_active_shot(self, session_id: str, shot_id: str | None) -> Session:
         s = await self.get_session(session_id)

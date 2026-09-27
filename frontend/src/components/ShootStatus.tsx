@@ -52,9 +52,11 @@ export function ReceivedIndicator() {
 
 /** "What I changed for the next shot" — attached to the next photo of the active shot. */
 export function ChangeNote() {
-  const { sid, state, run, pendingNote, setPendingNote } = useApp();
+  const { sid, state, run, pendingNote: localNote, setPendingNote } = useApp();
   const [text, setText] = useState("");
   if (!sid || !state) return null;
+  // The server snapshot is authoritative (survives reloads, includes notes spoken as "I moved…").
+  const pendingNote = state.pending_change !== undefined ? state.pending_change : localNote;
   return (
     <section className="panel" aria-labelledby="change-h">
       <h2 id="change-h">What I changed for the next shot</h2>
@@ -101,6 +103,70 @@ export function ChangeNote() {
           <span className="muted">No pending note.</span>
         )}
       </p>
+    </section>
+  );
+}
+
+/** Auto-coaching on/off and the per-session paid-call / spend caps. */
+export function CoachingControl() {
+  const { sid, state, run } = useApp();
+  const [calls, setCalls] = useState("");
+  const [usd, setUsd] = useState("");
+  if (!sid || !state) return null;
+  const { session } = state;
+  const u = state.usage;
+  const paused = session.coaching_paused;
+  return (
+    <section className="panel" aria-labelledby="coaching-h">
+      <h2 id="coaching-h">Coaching</h2>
+      <p role="status" data-testid="coaching-status">
+        <strong>{paused ? "Paused" : "On"}</strong>
+        {paused && session.paused_reason ? ` — ${session.paused_reason}` : ""}
+        {paused && <span className="small muted"> · photos are still saved; “Review again” still works</span>}
+      </p>
+      <button
+        type="button"
+        onClick={() => run(paused ? "Resume coaching" : "Pause coaching", () => api.patchSession(sid, { coaching_paused: !paused }))}
+      >
+        {paused ? "Resume coaching" : "Pause coaching"}
+      </button>
+      <p className="small muted">Voice: “pause coaching” / “resume coaching”. A remote key can be set as APERTURE_ALLY_PAUSE_KEY.</p>
+      {u && (
+        <p className="small" data-testid="usage">
+          Paid coaching calls: {u.capped_calls}
+          {u.max_model_calls != null ? ` / ${u.max_model_calls}` : ""} · est. spend $
+          {u.estimated_cost_usd.toFixed(2)}
+          {u.budget_usd != null ? ` / $${u.budget_usd.toFixed(2)}` : ""}
+          {u.unpriced_calls > 0 && ` · ${u.unpriced_calls} unpriced`}
+          {u.exceeded && <strong> · cap reached</strong>}
+          {u.note && <span className="muted"> ({u.note})</span>}
+        </p>
+      )}
+      <form
+        className="inline-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const body: { max_model_calls?: number | null; budget_usd?: number | null } = {};
+          if (calls.trim() !== "") body.max_model_calls = calls.trim() === "default" ? null : Number(calls);
+          if (usd.trim() !== "") body.budget_usd = usd.trim() === "default" ? null : Number(usd);
+          if (Object.keys(body).length === 0) return;
+          void run("Update caps", async () => {
+            await api.patchSession(sid, body);
+            setCalls("");
+            setUsd("");
+          });
+        }}
+      >
+        <label>
+          Call cap
+          <input inputMode="numeric" value={calls} onChange={(e) => setCalls(e.target.value)} placeholder={String(session.max_model_calls ?? "default")} size={7} />
+        </label>
+        <label>
+          $ cap
+          <input inputMode="decimal" value={usd} onChange={(e) => setUsd(e.target.value)} placeholder={String(session.budget_usd ?? "default")} size={7} />
+        </label>
+        <button type="submit">Set caps</button>
+      </form>
     </section>
   );
 }

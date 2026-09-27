@@ -13,6 +13,9 @@ A local-first macOS app that coaches a beginner through product photography **du
    uncertain"), and the experiment is recorded.
 6. You explicitly accept a **keeper** for each required shot; the coverage report shows what is missing.
 
+Starter shot lists: **running apparel** (8 shots: on-body hero, back, fabric close-up, fit profile, feature
+details, label, flat lay, wear) and **running shoe** (6 shots). Both are fully editable per session.
+
 The central question is whether this loop helps Drew make a visibly better photo within two or three
 attempts *and* explain why. See [POC_STATUS.md](POC_STATUS.md) for what is implemented, simulated,
 hardware-verified and model-evaluated — **those are different things**.
@@ -44,6 +47,8 @@ headphones + microphone, PTT permissions and remote), then the manual gates in
 |---|---|
 | `./scripts/dev.sh` | one-command launch (API + built UI on 127.0.0.1:8765) |
 | `uv run aperture-ally doctor` | dependencies, arm64, providers (never prints keys), audio devices, permissions |
+| `uv run aperture-ally preflight` | **before every shoot**: go/no-go on storage, watch folder, headphones, mic + transcription, PTT key, network, one real call per provider |
+| `uv run aperture-ally inspect FILE…` | what the app reads from your camera files (identifying tags removed; safe to share) |
 | `uv run aperture-ally replay <scenario>` | simulated camera against a running app |
 | `uv run aperture-ally export [--session ID]` | coverage (JSON, Markdown, contact sheet), timing report and raw telemetry JSONL ([docs/telemetry.md](docs/telemetry.md)) |
 | `uv run aperture-ally eval …` | offline evaluation, **session replay against other models/prompts**, live-trial summary ([evals/README.md](evals/README.md)) |

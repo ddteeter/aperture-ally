@@ -193,14 +193,17 @@ class MetadataReader:
     def __init__(self, exiftool: ExifToolProcess | None = None):
         self.exiftool = exiftool or ExifToolProcess()
 
-    def read(self, path: Path) -> dict[str, Any]:
+    def read(self, path: Path, include_raw: bool = False) -> dict[str, Any]:
+        """Normalized metadata; with ``include_raw`` the full tag dict is added under ``_raw``."""
         if self.exiftool.available:
             try:
-                return normalize(self.exiftool.read(path), "exiftool")
+                raw = self.exiftool.read(path)
+                return {**normalize(raw, "exiftool"), **({"_raw": raw} if include_raw else {})}
             except Exception as exc:
                 log.warning("exiftool failed for %s: %s; falling back to Pillow", path, exc)
         try:
-            return normalize(read_with_pillow(path), "pillow")
+            raw = read_with_pillow(path)
+            return {**normalize(raw, "pillow"), **({"_raw": {k: str(v) for k, v in raw.items()}} if include_raw else {})}
         except Exception as exc:
             return {"source": "none", "error": str(exc), "exposure_known": False, "metadata_available": False}
 

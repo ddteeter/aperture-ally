@@ -4,7 +4,7 @@ import { CaptureViewer } from "./CaptureViewer";
 import { CoachPanel } from "./CoachPanel";
 import { Filmstrip } from "./Filmstrip";
 import { SetupEditor } from "./SetupEditor";
-import { ChangeNote, ReceivedIndicator } from "./ShootStatus";
+import { ChangeNote, CoachingControl, ReceivedIndicator } from "./ShootStatus";
 import { ShotList } from "./ShotList";
 import { VoiceBar } from "./VoiceBar";
 
@@ -30,6 +30,7 @@ export function ShootTab() {
       <div className="shoot-grid">
         <div className="col col-left">
           <ReceivedIndicator />
+          <CoachingControl />
           <ShotList />
           <ChangeNote />
           <SetupEditor />

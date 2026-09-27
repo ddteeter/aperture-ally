@@ -121,6 +121,10 @@ class Session(BaseModel):
     assess_provider: str = "mock"
     teaching_mode: bool = True
     simulated: bool = Field(False, description="Replay/simulator session: results are not hardware evidence")
+    coaching_paused: bool = Field(False, description="Auto-coaching off; photos still ingested, explicit reviews allowed")
+    paused_reason: str | None = None
+    budget_usd: float | None = Field(None, description="Per-session spend cap (priced calls only); None = config default")
+    max_model_calls: int | None = Field(None, description="Per-session paid-call cap; None = config default")
     status: SessionStatus = SessionStatus.active
     watch_since: str = Field(default_factory=utcnow)
     created_at: str = Field(default_factory=utcnow)
@@ -161,6 +165,7 @@ class Capture(BaseModel):
     raw_sha256: str | None = None
     pairing: dict[str, Any] = Field(default_factory=dict)
     exif: dict[str, Any] = Field(default_factory=dict)
+    exif_raw: dict[str, Any] = Field(default_factory=dict, description="Full ExifTool/Pillow tags (for later features)")
     evidence: dict[str, Any] = Field(default_factory=dict)
     timings: dict[str, Any] = Field(default_factory=dict, description="ingest/evidence sub-stage timings (ms) + counters")
     width: int | None = None

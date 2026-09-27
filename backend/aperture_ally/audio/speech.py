@@ -106,6 +106,30 @@ def play_cue(path: str) -> None:
         subprocess.Popen([exe, path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+class CuePlayer:
+    """Short system sounds that mix with speech (separate process; not part of the speech stream)."""
+
+    name = "afplay"
+
+    def __init__(self, sounds: dict[str, str]):
+        self.sounds = sounds
+
+    def play(self, kind: str) -> None:
+        path = self.sounds.get(kind)
+        if path:
+            play_cue(path)
+
+
+class MockCuePlayer:
+    name = "mock"
+
+    def __init__(self) -> None:
+        self.played: list[str] = []
+
+    def play(self, kind: str) -> None:
+        self.played.append(kind)
+
+
 @dataclass
 class Utterance:
     text: str

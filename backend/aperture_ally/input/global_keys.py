@@ -63,8 +63,8 @@ def modifier_of(name: str) -> str | None:
 class PTTKeyTracker:
     """Pure key-state logic (testable without pynput): maps raw events to PTT actions."""
 
-    def __init__(self, ptt: KeySpec, cancel: KeySpec | None, mode: str):
-        self.ptt, self.cancel, self.mode = ptt, cancel, mode
+    def __init__(self, ptt: KeySpec, cancel: KeySpec | None, mode: str, pause: KeySpec | None = None):
+        self.ptt, self.cancel, self.mode, self.pause = ptt, cancel, mode, pause
         self.down_since: float | None = None
         self.mods: set[str] = set()
         self.log: deque[dict[str, Any]] = deque(maxlen=200)
@@ -85,6 +85,9 @@ class PTTKeyTracker:
         if self.cancel and name == self.cancel.key and self.cancel.modifiers <= self.mods:
             self._log("cancel", name, now)
             return "cancel"
+        if self.pause and name == self.pause.key and self.pause.modifiers <= self.mods:
+            self._log("pause", name, now)
+            return "pause_toggle"
         if name != self.ptt.key or not self.ptt.modifiers <= self.mods:
             return None
         if self.down_since is not None:
@@ -116,8 +119,10 @@ class PTTKeyTracker:
 
 class GlobalKeyListener:
     def __init__(self, ptt_spec: str, cancel_spec: str | None, mode: str,
-                 dispatch: Callable[[str], Awaitable[None]], on_failure: Callable[[str], Awaitable[None]]):
-        self.tracker = PTTKeyTracker(KeySpec.parse(ptt_spec), KeySpec.parse(cancel_spec) if cancel_spec else None, mode)
+                 dispatch: Callable[[str], Awaitable[None]], on_failure: Callable[[str], Awaitable[None]],
+                 pause_spec: str | None = None):
+        self.tracker = PTTKeyTracker(KeySpec.parse(ptt_spec), KeySpec.parse(cancel_spec) if cancel_spec else None, mode,
+                                     KeySpec.parse(pause_spec) if pause_spec else None)
         self.dispatch = dispatch
         self.on_failure = on_failure
         self._listener = None

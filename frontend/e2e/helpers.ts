@@ -5,6 +5,8 @@ export async function createSession(page: Page, name: string, opts: { simulated?
   const form = page.locator("form").filter({ has: page.getByRole("button", { name: "Create session" }) });
   await form.getByLabel(/^Name/).fill(name);
   await form.getByLabel("AI provider").selectOption("mock");
+  // The replay scenarios use the running-shoe shot list (apparel is the UI default).
+  await form.getByLabel("Shot list template").selectOption("running_shoe");
   if (opts.simulated) await form.getByLabel(/Simulated session/).check();
   await form.getByRole("button", { name: "Create session" }).click();
   // Creating opens the session on the Shoot tab.

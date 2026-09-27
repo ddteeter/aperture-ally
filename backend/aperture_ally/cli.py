@@ -133,6 +133,22 @@ def cmd_ingest_report(args) -> int:
     return 0 if args.expect is None or report["match"] else 3
 
 
+def cmd_preflight(args) -> int:
+    from .config import get_settings
+    from .preflight import NO_GO, Preflight
+
+    pf = Preflight(get_settings(), interactive=not args.yes, paid=not args.no_paid, mic=not args.skip_mic,
+                   keys=not args.skip_keys, session_prefix=args.session)
+    report = asyncio.run(pf.run())
+    return 1 if report["verdict"] == NO_GO else 0
+
+
+def cmd_inspect(args) -> int:
+    from .photo_inspect import main as inspect_main
+
+    return inspect_main(args.files, all_tags=args.all_tags, out_file=args.out)
+
+
 def cmd_eval(args) -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from evals.runner import main as eval_main
@@ -167,6 +183,18 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--session", help="session id prefix (default: most recent)")
     sp.add_argument("--expect", type=int, help="number of shutter presses made")
     sp.set_defaults(fn=cmd_ingest_report)
+    sp = sub.add_parser("preflight", help="pre-shoot go/no-go: storage, headphones, mic, PTT key, network, providers")
+    sp.add_argument("--yes", action="store_true", help="non-interactive; unconfirmed audio checks become warnings")
+    sp.add_argument("--no-paid", action="store_true", help="skip the real provider and transcription calls")
+    sp.add_argument("--skip-mic", action="store_true")
+    sp.add_argument("--skip-keys", action="store_true")
+    sp.add_argument("--session", help="session id prefix (default: the active session)")
+    sp.set_defaults(fn=cmd_preflight)
+    sp = sub.add_parser("inspect", help="what the app reads from your camera files (identifying tags removed)")
+    sp.add_argument("files", nargs="+")
+    sp.add_argument("--all-tags", action="store_true", help="include every (scrubbed) tag")
+    sp.add_argument("--out", help="write JSON to a file instead of stdout")
+    sp.set_defaults(fn=cmd_inspect)
     sp = sub.add_parser("eval", help="offline evaluation runner (see evals/README.md)")
     sp.add_argument("rest", nargs=argparse.REMAINDER)
     sp.set_defaults(fn=cmd_eval)

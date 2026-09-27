@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     model_timeout_s: float = 45.0
     max_model_concurrency: int = 2
     auto_coach: bool = True
+    session_max_model_calls: int | None = Field(
+        150, description="Default cap on paid assess/answer calls per session (transcription not capped)")
+    session_budget_usd: float | None = Field(
+        None, description="Default USD cap per session; only priced models count (set APERTURE_ALLY_PRICES)")
     history_limit: int = 4
     teaching_prompt_every: int = Field(3, description="Ask Drew to predict/explain roughly every Nth coached capture")
     prices: dict[str, ModelPrice] = Field(default_factory=dict, description="model id -> price; optional")
@@ -108,6 +112,10 @@ class Settings(BaseSettings):
     ptt_timeout_action: Literal["discard", "submit"] = "discard"
     min_utterance_s: float = 0.35
     ready_cue: bool = True
+    received_cue: Literal["sound", "speech", "none"] = Field(
+        "sound", description="Audible confirmation that a photo arrived (sound mixes with speech; speech waits)")
+    received_cue_sound: str = "/System/Library/Sounds/Pop.aiff"
+    failure_cue_sound: str = "/System/Library/Sounds/Basso.aiff"
     ready_cue_sound: str = "/System/Library/Sounds/Tink.aiff"
     keep_voice_audio: bool = False
 
@@ -116,6 +124,7 @@ class Settings(BaseSettings):
     ptt_key: str = "f18"
     ptt_mode: Literal["hold", "toggle"] = "hold"
     cancel_key: str | None = None
+    pause_key: str | None = Field(None, description="Optional remote key that toggles auto-coaching pause")
 
     # --- secrets (unprefixed conventional names) ------------------------------------------
     openai_api_key: SecretStr | None = Field(None, validation_alias="OPENAI_API_KEY")

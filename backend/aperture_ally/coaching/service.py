@@ -41,6 +41,7 @@ from ..imaging.measurements import region_comparable
 from ..imaging.pipeline import ensure_evidence
 from ..runtime import ContextTracker, Guard
 from ..telemetry.timing import Timer
+from .budget import BudgetExceeded, usage_summary
 from .prompt import (
     ANSWER_PROMPT_VERSION,
     PROMPT_VERSION,
@@ -120,6 +121,7 @@ class CoachingService:
         self.audio = audio
         self.session_root = session_root
         self.recorder = recorder
+        self.on_budget_exceeded = None  # async callback(session_id, reason) set by the app container
         self._sem = asyncio.Semaphore(settings.max_model_concurrency)
         self._pending_auto: dict[str, str] = {}
         self._running_auto: dict[str, set[asyncio.Task]] = {}
@@ -130,6 +132,11 @@ class CoachingService:
     async def on_capture_ready(self, capture: Capture, auto: bool) -> None:
         await self.audio.invalidate()  # a new photo makes older automatic advice obsolete
         if not auto or not self.settings.auto_coach or capture.recovered:
+            return
+        session = await self.store.get(Session, capture.session_id)
+        if session and session.coaching_paused:
+            self.bus.publish("analysis.skipped", session_id=capture.session_id, capture_id=capture.id,
+                             reason=session.paused_reason or "coaching paused")
             return
         ctx = self.tracker.get(capture.session_id)
         if capture.shot_id is None or capture.shot_id != ctx.active_shot_id:
@@ -268,6 +275,8 @@ class CoachingService:
 
             provider = self.providers.get(provider_name)
             assessment.model_requested = provider.model
+            if trigger != "eval":
+                await self.check_budget(session, provider)
             ids = {"session_id": session.id, "capture_id": capture.id, "assessment_id": assessment.id}
             timeout = self.settings.model_timeout_s + 5
             t_wait = time.monotonic()
@@ -322,6 +331,11 @@ class CoachingService:
             self.bus.publish("analysis.completed", session_id=session.id, capture_id=capture.id,
                              assessment_id=assessment.id, verdict=result.verdict, trigger=trigger)
             self.providers.health[provider_name] = {"ok": True, "at": utcnow()}
+        except BudgetExceeded as exc:
+            await self._fail(assessment, capture.id, f"Budget reached: {exc}")
+            if self.on_budget_exceeded:
+                await self.on_budget_exceeded(session.id, str(exc))
+            return assessment
         except (ProviderUnavailable, TimeoutError) as exc:
             await self._fail(assessment, capture.id, f"AI unavailable: {exc}", unavailable=True)
             return assessment
@@ -354,6 +368,13 @@ class CoachingService:
             self.bus.publish("coach.speech.suppressed", session_id=session.id, capture_id=capture.id,
                              assessment_id=assessment.id, reason="context no longer current")
         return await self.store.get(Assessment, assessment.id)
+
+    async def check_budget(self, session: Session, provider) -> None:
+        if getattr(provider, "name", "") == "mock":
+            return
+        summary = usage_summary(await self.store.model_calls(session.id), session, self.settings)
+        if summary["exceeded"]:
+            raise BudgetExceeded(summary["reason"])
 
     def spoken_for(self, a: Assessment) -> str:
         r = a.result or {}
@@ -524,6 +545,7 @@ class CoachingService:
         req = ModelRequest("answer", SYSTEM_ANSWER, context, images, "answer",
                            provider_json_schema(ConversationAnswer), ANSWER_PROMPT_VERSION)
         provider = self.providers.get(session.assess_provider)
+        await self.check_budget(session, provider)
         ids = {"session_id": session.id, "capture_id": capture.id if capture else None, "voice_turn_id": voice_turn_id}
         timeout = self.settings.model_timeout_s + 5
         t0 = time.monotonic()

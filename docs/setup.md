@@ -115,7 +115,40 @@ only reads the files OM Capture saves.
 - Safety: a recording stops after `APERTURE_ALLY_PTT_MAX_SECONDS` (default 60) even if the key-up is lost,
   and is discarded (fail-closed). If the key listener dies, any active recording is cancelled.
 
-## 6. Replay mode
+## 6. At the camera: cues, voice commands, pausing, budget
+
+**Before each shoot** run `uv run aperture-ally preflight` with the app stopped. It checks storage and
+the watch folder, plays the received sound and a sentence (confirm you heard both *in the headphones*),
+records and transcribes a test phrase, waits for a press-and-hold of your PTT key, probes the network, and
+makes one real assessment per configured provider (a few cents). It ends with GO / NO-GO and saves a JSON
+record under `~/ApertureAlly/preflight/`. `--no-paid`, `--skip-mic`, `--skip-keys` and `--yes` are available.
+
+**Received cue.** Every new photo plays a short sound (`APERTURE_ALLY_RECEIVED_CUE=sound`, the default,
+which mixes with speech). Use `speech` to hear "Got 12" instead; it's skipped if the coach is talking.
+A different sound means something failed (unreadable file, AI unavailable); the screen says what.
+
+**Voice commands** (hold PTT and say):
+
+| Say | Effect |
+|---|---|
+| "I moved the light a hand-width left" (starts with *I moved / changed / rotated / raised / lowered / …*, no question) | change note attached to the next photo of the active shot |
+| "That helped" / "That didn't help" / "That made it worse" | rates the advice you just tried (helpful / neutral / harmful) on its experiment card |
+| "Lesson: side light shows the mesh" (or "The lesson is …", "Note, …") | saves your own explanation on the experiment card |
+| "Pause coaching" / "Be quiet" · "Resume coaching" | auto-coaching off/on; photos are still saved, "Review again" still works |
+| "Next shot" · "Repeat that" · "Accept this photo as keeper" | as before |
+| anything else | a question for the coach about the current photo |
+
+Rate and write lessons while they're fresh. They feed the teaching-trial numbers
+(`aperture-ally eval trial`) that decide whether the POC works. You can edit them later on the cards.
+`APERTURE_ALLY_PAUSE_KEY` can map a second remote button to pause/resume.
+
+**Budget.** Each session stops auto-coaching after `APERTURE_ALLY_SESSION_MAX_MODEL_CALLS` paid
+assessments/answers (default 150) or `APERTURE_ALLY_SESSION_BUDGET_USD` estimated spend (only counts
+models with a configured price). When a cap is hit you hear it once, coaching pauses, and photos keep
+arriving. Raise the cap on the Shoot tab (Coaching panel), then resume. Transcription is never blocked,
+so voice commands keep working. Mock sessions never count.
+
+## 7. Replay mode
 
 ```bash
 ./scripts/dev.sh
@@ -125,7 +158,7 @@ cd backend && uv run aperture-ally replay basic_loop   # or ingest_stress / stal
 Replay writes synthetic images into the session watch folder like a camera would. The UI Sessions tab
 can also run a scenario against the current session. Replay sessions are marked `simulated`.
 
-## 7. Recovery
+## 8. Recovery
 
 - **Restart anytime.** State lives in `~/ApertureAlly/aperture_ally.sqlite3` plus files under
   `~/ApertureAlly/sessions/<id>/` (originals are read-only copies; evidence and exports alongside).

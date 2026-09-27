@@ -447,7 +447,7 @@ class IngestService:
 
     async def _ingest_primary(self, det: Detection, sha: str, size: int, mtime_ns: int) -> str:
         sid, path = det.session_id, det.path
-        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path))
+        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path, True))
         root = self.session_root(sid)
         async with self._lock(sid):
             late_for = await self._find_capture(sid, det, "jpeg")
@@ -459,7 +459,9 @@ class IngestService:
                     late_for.preview_source = "jpeg"
                     late_for.source_paths.append(str(path))
                     late_for.pairing = {**late_for.pairing, "late_jpeg": True, "jpeg_pairing": ev}
+                    raw_tags = meta.pop("_raw", None)
                     late_for.exif = meta or late_for.exif
+                    late_for.exif_raw = raw_tags or late_for.exif_raw
                     await self.store.put(late_for)
                     await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind="jpeg",
                                                    status="ingested", sha256=sha, capture_id=late_for.id)
@@ -502,7 +504,7 @@ class IngestService:
 
     async def _ingest_raw(self, det: Detection, sha: str, size: int, mtime_ns: int) -> str | None:
         sid, path = det.session_id, det.path
-        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path))
+        meta = await det.timed("metadata_ms", self._run(self.metadata.read, path, True))
         root = self.session_root(sid)
         async with self._lock(sid):
             jpeg_cap = await self._find_capture(sid, det, "raw")
@@ -556,7 +558,9 @@ class IngestService:
 
     def _new_capture(self, det: Detection, meta: dict[str, Any]) -> Capture:
         snap = det.snapshot
+        raw_tags = meta.pop("_raw", {})
         return Capture(
+            exif_raw=raw_tags,
             session_id=det.session_id,
             shot_id=snap.get("shot_id"),
             setup_revision_id=snap.get("setup_revision_id"),
