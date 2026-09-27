@@ -18,6 +18,7 @@ from PIL import Image, ImageCms, ImageOps
 
 from ..domain.models import Region
 from . import measurements as M
+from .framing import write_signature
 
 log = logging.getLogger(__name__)
 Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -100,6 +101,56 @@ def ensure_clip_overlay(image_path: Path, overview: dict[str, Any], out: Path) -
     return out
 
 
+ZONES = ("clip_low", "shadows", "midtones", "highlights", "clip_high")
+SHADOW_END, HIGHLIGHT_START = 64, 192  # same zone edges as imaging/interpret.py
+
+
+def zone_mask_paths(clip_overlay: Path) -> dict[str, Path]:
+    return {z: clip_overlay.with_name(f"zone_{z}.png") for z in ZONES}
+
+
+def write_zone_masks(arr: np.ndarray, size: tuple[int, int], paths: dict[str, Path]) -> None:
+    """One alpha-mask PNG per tonal zone at overview size: white, opaque where the pixel is in that zone.
+
+    Same definitions as the measurements: clip_high = any channel >= HI, clip_low = all channels <= LO;
+    shadows / mid-tones / highlights by Rec.709 luminance (< 64, 64-191, >= 192), excluding clipped
+    pixels. Built at up to 3000 px and area-downsampled: clipped specks stay visible (any clipped pixel
+    marks its overview pixel), tonal zones mark overview pixels that are mostly in the zone.
+    """
+    small = np.ascontiguousarray(M.subsample_nearest(arr, 3000))
+    r, g, b = cv2.split(small)
+    hi = cv2.max(cv2.max(r, g), b) >= M.HI
+    lo = cv2.min(cv2.min(r, g), b) <= M.LO
+    lum = M.luminance(small).reshape(small.shape[:2])
+    unclipped = ~(hi | lo)
+    masks = {
+        "clip_high": hi, "clip_low": lo,
+        "shadows": unclipped & (lum < SHADOW_END),
+        "midtones": unclipped & (lum >= SHADOW_END) & (lum < HIGHLIGHT_START),
+        "highlights": unclipped & (lum >= HIGHLIGHT_START),
+    }
+    for zone, mask in masks.items():
+        frac = cv2.resize(mask.astype(np.float32), size, interpolation=cv2.INTER_AREA)
+        on = frac > 0 if zone.startswith("clip") else frac >= 0.5
+        rgba = np.zeros((size[1], size[0], 4), np.uint8)
+        rgba[..., :3] = 255
+        rgba[..., 3] = np.where(on, 255, 0).astype(np.uint8)
+        out = paths[zone]
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp = out.with_suffix(".tmp.png")
+        Image.fromarray(rgba, "RGBA").save(tmp, "PNG", optimize=False)
+        tmp.replace(out)
+
+
+def ensure_zone_mask(image_path: Path, overview: dict[str, Any], clip_overlay: Path, zone: str) -> Path:
+    """Path of one zone mask; all five are written together on the first request."""
+    paths = zone_mask_paths(clip_overlay)
+    if not paths[zone].exists():
+        img, _ = load_oriented_srgb(image_path)
+        write_zone_masks(np.asarray(img), (overview["width"], overview["height"]), paths)
+    return paths[zone]
+
+
 def build_evidence(
     image_path: Path,
     out_dir: Path,
@@ -123,10 +174,18 @@ def build_evidence(
     overview = (Image.fromarray(cv2.resize(arr, (round(W * scale), round(H * scale)), interpolation=cv2.INTER_AREA))
                 if scale < 1 else img)
     _save_jpeg(overview, out_dir / "overview.jpg")
+    t["overview_thumb_ms"] = (clock() - t0) * 1000
+    t0 = clock()
+    try:
+        write_signature(out_dir / "overview.jpg")  # framing comparisons then only load this small file
+    except Exception:
+        log.exception("framing signature failed")
+    t["framing_signature_ms"] = (clock() - t0) * 1000
+    t0 = clock()
     thumb = overview.copy()
     thumb.thumbnail((360, 360), Image.Resampling.LANCZOS)
     _save_jpeg(thumb, out_dir / "thumb.jpg", quality=80)
-    t["overview_thumb_ms"] = (clock() - t0) * 1000
+    t["overview_thumb_ms"] += (clock() - t0) * 1000
     t0 = clock()
 
     crops: list[dict[str, Any]] = []

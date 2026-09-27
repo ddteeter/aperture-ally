@@ -113,3 +113,32 @@ def exposure_note_for(action: dict[str, Any] | None, exif: dict[str, Any], ctx: 
         target.get("f_number"), target.get("iso"), ctx,
     )
     return eq.model_dump()
+
+
+def _is_manual(exif: dict[str, Any]) -> bool:
+    return exif.get("exposure_program") == "manual" or exif.get("exposure_mode_manual") is True
+
+
+def exif_ev_delta(before: dict[str, Any], after: dict[str, Any]) -> tuple[float | None, str]:
+    """Exposure change in stops between two photos from their EXIF settings (positive = brighter).
+
+    Only meaningful when both were shot in manual exposure without flash: otherwise the camera may have
+    compensated, and the settings say nothing about how bright the photo came out. Returns (delta, note);
+    the note explains a ``None`` delta, or states the assumption behind a number.
+    """
+    for label, exif in (("the earlier photo", before), ("this photo", after)):
+        if not all(exif.get(k) for k in ("exposure_time_s", "f_number", "iso")):
+            return None, f"Shutter, aperture and ISO are not all in the metadata of {label}."
+    for label, exif in (("the earlier photo", before), ("this photo", after)):
+        if not _is_manual(exif):
+            mode = exif.get("exposure_program") or "unknown"
+            return None, (f"{label.capitalize()} was not shot in manual exposure ({mode.replace('_', ' ')}), "
+                          "so the camera may have compensated; compare brightness from the histogram instead.")
+    if before.get("flash_fired") or after.get("flash_fired"):
+        return None, "Flash fired, and flash output is not part of the shutter/aperture/ISO settings."
+
+    def exposure(e: dict[str, Any]) -> float:
+        return float(e["exposure_time_s"]) * float(e["iso"]) / float(e["f_number"]) ** 2
+
+    delta = round(math.log2(exposure(after) / exposure(before)), 2) + 0.0
+    return delta, "From shutter, aperture and ISO in the metadata; assumes the light did not change."

@@ -43,6 +43,7 @@ log = logging.getLogger(__name__)
 
 DONE = {"ingested", "duplicate", "ignored"}
 PENDING = {"discovered", "stabilizing", "pending_retry"}
+SKIPPED = "skipped"
 IGNORED_SUFFIXES = (".tmp", ".part", ".partial", ".download", ".crdownload")
 
 
@@ -256,6 +257,8 @@ class IngestService:
             row = await self.store.source_file(session.id, str(p))
             if row and row["status"] in DONE and row["size"] == st.st_size and row["mtime_ns"] == st.st_mtime_ns:
                 continue
+            if row and row["status"] == SKIPPED:
+                continue
             if row and row["status"] == "pending_retry":
                 updated = _parse_iso(row["updated_at"])
                 if updated and (datetime.now(updated.tzinfo) - updated).total_seconds() < 10:
@@ -300,6 +303,9 @@ class IngestService:
             "recovered": recovered,
             "user_reported_change": None,
         }
+        if snapshot["ambiguous"] and ambiguous:
+            snapshot["previous_shot_id"] = ctx.previous_shot_id
+            snapshot["seconds_after_switch"] = round(now_mono - ctx.shot_changed_mono, 2)
         if not recovered and snapshot["shot_id"] == ctx.active_shot_id and is_candidate(path) and not rawmod.is_raw(path):
             snapshot["user_reported_change"], ctx.pending_change = ctx.pending_change, None
         det = Detection(session_id, path, origin, snapshot, Timer.now(), auto_coach=auto_coach and not recovered,
@@ -325,7 +331,9 @@ class IngestService:
         row = await self.store.source_file(sid, str(path))
         if row and row["status"] in DONE and row["size"] == st.st_size and row["mtime_ns"] == st.st_mtime_ns:
             return row["capture_id"]
-        if row and row["status"] in PENDING and row["snapshot"]:
+        if row and row["status"] == SKIPPED:
+            return None
+        if row and row["status"] in PENDING | {"failed"} and row["snapshot"]:
             det.snapshot = {**row["snapshot"], "recovered": det.snapshot["recovered"] or row["snapshot"].get("recovered")}
             if det.snapshot["recovered"]:
                 det.auto_coach = False
@@ -572,6 +580,7 @@ class IngestService:
             capture_time=meta.get("datetime_original"),
             user_reported_change=snap.get("user_reported_change"),
             detected_at=snap.get("detected_at") or utcnow(),
+            attribution_context={k: snap[k] for k in ("previous_shot_id", "seconds_after_switch") if k in snap},
         )
 
     # --- readiness + evidence --------------------------------------------------------------
@@ -649,6 +658,79 @@ class IngestService:
         dest = folder / name
         dest.write_bytes(data)
         return dest
+
+    # --- user actions on stuck files --------------------------------------------------------
+    async def _source_row(self, session_id: str, key: str) -> dict | None:
+        try:
+            return await self.store.source_file_by_id(session_id, int(key))
+        except ValueError:
+            return None
+
+    async def retry_source(self, session: Session, key: str) -> dict | None:
+        """Read a pending/failed file again now, skipping the reconcile backoff. None = unknown key."""
+        row = await self._source_row(session.id, key)
+        if row is None:
+            return None
+        if row["status"] not in PENDING | {"failed"}:
+            raise ValueError(f"file is {row['status']}, not waiting to be read")
+        path = Path(row["source_path"])
+        if not path.exists():
+            raise FileNotFoundError(f"{path.name} is no longer in the folder")
+        if (session.id, str(path)) not in self._inflight:
+            watched = session.watch_folder and path.resolve().is_relative_to(Path(session.watch_folder).expanduser().resolve())
+            origin = "replay" if str(path) in self.replay_paths else "watch" if watched else "import"
+            self.schedule(session.id, path, origin)
+        self.bus.publish("ingest.retry_requested", session_id=session.id, path=path.name, status=row["status"])
+        return row
+
+    async def skip_source(self, session_id: str, key: str) -> dict | None:
+        """Stop trying to read a file: recorded as skipped, never retried, gone from the pending list."""
+        row = await self._source_row(session_id, key)
+        if row is None:
+            return None
+        if row["status"] not in PENDING | {"failed"}:
+            raise ValueError(f"file is {row['status']}, not waiting to be read")
+        task = self._inflight.pop((session_id, row["source_path"]), None)
+        if task:
+            task.cancel()
+        await self.store.set_source_status(row["id"], SKIPPED, f"skipped by user (was {row['status']})")
+        self.bus.publish("ingest.skipped", session_id=session_id, path=Path(row["source_path"]).name,
+                         previous_status=row["status"], note=row["note"])
+        return row
+
+    async def reread_capture(self, cap: Capture) -> tuple[bool, str | None]:
+        """Decode a capture's stored file again (after a bad read) and rebuild its evidence."""
+        if cap.raw_path and not cap.jpeg_path and cap.preview_source in (None, "none"):
+            preview = self.session_root(cap.session_id) / "evidence" / cap.id / "raw_preview.jpg"
+            try:
+                source = await self._run(rawmod.make_preview, Path(cap.raw_path), preview)
+            except rawmod.RawUnsupported as exc:
+                msg = f"RAW preview unavailable ({exc}); shoot RAW+JPEG or import a JPEG"
+
+                def still_failed(c: Capture) -> None:
+                    c.error = msg
+
+                await self.store.update(Capture, cap.id, still_failed)
+                return False, msg
+
+            def set_preview(c: Capture) -> None:
+                c.preview_source = source
+                c.pairing = {**c.pairing, "raw_preview_path": str(preview)}
+
+            cap = await self.store.update(Capture, cap.id, set_preview) or cap
+        if not await self._refresh_evidence(cap):
+            fresh = await self.store.get(Capture, cap.id)
+            return False, fresh.error if fresh else "evidence failed"
+
+        def ready(c: Capture) -> None:
+            c.processing_state = ProcessingState.ready
+            c.error = None
+            c.ready_at = c.ready_at or utcnow()
+
+        cap = await self.store.update(Capture, cap.id, ready) or cap
+        self.tracker.capture_ready(cap.session_id, cap.shot_id, cap.id, cap.seq)
+        self.bus.publish("capture.updated", session_id=cap.session_id, capture_id=cap.id, reread=True)
+        return True, None
 
     async def reattach_evidence(self, capture: Capture) -> bool:
         return await self._refresh_evidence(capture)

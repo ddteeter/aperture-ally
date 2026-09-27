@@ -176,12 +176,24 @@ records and transcribes a test phrase, waits for a press-and-hold of your PTT ke
 makes one real assessment per configured provider (a few cents). It ends with GO / NO-GO and saves a JSON
 record under `~/ApertureAlly/preflight/`. `--no-paid`, `--skip-mic`, `--skip-keys` and `--yes` are available.
 
-**Reading brightness.** Under each photo, the app explains its histogram in plain language: a one-line
-reading, then one card per marked region (with that region's own histogram), then the whole frame.
-"Show lost detail on the photo" paints pure-white pixels red and pure-black pixels blue. After a retake,
-"What your retake changed" says what moved (e.g. "Pure white in the forefoot mesh dropped from 55% to
-0%"). "How to read a histogram" has the short version. It all describes the processed JPEG; the RAW file
-may hold a little more detail.
+**Reading brightness.** Under the photo, the brightness inspector explains the histogram in plain
+language, marked regions first, then the whole frame. Hover or click a zone (pure black, shadows,
+mid-tones, highlights, pure white) and the matching pixels light up on the photo: solid red is pure white
+and solid blue is pure black (no detail in either); the other zones get an accent tint. `H` toggles the
+lost-detail overlay. After a retake the coach panel lists what changed ("Pure white on the trim
+3.1% → 0.4%", "Logo +36% sharper", "Overall darker, mean 124 → 118 of 255"; EV only when both photos were
+manual exposure). "Framing match" says whether the two photos are framed alike enough to compare; if not,
+use "Compare with…" to pick another baseline. All of it describes the processed JPEG; the RAW file may
+hold a little more detail.
+
+**Studio and Daylight.** The dark Studio theme is for indoor shoots. Outdoors, switch to Daylight
+(☀ in the top bar, or `L`): light surfaces, heavier type and a mid-grey mat around the photo so it isn't
+judged against white. New shoot → "Outdoor" starts a session in Daylight. In sun, trust the numbers (pure
+white %, the brightness headline) more than how the preview looks.
+
+**Keys** (never while typing in a field): Space talk · R repeat · S stop · P pause/resume coaching ·
+H lost detail · ← → previous/next photo · `[` collapse the shot list · ⌘↵ accept keeper ·
+⌘R retry when the coach failed · Esc cancel/close · ⌘1–6 tabs · L Daylight.
 
 **Received cue.** Every new photo plays a short sound (`APERTURE_ALLY_RECEIVED_CUE=sound`, the default,
 which mixes with speech). Use `speech` to hear "Got 12" instead; it's skipped if the coach is talking.
@@ -194,7 +206,7 @@ A different sound means something failed (unreadable file, AI unavailable); the 
 | "I moved the light a hand-width left" (starts with *I moved / changed / rotated / raised / lowered / …*, no question) | change note attached to the next photo of the active shot |
 | "That helped" / "That didn't help" / "That made it worse" | rates the advice you just tried (helpful / neutral / harmful) on its experiment card |
 | "Lesson: side light shows the mesh" (or "The lesson is …", "Note, …") | saves your own explanation on the experiment card |
-| "Pause coaching" / "Be quiet" · "Resume coaching" | auto-coaching off/on; photos are still saved, "Review again" still works |
+| "Pause coaching" / "Be quiet" · "Resume coaching" | auto-coaching off/on; photos are still saved, and "Review #N anyway" still works |
 | "Next shot" · "Repeat that" · "Accept this photo as keeper" | as before |
 | anything else | a question for the coach about the current photo |
 
@@ -205,7 +217,7 @@ Rate and write lessons while they're fresh. They feed the teaching-trial numbers
 **Budget.** Each session stops auto-coaching after `APERTURE_ALLY_SESSION_MAX_MODEL_CALLS` paid
 assessments/answers (default 150) or `APERTURE_ALLY_SESSION_BUDGET_USD` estimated spend (only counts
 models with a configured price). When a cap is hit you hear it once, coaching pauses, and photos keep
-arriving. Raise the cap on the Shoot tab (Coaching panel), then resume. Transcription is never blocked,
+arriving. Raise the cap from the Coaching pill in the top bar (or "Raise cap" in the coach panel), then resume. Transcription is never blocked,
 so voice commands keep working. Mock sessions never count.
 
 ## 7. Replay mode

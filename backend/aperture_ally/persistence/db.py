@@ -85,6 +85,10 @@ MIGRATIONS: list[str] = [
     CREATE INDEX telemetry_events_session ON telemetry_events(session_id);
     CREATE INDEX telemetry_events_kind ON telemetry_events(kind);
     """,
+    # v3 — per-session display theme (Studio / Daylight); older sessions default to Studio
+    """
+    UPDATE sessions SET data = json_set(data, '$.ui_theme', 'studio') WHERE json_extract(data, '$.ui_theme') IS NULL;
+    """,
 ]
 
 _TABLES: dict[type[BaseModel], str] = {
@@ -209,6 +213,18 @@ class Store:
     def list_sessions(self) -> list[Session]:
         return self.query(Session, order="created_at DESC")
 
+    def session_counts(self) -> dict[str, dict[str, int]]:
+        """Per session: shots, captures and active keepers."""
+        out: dict[str, dict[str, int]] = {}
+        with self._lock:
+            for key, sql in (("shot_count", "SELECT session_id, COUNT(*) FROM shots GROUP BY session_id"),
+                             ("capture_count", "SELECT session_id, COUNT(*) FROM captures GROUP BY session_id"),
+                             ("keeper_count", "SELECT session_id, COUNT(*) FROM keeper_decisions "
+                                              "WHERE revoked_at IS NULL GROUP BY session_id")):
+                for sid, n in self._conn.execute(sql).fetchall():
+                    out.setdefault(sid, {})[key] = n
+        return out
+
     def shots(self, session_id: str) -> list[ShotRequirement]:
         return self.query(ShotRequirement, "session_id=?", (session_id,), "ordinal, rowid")
 
@@ -265,7 +281,7 @@ class Store:
 
     # --- source files (ingestion ledger) -------------------------------------------------
     # One row per source path. ``status``: discovered | stabilizing | ingested | duplicate | pending_retry |
-    # ignored | failed. ``snapshot`` holds the shot/setup attribution captured at first detection so an
+    # ignored | failed | skipped (the user gave up on it; never retried). ``snapshot`` holds the shot/setup attribution captured at first detection so an
     # interrupted ingest resumes with the original context after restart.
     def source_file(self, session_id: str, path: str) -> dict | None:
         with self._lock:
@@ -304,6 +320,17 @@ class Store:
                 (session_id, path, size, mtime_ns, sha256, kind, capture_id, status, now, now,
                  json.dumps(snapshot) if snapshot else None, note),
             )
+
+    def source_file_by_id(self, session_id: str, row_id: int) -> dict | None:
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM source_files WHERE session_id=? AND id=?",
+                                     (session_id, row_id)).fetchone()
+        return self._source_row(row)
+
+    def set_source_status(self, row_id: int, status: str, note: str | None) -> None:
+        with self._lock:
+            self._conn.execute("UPDATE source_files SET status=?, note=?, updated_at=? WHERE id=?",
+                               (status, note, utcnow(), row_id))
 
     def source_files(self, session_id: str, status: str | None = None) -> list[dict]:
         with self._lock:

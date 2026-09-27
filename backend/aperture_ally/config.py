@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     session_budget_usd: float | None = Field(
         None, description="Default USD cap per session; only priced models count (set APERTURE_ALLY_PRICES)")
     history_limit: int = 4
+    retry_online_poll_s: float = Field(15.0, description="While a retry-when-online is armed: provider reachability check")
     teaching_prompt_every: int = Field(3, description="Ask Drew to predict/explain roughly every Nth coached capture")
     prices: dict[str, ModelPrice] = Field(default_factory=dict, description="model id -> price; optional")
 

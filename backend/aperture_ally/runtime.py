@@ -20,6 +20,7 @@ class SessionContext:
     active_shot_id: str | None = None
     setup_revision_id: str | None = None
     shot_changed_mono: float = 0.0
+    previous_shot_id: str | None = None  # shot that was active before the latest switch
     generation: int = 0
     voice_epoch: int = 0
     pending_change: str | None = None  # 'what I changed' note for the next capture of the active shot
@@ -44,6 +45,7 @@ class ContextTracker:
     def set_active_shot(self, session_id: str, shot_id: str | None, *, initial: bool = False) -> SessionContext:
         ctx = self.get(session_id)
         if ctx.active_shot_id != shot_id:
+            ctx.previous_shot_id = None if initial else ctx.active_shot_id
             ctx.active_shot_id = shot_id
             ctx.shot_changed_mono = 0.0 if initial else time.monotonic()
             ctx.bump()

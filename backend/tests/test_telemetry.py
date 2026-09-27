@@ -157,7 +157,7 @@ async def test_exports_and_log_file(h, fx, tmp_path):
     assert h.app.log_path.exists() and h.app.log_path.stat().st_size > 0
 
 
-def test_v1_database_migrates_to_v2(tmp_path):
+def test_v1_database_migrates_to_latest(tmp_path):
     path = tmp_path / "old.sqlite3"
     conn = sqlite3.connect(path)
     for stmt in [x.strip() for x in MIGRATIONS[0].split(";") if x.strip()]:
@@ -168,7 +168,9 @@ def test_v1_database_migrates_to_v2(tmp_path):
     conn.commit()
     conn.close()
     store = Store(path)
-    assert store.schema_version() == len(MIGRATIONS) == 2
+    assert store.schema_version() == len(MIGRATIONS) == 3
     assert store.list_sessions()[0].name == "old"
+    raw = store._conn.execute("SELECT data FROM sessions WHERE id='s1'").fetchone()[0]
+    assert json.loads(raw)["ui_theme"] == "studio"  # v3 backfills the display theme
     assert store.model_calls() == [] and store.telemetry_events() == []
     _ = Assessment

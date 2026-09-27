@@ -126,7 +126,12 @@ class CoachingService:
         self._pending_auto: dict[str, str] = {}
         self._running_auto: dict[str, set[asyncio.Task]] = {}
         self._inflight: dict[str, asyncio.Task] = {}  # capture_id -> latest assessment task
+        self._capture_tasks: dict[str, set[asyncio.Task]] = {}  # capture_id -> every running assessment task
         self.tasks: set[asyncio.Task] = set()
+        # Retry-when-online: async (provider_name) -> bool, set by the app container (network probe / mock state).
+        self.reachable = None
+        self._online_task: asyncio.Task | None = None
+        self._online_poke = asyncio.Event()
 
     # --- scheduling ----------------------------------------------------------------------
     async def on_capture_ready(self, capture: Capture, auto: bool) -> None:
@@ -168,7 +173,120 @@ class CoachingService:
         if capture_id:
             self._inflight[capture_id] = task
             task.add_done_callback(lambda _t: self._inflight.pop(capture_id, None) if self._inflight.get(capture_id) is _t else None)
+            group = self._capture_tasks.setdefault(capture_id, set())
+            group.add(task)
+
+            def forget(t: asyncio.Task) -> None:
+                group.discard(t)
+                if not group and self._capture_tasks.get(capture_id) is group:
+                    self._capture_tasks.pop(capture_id, None)
+
+            task.add_done_callback(forget)
         return task
+
+    # --- cancel / retry ------------------------------------------------------------------
+    async def cancel(self, capture_id: str) -> bool:
+        """Cancel queued/running analysis of this capture. The provider result, if it still arrives, is dropped
+        (the awaiting task is gone) and never spoken; speech about this capture is stopped."""
+        cap = await self.store.get(Capture, capture_id)
+        if cap is None:
+            return False
+        cancelled = False
+        if self._pending_auto.get(cap.session_id) == capture_id:
+            self._pending_auto.pop(cap.session_id)
+            cancelled = True
+        tasks = [t for t in self._capture_tasks.get(capture_id, set()) if not t.done()]
+        for t in tasks:
+            t.cancel()
+        if tasks:
+            cancelled = True
+            await asyncio.wait(tasks, timeout=2)
+        for a in await self.store.assessments_for(capture_id):
+            if a.status in ("queued", "running"):
+                a.status, a.error, a.speech_status = "superseded", "cancelled by user", "cancelled"
+                a.completed_at = utcnow()
+                await self.store.put(a)
+                cancelled = True
+            elif a.speech_status == "pending" and tasks:
+                a.speech_status = "cancelled"
+                await self.store.put(a)
+        cur = self.audio.current
+        if cur is not None and cur.meta.get("capture_id") == capture_id:
+            await self.audio.stop("analysis cancelled")
+            cancelled = True
+        if cancelled:
+            done = await self.store.latest_completed_assessment(capture_id)
+
+            def restore(c: Capture) -> None:
+                if c.processing_state in (ProcessingState.analyzing, ProcessingState.ready):
+                    c.processing_state = ProcessingState.analyzed if done else ProcessingState.ready
+                    c.error = None
+
+            await self.store.update(Capture, capture_id, restore)
+            self.bus.publish("analysis.cancelled", session_id=cap.session_id, capture_id=capture_id)
+        return cancelled
+
+    async def arm_retry_online(self, capture_id: str) -> Capture | None:
+        """Run this capture's assessment once, automatically, when the provider is reachable again."""
+        def arm(c: Capture) -> None:
+            c.retry_when_online = True
+
+        cap = await self.store.update(Capture, capture_id, arm)
+        if cap is None:
+            return None
+        self.bus.publish("analysis.retry_armed", session_id=cap.session_id, capture_id=cap.id)
+        self.poke_online()
+        return cap
+
+    def poke_online(self) -> None:
+        """Check armed retries now (e.g. after a successful network probe); starts the watcher if needed."""
+        if self._online_task is None or self._online_task.done():
+            self._online_task = asyncio.create_task(self._watch_online())  # not in self.tasks: drain() ignores it
+        else:
+            self._online_poke.set()
+
+    async def _watch_online(self) -> None:
+        while True:
+            try:
+                armed = await self.store.query(Capture, "json_extract(data, '$.retry_when_online') = 1")
+                if not armed:
+                    return
+                for sid in {c.session_id for c in armed}:
+                    session = await self.store.get(Session, sid)
+                    if session and (self.reachable is None or await self.reachable(session.assess_provider)):
+                        await self.run_armed(sid)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("retry-when-online check failed")
+            self._online_poke.clear()
+            try:
+                await asyncio.wait_for(self._online_poke.wait(), self.settings.retry_online_poll_s)
+            except TimeoutError:
+                pass
+
+    async def run_armed(self, session_id: str) -> list[str]:
+        """Provider is back: run the newest armed capture of each shot (older ones are disarmed, no backlog)."""
+        armed = [c for c in await self.store.captures(session_id) if c.retry_when_online]
+        newest: dict[str | None, Capture] = {}
+        for c in armed:
+            if c.shot_id not in newest or c.seq > newest[c.shot_id].seq:
+                newest[c.shot_id] = c
+        started = []
+        for c in armed:
+            def disarm(x: Capture) -> None:
+                x.retry_when_online = False
+
+            await self.store.update(Capture, c.id, disarm)
+            if newest.get(c.shot_id) is c:
+                guard = self.tracker.auto_guard(session_id, c.shot_id, c.id)  # speak only if still current
+                self._spawn(self.run_assessment(c.id, trigger="user", guard=guard), capture_id=c.id)
+                started.append(c.id)
+                self.bus.publish("analysis.retry_online", session_id=session_id, capture_id=c.id)
+            else:
+                self.bus.publish("analysis.retry_dropped", session_id=session_id, capture_id=c.id,
+                                 reason="a newer photo of this shot is retried instead")
+        return started
 
     def request_review(self, capture_id: str, *, baseline_capture_id: str | None = None,
                        kind: str | None = None, speak: bool = True) -> asyncio.Task:
@@ -330,7 +448,10 @@ class CoachingService:
             await self._set_state(capture.id, ProcessingState.analyzed)
             self.bus.publish("analysis.completed", session_id=session.id, capture_id=capture.id,
                              assessment_id=assessment.id, verdict=result.verdict, trigger=trigger)
+            was_down = self.providers.health.get(provider_name, {}).get("ok") is False
             self.providers.health[provider_name] = {"ok": True, "at": utcnow()}
+            if was_down:
+                self._spawn(self.run_armed(session.id))
         except BudgetExceeded as exc:
             await self._fail(assessment, capture.id, f"Budget reached: {exc}")
             if self.on_budget_exceeded:

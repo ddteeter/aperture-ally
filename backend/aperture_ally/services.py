@@ -121,6 +121,9 @@ class ApertureAllyApp:
                                         audio=self.audio, session_root=self.session_root,
                                         recorder=self.telemetry_calls)
         self.coaching.on_budget_exceeded = self._budget_exceeded
+        self.coaching.reachable = self._provider_reachable
+        self.network.on_probe = lambda result: (
+            self.coaching.poke_online() if any(p.get("ok") for p in result.get("probes", [])) else None)
         self.cues = cues or build_cues(settings)
         self.bus.sinks.append(self._cue_sink)
         self.ingest = IngestService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
@@ -141,6 +144,19 @@ class ApertureAllyApp:
         if s.anthropic_api_key and s.claude_model:
             hosts.add(PROVIDER_HOSTS["claude"])
         return sorted(hosts)
+
+    async def _provider_reachable(self, name: str) -> bool:
+        """Is the provider worth retrying? Real providers: DNS + TCP to their API host. Mock: not failing."""
+        from .telemetry.recorder import probe_host
+
+        host = PROVIDER_HOSTS.get(name)
+        if host is None:
+            try:
+                p = self.providers.get(name)
+            except Exception:
+                return False
+            return getattr(p, "fail_mode", "none") != "unavailable"
+        return bool((await probe_host(host, timeout=3.0)).get("ok"))
 
     def _audio_event(self, kind: str, data: dict) -> None:
         self.telemetry.record(kind, data, session_id=data.get("session_id"), capture_id=data.get("capture_id"))
@@ -163,6 +179,8 @@ class ApertureAllyApp:
             await self.store.put(a)
         for s in await self.store.list_sessions():
             await self._load_context(s)
+        if await self.store.query(Capture, "json_extract(data, '$.retry_when_online') = 1"):
+            self.coaching.poke_online()
         active = await self.active_session()
         if watch and active:
             await self.ingest.watch(active, startup=True)
@@ -185,6 +203,8 @@ class ApertureAllyApp:
         await self.audio.stop("shutdown")
         await self.ingest.close()
         await self.coaching.drain(timeout=2)
+        if self.coaching._online_task:
+            self.coaching._online_task.cancel()
         for t in list(self.coaching.tasks):
             t.cancel()
         await self.telemetry.flush()
@@ -244,9 +264,11 @@ class ApertureAllyApp:
 
     async def create_session(self, *, name: str, product: str = "", watch_folder: str | None = None,
                              template: str | None = "running_shoe", assess_provider: str | None = None,
-                             teaching_mode: bool = True, setup: dict | None = None, simulated: bool = False) -> Session:
+                             teaching_mode: bool = True, setup: dict | None = None, simulated: bool = False,
+                             ui_theme: str = "studio") -> Session:
         s = Session(name=name, product=product, output_folder="", assess_provider=assess_provider or self.settings.assess_provider,
-                    teaching_mode=teaching_mode, simulated=simulated)
+                    teaching_mode=teaching_mode, simulated=simulated, ui_theme=ui_theme,
+                    template=template if template in TEMPLATES else "empty")
         s.output_folder = str(self.session_root(s.id))
         s.watch_folder = str(Path(watch_folder).expanduser()) if watch_folder else str(self.settings.data_dir / "incoming" / s.id)
         Path(s.output_folder).mkdir(parents=True, exist_ok=True)
@@ -274,7 +296,7 @@ class ApertureAllyApp:
     async def update_session(self, session_id: str, patch: dict[str, Any]) -> Session:
         s = await self.get_session(session_id)
         allowed = {"name", "product", "watch_folder", "assess_provider", "teaching_mode", "status",
-                   "coaching_paused", "budget_usd", "max_model_calls"}
+                   "coaching_paused", "budget_usd", "max_model_calls", "ui_theme"}
         rewatch = False
         for k, v in patch.items():
             if k not in allowed:

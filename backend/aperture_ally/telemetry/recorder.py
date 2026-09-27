@@ -181,6 +181,7 @@ class NetworkMonitor:
         self.last: dict[str, Any] | None = None
         self._task: asyncio.Task | None = None
         self._busy = False
+        self.on_probe: Callable[[dict[str, Any]], None] | None = None
 
     def start(self) -> None:
         if self.settings.network_probe_interval_s > 0 and self._task is None:
@@ -206,6 +207,8 @@ class NetworkMonitor:
             results = await asyncio.gather(*(probe_host(h) for h in hosts))
             self.last = {"at": utcnow(), "reason": reason, "interface": iface, "probes": list(results)}
             self.sink.record("network.probe", self.last)
+            if self.on_probe:
+                self.on_probe(self.last)
             return self.last
         finally:
             self._busy = False

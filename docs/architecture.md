@@ -36,10 +36,18 @@ OM Capture ──writes──▶ watch folder ──watchdog hints + periodic sc
 | `input/` | global key listener (pynput) + pure `PTTKeyTracker` |
 | `telemetry/` | stage timing marks (wall + monotonic), summaries, exports |
 | `runtime.py` | in-memory current context per session → speech guards |
+| `imaging/framing.py` | framing-similarity score (edge layout + texture signature, stored as `overview.framing.npz`) |
+| `imaging/interpret.py` | plain-language histogram reading; zone masks for the photo overlay live in `imaging/evidence.py` |
+| `comparison.py` | before/after metrics (region deltas, relative sharpness, EV from EXIF), baseline candidates, attribution hints |
 | `coverage.py` | keeper decisions (hash-verified), coverage states, JSON/Markdown/contact sheet |
 | `replay.py`, `fixtures_gen.py` | simulated camera + synthetic fixtures |
 | `services.py` | app container, session/shot/setup operations |
 | `api/routes.py`, `app.py`, `cli.py`, `doctor.py` | HTTP/WS surface, factory, commands, checks |
+
+The frontend (`frontend/src`) follows the Claude Design handoff in `docs/design/`: tokens for the Studio
+and Daylight themes in `theme.css` (`data-theme` on `<html>`, chosen per session via `ui_theme`), bundled
+IBM Plex fonts, shared status vocabulary in `ui/status.ts`, and area styles next to their components
+(`shoot.css`, `coach.css`, `workflows.css`).
 
 All external dependencies sit behind small adapters (`Provider`, `SpeechBackend`, `Recorder`,
 `Transcriber`, `MetadataReader`, key listener) and can be replaced independently.

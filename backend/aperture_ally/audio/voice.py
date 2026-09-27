@@ -252,29 +252,7 @@ class VoiceController:
                 await self.store.put(turn)
                 self.set_state(AudioState.idle, reason="empty transcript")
                 return
-            turn.intent, turn.meta["command_payload"] = parse_command(text)
-            turn.status = "answering"
-            await self.store.put(turn)
-            self.bus.publish("voice.transcript", session_id=turn.session_id, turn_id=turn.id, transcript=text,
-                             intent=turn.intent)
-            if guard():
-                self.set_state(AudioState.preparing_response, intent=turn.intent)
-            spoken, answer = await self._respond(turn)
-            turn.answer = answer
-            turn.timings["answer_ms"] = (time.monotonic() - t0) * 1000
-            turn.status = "answered"
-            await self.store.put(turn)
-            self.bus.publish("voice.answer", session_id=turn.session_id, turn_id=turn.id, answer=answer,
-                             capture_id=turn.capture_id)
-            if spoken:
-                t_sp = time.monotonic()
-                turn.timings["release_to_speech_request_ms"] = (t_sp - t0) * 1000
-                status = await self.audio.speak(spoken, guard, {"session_id": turn.session_id, "capture_id": turn.capture_id,
-                                                                "voice_turn_id": turn.id, "kind": "answer"})
-                turn.timings["speech_call_ms"] = (time.monotonic() - t_sp) * 1000
-                turn.meta["speech_status"] = status
-                turn.status = "spoken" if status == "spoken" else "suppressed" if status == "suppressed" else "answered"
-                await self.store.put(turn)
+            await self._handle_text(turn, text, guard, t0)
         except asyncio.CancelledError:
             turn.status = "cancelled"
             await self.store.put(turn)
@@ -305,6 +283,102 @@ class VoiceController:
             if self.state in (AudioState.transcribing, AudioState.preparing_response, AudioState.error):
                 self.state = AudioState.idle
                 self.bus.publish("voice.state.changed", state="idle")
+
+    async def _handle_text(self, turn: VoiceTurn, text: str, guard, t0: float, on_answer=None) -> None:
+        """Transcript (spoken or typed) → command or coach answer → guarded speech."""
+        turn.transcript = text
+        turn.intent, turn.meta["command_payload"] = parse_command(text)
+        turn.status = "answering"
+        await self.store.put(turn)
+        self.bus.publish("voice.transcript", session_id=turn.session_id, turn_id=turn.id, transcript=text,
+                         intent=turn.intent, typed=bool(turn.meta.get("typed")))
+        if guard():
+            self.set_state(AudioState.preparing_response, intent=turn.intent)
+        spoken, answer = await self._respond(turn)
+        turn.answer = answer
+        turn.timings["answer_ms"] = (time.monotonic() - t0) * 1000
+        turn.status = "answered"
+        await self.store.put(turn)
+        self.bus.publish("voice.answer", session_id=turn.session_id, turn_id=turn.id, answer=answer,
+                         capture_id=turn.capture_id)
+        if on_answer:
+            on_answer()
+        if spoken:
+            t_sp = time.monotonic()
+            turn.timings["release_to_speech_request_ms"] = (t_sp - t0) * 1000
+            status = await self.audio.speak(spoken, guard, {"session_id": turn.session_id, "capture_id": turn.capture_id,
+                                                            "voice_turn_id": turn.id, "kind": "answer"})
+            turn.timings["speech_call_ms"] = (time.monotonic() - t_sp) * 1000
+            turn.meta["speech_status"] = status
+            turn.status = "spoken" if status == "spoken" else "suppressed" if status == "suppressed" else "answered"
+            await self.store.put(turn)
+
+    async def text(self, session_id: str | None, text: str, *, capture_id: str | None = None,
+                   source: str = "ui") -> dict:
+        """A typed utterance: same commands, questions, epochs and stale-speech rules as a spoken one.
+
+        Returns once the answer is known; speaking it continues in the background (and is dropped if a newer
+        press/turn arrives first).
+        """
+        text = text.strip()
+        async with self._lock:
+            if session_id is None:
+                return {"error": "no active session", "intent": None, "answer": None, "voice_turn_id": None}
+            if self.state == AudioState.listening:
+                return {"error": "push-to-talk is recording", "intent": None, "answer": None, "voice_turn_id": None}
+            await self.audio.stop("typed")
+            if self._processing and not self._processing.done():
+                self._processing.cancel()
+            ctx = self.tracker.get(session_id)
+            ctx.voice_epoch += 1
+            if capture_id is None and ctx.active_shot_id:
+                capture_id = ctx.latest_capture.get(ctx.active_shot_id)
+            cap = await self.store.get(Capture, capture_id) if capture_id else None
+            turn = VoiceTurn(session_id=session_id, shot_id=cap.shot_id if cap else ctx.active_shot_id,
+                             capture_id=cap.id if cap else None, voice_epoch=ctx.voice_epoch, status="answering",
+                             transcript=text, meta={"typed": True, "source": source})
+            self.turn = turn
+            await self.store.put(turn)
+            guard = self.tracker.voice_guard(session_id)
+            answered = asyncio.get_running_loop().create_future()
+
+            def on_answer() -> None:
+                if not answered.done():
+                    answered.set_result(None)
+
+            async def run() -> None:
+                t0 = time.monotonic()
+                try:
+                    if not text:
+                        turn.status = "empty"
+                        await self.store.put(turn)
+                        return
+                    await self._handle_text(turn, text, guard, t0, on_answer)
+                except asyncio.CancelledError:
+                    turn.status = "cancelled"
+                    await self.store.put(turn)
+                    raise
+                except Exception as exc:
+                    log.exception("typed turn failed")
+                    from ..coaching.budget import BudgetExceeded
+                    from ..coaching.providers.base import ProviderUnavailable
+
+                    offline = isinstance(exc, ProviderUnavailable | TimeoutError)
+                    turn.status = "error"
+                    turn.error = ("Budget reached: " if isinstance(exc, BudgetExceeded)
+                                  else "AI unavailable: " if offline else "") + str(exc)
+                    await self.store.put(turn)
+                    self.set_state(AudioState.error, error=turn.error, ai_unavailable=offline)
+                finally:
+                    on_answer()
+                    if self.state in (AudioState.preparing_response, AudioState.error):
+                        self.state = AudioState.idle
+                        self.bus.publish("voice.state.changed", state="idle")
+
+            self._processing = asyncio.create_task(run())
+        await asyncio.shield(answered)
+        return {"intent": turn.intent, "answer": turn.answer, "voice_turn_id": turn.id, "status": turn.status,
+                "error": turn.error}
 
     async def _respond(self, turn: VoiceTurn) -> tuple[str | None, str]:
         session = await self.store.get(Session, turn.session_id)
@@ -371,4 +445,4 @@ class VoiceController:
 
     def snapshot(self) -> dict:
         return {"state": self.state.value, "turn": self.turn.model_dump() if self.turn else None,
-                "repeats_ignored": self.repeats_ignored, "at": utcnow()}
+                "repeats_ignored": self.repeats_ignored, "at": utcnow(), "transcriber": self.transcriber.name}

@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from ..coaching.providers.mock import MockProvider
+from ..comparison import attribution_hint, baseline_candidates, comparison_metrics, region_labels
 from ..coverage import KeeperError, compute_coverage, export_coverage
 from ..domain.assessment import AssessmentResult, provider_json_schema
 from ..domain.exposure import ExposureContext, equivalent_exposure
@@ -32,11 +33,13 @@ from ..domain.models import (
     Criterion,
     Experiment,
     Region,
+    Session,
     SessionStatus,
     SetupFields,
     ShotRequirement,
     utcnow,
 )
+from ..imaging.evidence import ZONES, ensure_zone_mask
 from ..imaging.interpret import compare as compare_tonality
 from ..imaging.interpret import interpret
 from ..services import ApertureAllyApp, NotFound
@@ -59,6 +62,7 @@ class SessionCreate(BaseModel):
     assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
     teaching_mode: bool = True
     simulated: bool = False
+    ui_theme: Literal["studio", "daylight"] = "studio"
     setup: SetupFields | None = None
 
 
@@ -72,6 +76,7 @@ class SessionPatch(BaseModel):
     coaching_paused: bool | None = None
     budget_usd: float | None = Field(None, ge=0)
     max_model_calls: int | None = Field(None, ge=0)
+    ui_theme: Literal["studio", "daylight"] | None = None
 
 
 class ShotBody(BaseModel):
@@ -136,6 +141,14 @@ class VoiceBody(BaseModel):
     source: str = "ui"
 
 
+class VoiceText(VoiceBody):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class RetryBody(BaseModel):
+    when: Literal["now", "online"] = "now"
+
+
 # --- helpers ---------------------------------------------------------------------------------
 async def _session_or_404(app: ApertureAllyApp, sid: str):
     try:
@@ -151,9 +164,7 @@ async def _capture_or_404(app: ApertureAllyApp, cid: str) -> Capture:
     return c
 
 
-def _region_labels(ev: dict[str, Any]) -> dict[str, str]:
-    return {x["id"]: ("auto-picked detail area" if x.get("source") == "auto" else x.get("label") or x["id"])
-            for x in ev.get("crops", [])}
+_region_labels = region_labels
 
 
 def _capture_view(c: Capture, latest: Assessment | None) -> dict[str, Any]:
@@ -166,6 +177,7 @@ def _capture_view(c: Capture, latest: Assessment | None) -> dict[str, Any]:
         "crops": [{k: v for k, v in x.items() if k != "path"} for x in ev.get("crops", [])],
         "measurements": ev.get("measurements"),
         "has_clip_overlay": bool(ev.get("clip_overlay")),
+        "has_zone_masks": bool(ev.get("clip_overlay")),  # zone_* masks are generated next to it on request
     }
     if ev.get("measurements"):
         d["histogram_insights"] = interpret(ev["measurements"], _region_labels(ev))
@@ -182,16 +194,39 @@ def _assessment_view(a: Assessment) -> dict[str, Any]:
     return d
 
 
-def _with_tonality_changes(views: list[dict[str, Any]], caps: list[Capture]) -> list[dict[str, Any]]:
-    """Attach 'what your retake changed' sentences (vs the baseline photo) to each capture view."""
+def _with_comparisons(view: dict[str, Any], c: Capture, base: Capture | None, caps: list[Capture],
+                      shots: dict[str, ShotRequirement]) -> dict[str, Any]:
+    """Baseline comparison (sentences + measured numbers) and the attribution hint for one capture view."""
+    if base and base.evidence.get("measurements") and c.evidence.get("measurements"):
+        view["histogram_changes"] = {"baseline_seq": base.seq, "changes": compare_tonality(
+            base.evidence["measurements"], c.evidence["measurements"], _region_labels(c.evidence))}
+    view["comparison_metrics"] = comparison_metrics(c, base)
+    view["attribution_hint"] = attribution_hint(c, caps, shots)
+    return view
+
+
+async def _capture_views(caps: list[Capture], latest: dict[str, Assessment],
+                         shots: list[ShotRequirement], only: Capture | None = None) -> list[dict[str, Any]]:
+    """Capture views with comparisons; built off the event loop (framing reads overview images)."""
     by_id = {c.id: c for c in caps}
-    for v, c in zip(views, caps, strict=True):
-        base = by_id.get(c.baseline_capture_id or "")
-        if base and base.evidence.get("measurements") and c.evidence.get("measurements"):
-            labels = _region_labels(c.evidence)
-            v["histogram_changes"] = {"baseline_seq": base.seq, "changes": compare_tonality(
-                base.evidence["measurements"], c.evidence["measurements"], labels)}
-    return views
+    shot_map = {s.id: s for s in shots}
+    targets = [only] if only else caps
+
+    def build() -> list[dict[str, Any]]:
+        return [_with_comparisons(_capture_view(c, latest.get(c.id)), c, by_id.get(c.baseline_capture_id or ""),
+                                  caps, shot_map) for c in targets]
+
+    return await asyncio.get_running_loop().run_in_executor(None, build)
+
+
+def _last_file_at(session_watch_folder: str | None, rows: list[dict]) -> str | None:
+    """Newest first-detection time of a file from the watch folder."""
+    if not session_watch_folder:
+        return None
+    root = str(Path(session_watch_folder).expanduser())
+    times = [r["first_seen_at"] for r in rows
+             if r["source_path"] == root or r["source_path"].startswith(root.rstrip("/") + "/")]
+    return max(times) if times else None
 
 
 async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
@@ -203,9 +238,10 @@ async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
     for a in assessments:
         latest[a.capture_id] = a
     revs = await app.store.setup_revisions(sid)
+    rows = await app.store.source_files(sid)
     pending = [
-        {"name": Path(r["source_path"]).name, "status": r["status"], "note": r["note"]}
-        for r in await app.store.source_files(sid)
+        {"key": str(r["id"]), "name": Path(r["source_path"]).name, "status": r["status"], "note": r["note"]}
+        for r in rows
         if r["status"] in ("discovered", "stabilizing", "pending_retry", "failed")
     ]
     return {
@@ -213,11 +249,12 @@ async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
         "shots": [x.model_dump() for x in shots],
         "setup": revs[-1].model_dump() if revs else None,
         "setup_revisions": len(revs),
-        "captures": _with_tonality_changes([_capture_view(c, latest.get(c.id)) for c in caps], caps),
+        "captures": await _capture_views(caps, latest, shots),
         "experiments": [e.model_dump() for e in await app.store.experiments(sid)],
         "keepers": [k.model_dump() for k in await app.store.active_keepers(sid)],
         "coverage": await compute_coverage(app.store, sid, verify=False),
         "pending_files": pending,
+        "last_file_at": _last_file_at(s.watch_folder, rows),
         "voice": app.voice.snapshot(),
         "watching": app.ingest.watched_session_id == sid,
         "pending_change": app.tracker.get(sid).pending_change,
@@ -236,7 +273,10 @@ async def health(request: Request):
 
 @router.get("/sessions")
 async def list_sessions(request: Request):
-    return [s.model_dump() for s in await app_of(request).store.list_sessions()]
+    store = app_of(request).store
+    counts = await store.session_counts()
+    zero = {"shot_count": 0, "capture_count": 0, "keeper_count": 0}
+    return [{**s.model_dump(), **zero, **counts.get(s.id, {})} for s in await store.list_sessions()]
 
 
 @router.post("/sessions", status_code=201)
@@ -246,7 +286,7 @@ async def create_session(body: SessionCreate, request: Request):
         name=body.name, product=body.product, watch_folder=body.watch_folder,
         template=None if body.template == "empty" else body.template, assess_provider=body.assess_provider,
         teaching_mode=body.teaching_mode, setup=body.setup.model_dump() if body.setup else None,
-        simulated=body.simulated,
+        simulated=body.simulated, ui_theme=body.ui_theme,
     )
     return s.model_dump()
 
@@ -335,7 +375,7 @@ async def recent_events(request: Request, after_seq: int = 0):
 @router.post("/sessions/{sid}/imports")
 async def imports(sid: str, body: ImportBody, request: Request):
     app = app_of(request)
-    await _session_or_404(app, sid)
+    s = await _session_or_404(app, sid)
     if body.replay:
         from ..replay import start_server_side_replay
 
@@ -343,6 +383,12 @@ async def imports(sid: str, body: ImportBody, request: Request):
             task_id = start_server_side_replay(request.app, sid, body.replay)
         except KeyError as e:
             raise HTTPException(404, str(e)) from e
+        if not s.simulated:  # replayed photos are never hardware evidence
+            def simulated(x: Session) -> None:
+                x.simulated = True
+
+            await app.store.update(Session, sid, simulated)
+            app.bus.publish("session.updated", session_id=sid, simulated=True)
         return {"replay": body.replay, "task": task_id}
     try:
         ids = await app.ingest.import_paths(sid, [Path(p) for p in body.paths], shot_id=body.shot_id,
@@ -398,6 +444,47 @@ async def exports(sid: str, request: Request):
     return files
 
 
+@router.get("/sessions/{sid}/setup-revisions")
+async def setup_revisions(sid: str, request: Request):
+    app = app_of(request)
+    await _session_or_404(app, sid)
+    caps = await app.store.captures(sid)
+    out = []
+    for rev in await app.store.setup_revisions(sid):
+        seqs = [c.seq for c in caps if c.setup_revision_id == rev.id]
+        out.append({**rev.model_dump(), "capture_count": len(seqs), "first_seq": min(seqs) if seqs else None,
+                    "last_seq": max(seqs) if seqs else None})
+    return out
+
+
+@router.post("/sessions/{sid}/pending-files/{key}/retry")
+async def pending_retry(sid: str, key: str, request: Request):
+    """Read a stuck watch-folder file again now (clears the retry backoff)."""
+    app = app_of(request)
+    s = await _session_or_404(app, sid)
+    try:
+        row = await app.ingest.retry_source(s, key)
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(409, str(e)) from e
+    if row is None:
+        raise HTTPException(404, f"pending file {key}")
+    return {"ok": True}
+
+
+@router.post("/sessions/{sid}/pending-files/{key}/skip")
+async def pending_skip(sid: str, key: str, request: Request):
+    """Stop trying to read a file; it is recorded as skipped and not retried."""
+    app = app_of(request)
+    await _session_or_404(app, sid)
+    try:
+        row = await app.ingest.skip_source(sid, key)
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from e
+    if row is None:
+        raise HTTPException(404, f"pending file {key}")
+    return {"ok": True}
+
+
 # --- captures --------------------------------------------------------------------------------
 @router.get("/captures/{cid}")
 async def get_capture(cid: str, request: Request):
@@ -406,15 +493,12 @@ async def get_capture(cid: str, request: Request):
     assessments = await app.store.assessments_for(cid)
     exps = [e for e in await app.store.experiments(c.session_id)
             if cid in (e.baseline_capture_id, e.follow_up_capture_id)]
-    view = _capture_view(c, assessments[-1] if assessments else None)
+    caps = await app.store.captures(c.session_id)
+    latest = {cid: assessments[-1]} if assessments else {}
+    (view,) = await _capture_views(caps, latest, await app.store.shots(c.session_id), only=c)
     view["assessments"] = [_assessment_view(a) for a in assessments]
     view["experiments"] = [e.model_dump() for e in exps]
     view["is_latest_for_shot"] = app.tracker.is_latest(c.session_id, c.shot_id, c.id)
-    base = await app.store.get(Capture, c.baseline_capture_id) if c.baseline_capture_id else None
-    if base and base.evidence.get("measurements") and c.evidence.get("measurements"):
-        view["histogram_changes"] = {"baseline_seq": base.seq,
-                                     "changes": compare_tonality(
-                                         base.evidence["measurements"], c.evidence["measurements"], _region_labels(c.evidence))}
     return view
 
 
@@ -453,6 +537,13 @@ async def capture_image(cid: str, kind: str, request: Request):
                 await asyncio.get_running_loop().run_in_executor(
                     app.executor, lambda: ensure_clip_overlay(Path(ev["image_path"]), ev["overview"], out))
                 path = str(out)
+    elif kind.startswith("zone_") and kind[5:] in ZONES:
+        if ev.get("clip_overlay") and ev.get("image_path") and Path(ev["image_path"]).exists():
+            overlay = Path(ev["clip_overlay"])
+            if overlay.resolve().is_relative_to(app.session_root(c.session_id).resolve()):
+                out = await asyncio.get_running_loop().run_in_executor(
+                    app.executor, lambda: ensure_zone_mask(Path(ev["image_path"]), ev["overview"], overlay, kind[5:]))
+                path = str(out)
     elif kind == "original":
         path = c.jpeg_path or c.pairing.get("raw_preview_path")
     elif kind.startswith("crop_"):
@@ -478,6 +569,56 @@ async def assess(cid: str, request: Request, body: AssessBody | None = None):
             await app.update_session(s.id, {"assess_provider": body.provider})
     app.coaching.request_review(cid, kind="assess" if body.plain else None, speak=body.speak)
     return {"queued": True, "capture_id": cid}
+
+
+@router.post("/captures/{cid}/cancel")
+async def cancel_analysis(cid: str, request: Request):
+    """Cancel queued/running analysis of this capture; a late result is dropped and never spoken."""
+    app = app_of(request)
+    await _capture_or_404(app, cid)
+    return {"cancelled": await app.coaching.cancel(cid)}
+
+
+@router.post("/captures/{cid}/retry", status_code=202)
+async def retry_analysis(cid: str, request: Request, body: RetryBody | None = None):
+    """now: run the assessment again. online: run it once, automatically, when the provider is reachable."""
+    app = app_of(request)
+    await _capture_or_404(app, cid)
+    body = body or RetryBody()
+    if body.when == "online":
+        await app.coaching.arm_retry_online(cid)
+        return {"queued": False, "armed": True, "capture_id": cid}
+
+    def disarm(c: Capture) -> None:
+        c.retry_when_online = False
+
+    await app.store.update(Capture, cid, disarm)
+    app.coaching.request_review(cid)
+    return {"queued": True, "armed": False, "capture_id": cid}
+
+
+@router.post("/captures/{cid}/reread")
+async def reread_capture(cid: str, request: Request):
+    """Decode a capture's file again after a failed read and rebuild its evidence."""
+    app = app_of(request)
+    c = await _capture_or_404(app, cid)
+    if c.processing_state != "failed" or c.evidence.get("measurements"):
+        raise HTTPException(409, "only a photo whose file could not be read can be re-read")
+    ok, error = await app.ingest.reread_capture(c)
+    return {"ok": ok, "error": error}
+
+
+@router.get("/captures/{cid}/baseline-candidates")
+async def baseline_candidates_route(cid: str, request: Request):
+    app = app_of(request)
+    c = await _capture_or_404(app, cid)
+    caps = await app.store.captures(c.session_id, c.shot_id) if c.shot_id else []
+    verdicts: dict[str, str | None] = {}
+    for x in caps:
+        if x.seq < c.seq:
+            a = await app.store.latest_completed_assessment(x.id)
+            verdicts[x.id] = (a.result or {}).get("verdict") if a else None
+    return await asyncio.get_running_loop().run_in_executor(None, lambda: baseline_candidates(c, caps, verdicts))
 
 
 @router.post("/captures/{cid}/compare", status_code=202)
@@ -558,6 +699,19 @@ async def voice_toggle(request: Request, body: VoiceBody | None = None):
     app = app_of(request)
     body = body or VoiceBody()
     return await app.voice.toggle(await _voice_session(app, body), capture_id=body.capture_id, source=body.source)
+
+
+@router.post("/voice/text")
+async def voice_text(body: VoiceText, request: Request):
+    """A typed utterance through the voice pipeline: commands, or a question answered by the coach."""
+    app = app_of(request)
+    if body.capture_id:
+        await _capture_or_404(app, body.capture_id)
+    res = await app.voice.text(await _voice_session(app, body), body.text, capture_id=body.capture_id,
+                               source=body.source)
+    if res.get("voice_turn_id") is None:
+        raise HTTPException(409, res.get("error") or "no active session")
+    return res
 
 
 @router.post("/voice/cancel")

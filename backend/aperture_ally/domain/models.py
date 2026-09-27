@@ -125,6 +125,8 @@ class Session(BaseModel):
     paused_reason: str | None = None
     budget_usd: float | None = Field(None, description="Per-session spend cap (priced calls only); None = config default")
     max_model_calls: int | None = Field(None, description="Per-session paid-call cap; None = config default")
+    ui_theme: Literal["studio", "daylight"] = Field("studio", description="Display theme: Studio (dark) or Daylight")
+    template: str | None = Field(None, description="Shot-list template the session started from; None = unknown")
     status: SessionStatus = SessionStatus.active
     watch_since: str = Field(default_factory=utcnow)
     created_at: str = Field(default_factory=utcnow)
@@ -178,6 +180,9 @@ class Capture(BaseModel):
     user_reported_change: str | None = None
     detected_at: str = Field(default_factory=utcnow)
     ready_at: str | None = None
+    attribution_context: dict[str, Any] = Field(
+        default_factory=dict, description="At detection: shot active before a recent switch, seconds since the switch")
+    retry_when_online: bool = Field(False, description="Run the assessment once when the provider is reachable again")
 
 
 class Assessment(BaseModel):

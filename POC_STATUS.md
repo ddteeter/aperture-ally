@@ -1,6 +1,6 @@
 # POC status
 
-Last updated: 2026-09-26. Legend:
+Last updated: 2026-09-27. Legend:
 
 - **Implemented** — code exists and is exercised by automated tests (mocks/fixtures).
 - **Simulated** — demonstrated end-to-end with replay/mock adapters only.
@@ -63,15 +63,23 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | Plain-language histogram reading (rules, per region first), region histograms, lost-detail overlay, "what your retake changed" | Implemented, simulated | `test_histogram_insights.py`; overlay generated on demand (keeps it off the feedback latency path) |
 | Session replay eval (recorded requests → other models/prompts; frozen/chained; agreement with session + keeper/experiment/post-hoc labels) | Implemented, simulated | `test_session_replay.py`; mock dry run only |
 | Security: loopback, host/origin checks, ID-only file serving, import roots | Implemented | `test_api.py` |
-| Frontend (Shoot / Coverage / Diagnostics / Sessions): viewer, region drawing, histogram, before/after, coach card, experiment card, keeper confirm, hold/toggle/Space PTT, diagnostics, exports | Implemented, simulated | Vitest + Playwright (backend-served build, mock adapters); dev-server proxy path not e2e-tested; region drawing is pointer-only |
+| Redesigned frontend (Claude Design handoff, `docs/design/`): Shoot (shot rail, stage with regions, brightness inspector painting tonal zones on the photo, filmstrip, coach panel states incl. worse/mixed/can't-compare, keeper confirm/undo, voice bar), Coverage, Sessions/New shoot, Shot list editor, Setup with versions, Diagnostics; Studio + Daylight themes; bundled fonts; keyboard map | Implemented, simulated | Vitest (132) + Playwright (backend-served build, mock adapters); screenshots checked in a headless Chromium only — **not yet seen on the Air's screen or in sun** (docs/local-verification.md §4); region drawing is pointer-only |
+| Framing match (layout + texture signature), comparison metrics (region deltas, relative sharpness, EV from EXIF for manual exposure), baseline candidates, attribution hints | Implemented, simulated | `test_framing.py`, `test_redesign_api.py`; threshold 0.65 calibrated on **synthetic** images only — recalibrate on real fabric close-ups (docs/local-verification.md §6) |
+| Cancel analysis, retry now / when online, re-read bad file, skip stuck file, typed questions (`/voice/text`), per-session theme | Implemented | `test_redesign_api.py` |
+| Coloured `doctor` / `preflight` output | Implemented | `test_term.py`; honours NO_COLOR / FORCE_COLOR |
 
 ## Automated test results (build environment, mocks only)
 
-- Backend: `uv run pytest` → 118 passed, 3 live (paid) tests deselected. `ruff check` clean.
-- Frontend: `npm run typecheck` clean; `npm test` 33 passed; `npm run build` ok; `npm run e2e` 2 passed
+- Backend: `uv run pytest` → 151 passed, 3 live (paid) tests deselected. `ruff check` clean.
+- Frontend: `npm run typecheck` clean; `npm test` 132 passed; `npm run build` ok; `npm run e2e` 2 passed
   (replay coaching loop → comparison → keeper → coverage; hold-to-talk → answer).
 
 ## Remaining gates (in order)
+
+Start with docs/local-verification.md: it covers the checks the cloud build could not do (model ids and
+prices from the official docs, macOS audio/keys, OM Capture file behaviour, the UI on the real screen,
+M4 performance, framing calibration on real photos).
+
 
 1. `aperture-ally doctor` on the M4: arm64, ExifTool, `say`, microphone, permissions.
 2. Configure model ids (+ prices) from official docs; `uv run pytest -m live -s tests/test_live.py`.
