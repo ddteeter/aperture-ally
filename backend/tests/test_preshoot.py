@@ -139,7 +139,9 @@ async def test_apparel_template_and_raw_exif(h, fx):
     h.drop(s, fx / "P9260001.JPG")
     (cap,) = await h.n_captures(s, 1)
     cap = await h.app.store.get(Capture, cap.id)
-    assert cap.exif_raw.get("Model") == "E-M1MarkII" and "_raw" not in cap.exif
+    # Pillow keys tags by name ("Model"); ExifTool (-G0:1) by group ("EXIF:IFD0:Model").
+    model = cap.exif_raw.get("Model") or cap.exif_raw.get("EXIF:IFD0:Model")
+    assert model == "E-M1MarkII" and "_raw" not in cap.exif
     _ = Session
 
 
