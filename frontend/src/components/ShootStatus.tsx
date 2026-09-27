@@ -55,7 +55,11 @@ export function ReceivedOverlay() {
   );
 }
 
-/** Closes a popover on Escape or a click outside `ref`; focus returns to `returnTo`. */
+/**
+ * Closes a popover on Escape or a click outside `ref`; focus returns to `returnTo`.
+ * An open popover owns Esc: it listens in the capture phase and stops the event, so the
+ * window-level Esc handlers underneath (cancel analysis, cancel speech/recording) don't also fire.
+ */
 export function useDismiss(open: boolean, close: () => void, ref: RefObject<HTMLElement | null>, returnTo?: RefObject<HTMLElement | null>) {
   const cb = useRef(close);
   cb.current = close;
@@ -64,16 +68,17 @@ export function useDismiss(open: boolean, close: () => void, ref: RefObject<HTML
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.preventDefault();
+      e.stopImmediatePropagation();
       cb.current();
       returnTo?.current?.focus();
     };
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) cb.current();
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     document.addEventListener("mousedown", onDown);
     return () => {
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
       document.removeEventListener("mousedown", onDown);
     };
   }, [open, ref, returnTo]);

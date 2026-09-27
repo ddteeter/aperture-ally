@@ -81,6 +81,7 @@ export function RegionEditor({
   };
 
   // Backspace / Delete removes the selected region; Esc deselects. Never while typing.
+  // Capture phase: while a region is selected, Esc only deselects (not cancel analysis/speech too).
   useEffect(() => {
     if (!selected || renaming) return;
     const onKey = (e: KeyboardEvent) => {
@@ -89,11 +90,13 @@ export function RegionEditor({
         e.preventDefault();
         del(selected);
       } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         setSelected(null);
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   });
 
   const rel = (e: { clientX: number; clientY: number }): Point => {
