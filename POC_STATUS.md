@@ -60,13 +60,14 @@ retake comparison and a coverage review (docs/hardware-checks.md §7).
 | At-camera controls: received/failure cues, voice rating/lesson/change-note, pause/resume (voice, UI, remote key), per-session paid-call/USD cap | Implemented, simulated | `test_preshoot.py`; cues via `afplay` untested on macOS |
 | `preflight` go/no-go and `inspect` (scrubbed camera-file report) commands | Implemented | mock paths tested; real headphones/mic/keys/ORF **not run** |
 | Running-apparel starter shot list (8 shots) | Implemented | criteria are starting points; tune after the first shoot |
+| Plain-language histogram reading (rules, per region first), region histograms, lost-detail overlay, "what your retake changed" | Implemented, simulated | `test_histogram_insights.py`; overlay generated on demand (keeps it off the feedback latency path) |
 | Session replay eval (recorded requests → other models/prompts; frozen/chained; agreement with session + keeper/experiment/post-hoc labels) | Implemented, simulated | `test_session_replay.py`; mock dry run only |
 | Security: loopback, host/origin checks, ID-only file serving, import roots | Implemented | `test_api.py` |
 | Frontend (Shoot / Coverage / Diagnostics / Sessions): viewer, region drawing, histogram, before/after, coach card, experiment card, keeper confirm, hold/toggle/Space PTT, diagnostics, exports | Implemented, simulated | Vitest + Playwright (backend-served build, mock adapters); dev-server proxy path not e2e-tested; region drawing is pointer-only |
 
 ## Automated test results (build environment, mocks only)
 
-- Backend: `uv run pytest` → 112 passed, 3 live (paid) tests deselected. `ruff check` clean.
+- Backend: `uv run pytest` → 118 passed, 3 live (paid) tests deselected. `ruff check` clean.
 - Frontend: `npm run typecheck` clean; `npm test` 33 passed; `npm run build` ok; `npm run e2e` 2 passed
   (replay coaching loop → comparison → keeper → coverage; hold-to-talk → answer).
 

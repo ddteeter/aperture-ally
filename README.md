@@ -64,7 +64,7 @@ backend/aperture_ally/ api · domain · ingest · imaging · coaching · audio �
 frontend/src/          React + TypeScript UI (Shoot, Coverage, Diagnostics, Sessions)
 fixtures/manifest.json replay scenarios; synthetic images are generated into fixtures/generated/ (git-ignored)
 evals/                 runner, rubric, dataset format; results/ is git-ignored
-docs/                  setup · hardware-checks · architecture · telemetry · poc-report
+docs/                  setup · hardware-checks · architecture · telemetry · design-brief · poc-report
 ```
 
 Private photos, recordings, credentials, the session database and paid-call outputs are git-ignored

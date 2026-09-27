@@ -69,6 +69,37 @@ def _save_jpeg(img: Image.Image, path: Path, quality: int = 88) -> None:
     tmp.replace(path)
 
 
+def write_clip_overlay(arr: np.ndarray, size: tuple[int, int], path: Path) -> None:
+    """Transparent PNG at overview size: red where the JPEG is pure white, blue where it is pure black.
+
+    Built from full-resolution masks and area-downsampled, so even small blown specks stay visible.
+    """
+    small = M.subsample_nearest(arr, 3000)
+    r, g, b = cv2.split(np.ascontiguousarray(small))
+    hi = (cv2.max(cv2.max(r, g), b) >= M.HI).astype(np.float32)
+    lo = (cv2.min(cv2.min(r, g), b) <= M.LO).astype(np.float32)
+    hi = cv2.resize(hi, size, interpolation=cv2.INTER_AREA)
+    lo = cv2.resize(lo, size, interpolation=cv2.INTER_AREA)
+    rgba = np.zeros((size[1], size[0], 4), np.uint8)
+    hi_a = np.clip(hi * 4, 0, 1)
+    lo_a = np.clip(lo * 4, 0, 1)
+    rgba[..., 0] = np.where(hi_a >= lo_a, 255, 40)
+    rgba[..., 1] = np.where(hi_a >= lo_a, 40, 120)
+    rgba[..., 2] = np.where(hi_a >= lo_a, 40, 255)
+    rgba[..., 3] = (np.maximum(hi_a, lo_a) * 220).astype(np.uint8)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp.png")
+    Image.fromarray(rgba, "RGBA").save(tmp, "PNG", optimize=False)
+    tmp.replace(path)
+
+
+def ensure_clip_overlay(image_path: Path, overview: dict[str, Any], out: Path) -> Path:
+    if not out.exists():
+        img, _ = load_oriented_srgb(image_path)
+        write_clip_overlay(np.asarray(img), (overview["width"], overview["height"]), out)
+    return out
+
+
 def build_evidence(
     image_path: Path,
     out_dir: Path,
@@ -127,7 +158,7 @@ def build_evidence(
         region_metrics[r.id] = {
             "rect": rect,
             "px_size": [x1 - x0, y1 - y0],
-            **{k: v for k, v in M.tonal_stats(sub).items() if k != "histogram"},
+            **M.tonal_stats(sub),  # includes the region's own histogram (the UI reads regions first)
             **M.sharpness(sub),  # at native resolution
         }
 
@@ -147,6 +178,7 @@ def build_evidence(
         "height": H,
         "overview": {"path": str(out_dir / "overview.jpg"), "width": overview.width, "height": overview.height},
         "thumb": str(out_dir / "thumb.jpg"),
+        "clip_overlay": str(out_dir / "clip_overlay.png"),  # generated on first request (off the latency path)
         "crops": crops,
         "measurements": measurements,
         "timings": {k: round(v, 2) for k, v in t.items()},

@@ -89,7 +89,8 @@ def compact_measurements(m: dict[str, Any]) -> dict[str, Any]:
     if hist:
         n = len(hist)
         g["histogram_fifths"] = [round(sum(hist[i * n // 5:(i + 1) * n // 5]), 3) for i in range(5)]
-    return {"image": m.get("image"), "global": g, "regions": m.get("regions", {}), "caveats": m.get("caveats", [])}
+    regions = {rid: {k: v for k, v in stats.items() if k != "histogram"} for rid, stats in (m.get("regions") or {}).items()}
+    return {"image": m.get("image"), "global": g, "regions": regions, "caveats": m.get("caveats", [])}
 
 
 def metadata_for_model(exif: dict[str, Any]) -> dict[str, Any] | str:

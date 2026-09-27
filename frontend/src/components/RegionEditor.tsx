@@ -8,7 +8,17 @@ import { MAX_REGIONS, nextRegionId, normalizeDrag, type NormRect, type Point } f
  * Overview image with the shot's sharp-region overlays. Click-drag to draw a new region (max 3);
  * the region is normalized to the image's natural size and saved on the shot.
  */
-export function RegionEditor({ src, alt, shot }: { src: string; alt: string; shot: Shot | null }) {
+export function RegionEditor({
+  src,
+  alt,
+  shot,
+  overlaySrc = null,
+}: {
+  src: string;
+  alt: string;
+  shot: Shot | null;
+  overlaySrc?: string | null;
+}) {
   const { sid, run, refresh } = useApp();
   const imgRef = useRef<HTMLImageElement>(null);
   const [drag, setDrag] = useState<{ start: Point; end: Point } | null>(null);
@@ -99,6 +109,7 @@ export function RegionEditor({ src, alt, shot }: { src: string; alt: string; sho
             onError={() => setFailed(true)}
           />
         )}
+        {loaded && overlaySrc && <img className="clip-overlay" src={overlaySrc} alt="" aria-hidden="true" draggable={false} />}
         {loaded &&
           regions.map((r) => (
             <div key={r.id} className="region-box" style={box(r)}>

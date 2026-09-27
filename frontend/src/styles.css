@@ -220,3 +220,30 @@ figcaption { font-size: 0.82rem; }
 .voice-state { font-size: 1.1rem; }
 .hold-timer { font-variant-numeric: tabular-nums; }
 .voice-controls { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* --- histogram reading ------------------------------------------------------------------ */
+.hist-zone { fill: rgba(0, 0, 0, 0.04); }
+.hist-label { font-size: 9px; fill: var(--muted); }
+.hist-edge-warn { fill: #d98e00; }
+.hist-edge-problem { fill: var(--err); }
+.histogram-reading { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.8rem; margin: 0.75rem 0; background: var(--panel); }
+.insight-summary { font-size: 1.15rem; margin: 0 0 0.5rem; }
+.insight { border-left: 4px solid var(--border); padding: 0.25rem 0.6rem; margin: 0.5rem 0; }
+.insight-problem { border-left-color: var(--err); background: var(--err-bg); }
+.insight-warn { border-left-color: #d98e00; background: var(--warn-bg); }
+.insight-info { border-left-color: var(--accent); background: var(--info-bg); }
+.insight-ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.insight-head { margin: 0.2rem 0; }
+.insight-findings { margin: 0.2rem 0 0.2rem 1rem; padding: 0; }
+.insight-overall { display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; }
+.insight-overall .insight { flex: 1 1 260px; }
+.insight-changes { background: var(--info-bg); border-radius: var(--radius); padding: 0.3rem 0.6rem; margin-bottom: 0.5rem; }
+.chip-problem { background: var(--err); color: #fff; }
+.chip-warn { background: #d98e00; color: #1b1f24; }
+.chip-info { background: var(--accent); color: #fff; }
+.chip-ok { background: var(--ok); color: #fff; }
+.how-to-read summary { cursor: pointer; font-weight: 600; }
+.clip-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: normal; }
+.swatch { font-weight: 700; }
+.swatch-red { color: #d0021b; }
+.swatch-blue { color: #1f5fbf; }

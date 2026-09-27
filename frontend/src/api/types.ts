@@ -132,6 +132,39 @@ export interface GlobalMeasurements extends LumaStats {
 export interface RegionMeasurements extends LumaStats {
   rect: number[];
   px_size: number[];
+  histogram?: number[];
+}
+
+/** Plain-language histogram reading from fixed rules (backend imaging/interpret.py). */
+export type InsightSeverity = "problem" | "warn" | "info" | "ok";
+export type InsightZone = "clip_low" | "shadows" | "midtones" | "highlights" | "clip_high";
+
+export interface InsightFinding {
+  scope: string;
+  severity: InsightSeverity;
+  zone: InsightZone;
+  headline: string;
+  detail: string;
+}
+
+export interface ScopeInsight {
+  scope: string;
+  region_id?: string;
+  headline: string;
+  shape: string;
+  severity: InsightSeverity;
+  zones: { shadows?: number; midtones?: number; highlights?: number };
+  highlight_clip: number;
+  shadow_clip: number;
+  findings: InsightFinding[];
+}
+
+export interface HistogramInsights {
+  summary: string;
+  regions: ScopeInsight[];
+  overall: ScopeInsight;
+  how_to_read: string[];
+  caveat: string;
 }
 
 export interface Measurements {
@@ -154,6 +187,7 @@ export interface Evidence {
   height: number | null;
   crops: Crop[];
   measurements: Measurements | null;
+  has_clip_overlay?: boolean;
 }
 
 export type Verdict = "usable_candidate" | "needs_retake" | "uncertain" | string;
@@ -289,6 +323,8 @@ export interface Capture {
   jpeg_name: string | null;
   raw_name: string | null;
   latest_assessment: Assessment | null;
+  histogram_insights?: HistogramInsights;
+  histogram_changes?: { baseline_seq: number; changes: string[] };
 }
 
 export interface Experiment {
@@ -565,4 +601,4 @@ export interface VoiceBody {
 
 export type MockFailMode = "none" | "invalid_once" | "invalid_always" | "unavailable" | "slow";
 
-export type ImageKind = "overview" | "thumb" | "original" | `crop_${string}`;
+export type ImageKind = "overview" | "thumb" | "original" | "clip_overlay" | `crop_${string}`;

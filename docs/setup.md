@@ -115,6 +115,59 @@ only reads the files OM Capture saves.
 - Safety: a recording stops after `APERTURE_ALLY_PTT_MAX_SECONDS` (default 60) even if the key-up is lost,
   and is discarded (fail-closed). If the key listener dies, any active recording is cancelled.
 
+### Recommended remote: 8BitDo Micro (~$25)
+
+In **keyboard mode** (slider on `k`) the Micro sends a real key-down while a button is held and key-up
+on release, so hold-to-talk works (confirmed by others using it for push-to-talk dictation:
+github.com/HarrisHan/8bitdo-micro-karabiner). Out of the box its buttons send ordinary letters (e.g.
+`g`, `j`). Aperture Ally only *listens* to keys, so those letters would also be typed into whatever app is
+in front (OM Capture). Remap the buttons to keys nothing else uses:
+
+**Option A — no extra app (try first).** If 8BitDo's own software (8BitDo Ultimate Software) lets you
+remap the Micro's keyboard-mode buttons, set L → F18 (talk), R → F17 (pause coaching), B → F16 (cancel).
+Unverified: check it supports the Micro before relying on it.
+
+**Option B — Karabiner-Elements (free).** It remaps only the Micro, so your own keyboard is untouched.
+1. Install Karabiner-Elements and grant its permissions.
+2. Open Karabiner-EventViewer and press each Micro button to see its `key_code`.
+3. Karabiner → Complex Modifications → add this rule (fill in the key codes; the vendor/product IDs are
+   from the repo above, so confirm them in EventViewer's device list):
+
+```json
+{
+  "description": "8BitDo Micro → Aperture Ally (hold L = talk, R = pause coaching, B = cancel)",
+  "manipulators": [
+    { "type": "basic", "from": { "key_code": "<L button key>" }, "to": [{ "key_code": "f18" }],
+      "conditions": [{ "type": "device_if", "identifiers": [{ "vendor_id": 11720, "product_id": 36897 }] }] },
+    { "type": "basic", "from": { "key_code": "<R button key>" }, "to": [{ "key_code": "f17" }],
+      "conditions": [{ "type": "device_if", "identifiers": [{ "vendor_id": 11720, "product_id": 36897 }] }] },
+    { "type": "basic", "from": { "key_code": "<B button key>" }, "to": [{ "key_code": "f16" }],
+      "conditions": [{ "type": "device_if", "identifiers": [{ "vendor_id": 11720, "product_id": 36897 }] }] }
+  ]
+}
+```
+
+Use buttons mapped one-to-one. Buttons used as Karabiner modifier layers (the repo's R/R2) add ~0.5 s
+delay. Avoid `fn` as the talk key; macOS handles it specially.
+
+Then set, in `backend/.env`:
+
+```
+APERTURE_ALLY_GLOBAL_KEYS=pynput
+APERTURE_ALLY_PTT_KEY=f18
+APERTURE_ALLY_PTT_MODE=hold
+APERTURE_ALLY_PAUSE_KEY=f17
+APERTURE_ALLY_CANCEL_KEY=f16
+```
+
+and run `uv run aperture-ally preflight`. Its push-to-talk step shows press → hold time → release and how
+many auto-repeats were ignored. Karabiner (if used) and your terminal both need Input Monitoring.
+
+Why not build this into the app? Doing it properly means reading the remote at the device level and
+taking exclusive control of it (so its keys never reach other apps), plus handling sleep/reconnect.
+That's native macOS work that can only be verified on your Mac. Worth it after the POC if a second app
+proves annoying, not before.
+
 ## 6. At the camera: cues, voice commands, pausing, budget
 
 **Before each shoot** run `uv run aperture-ally preflight` with the app stopped. It checks storage and
@@ -122,6 +175,13 @@ the watch folder, plays the received sound and a sentence (confirm you heard bot
 records and transcribes a test phrase, waits for a press-and-hold of your PTT key, probes the network, and
 makes one real assessment per configured provider (a few cents). It ends with GO / NO-GO and saves a JSON
 record under `~/ApertureAlly/preflight/`. `--no-paid`, `--skip-mic`, `--skip-keys` and `--yes` are available.
+
+**Reading brightness.** Under each photo, the app explains its histogram in plain language: a one-line
+reading, then one card per marked region (with that region's own histogram), then the whole frame.
+"Show lost detail on the photo" paints pure-white pixels red and pure-black pixels blue. After a retake,
+"What your retake changed" says what moved (e.g. "Pure white in the forefoot mesh dropped from 55% to
+0%"). "How to read a histogram" has the short version. It all describes the processed JPEG; the RAW file
+may hold a little more detail.
 
 **Received cue.** Every new photo plays a short sound (`APERTURE_ALLY_RECEIVED_CUE=sound`, the default,
 which mixes with speech). Use `speech` to hear "Got 12" instead; it's skipped if the coach is talking.

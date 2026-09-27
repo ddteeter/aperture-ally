@@ -3,7 +3,7 @@ import { api, imageUrl } from "../api/client";
 import type { Capture, Crop, Shot } from "../api/types";
 import { useApp } from "../AppContext";
 import { humanize, shotTitle } from "../lib/format";
-import { MeasurementsView } from "./Measurements";
+import { HistogramReading, MeasurementsView } from "./Measurements";
 import { RegionEditor } from "./RegionEditor";
 
 function ver(c: Capture): string {
@@ -45,6 +45,7 @@ export function CaptureViewer({
 }) {
   const { state, run, refresh } = useApp();
   const [showBA, setShowBA] = useState(true);
+  const [showClip, setShowClip] = useState(false);
   const [compareWith, setCompareWith] = useState("");
   if (!state) return null;
   if (!capture) {
@@ -108,11 +109,19 @@ export function CaptureViewer({
         <BeforeAfter before={baseline} after={capture} />
       ) : (
         <>
+          {capture.evidence.has_clip_overlay && (
+            <label className="check">
+              <input type="checkbox" checked={showClip} onChange={(e) => setShowClip(e.target.checked)} />
+              Show lost detail on the photo (<span className="swatch swatch-red">red</span> = pure white,{" "}
+              <span className="swatch swatch-blue">blue</span> = pure black)
+            </label>
+          )}
           <RegionEditor
             key={capture.id}
             src={imageUrl(capture.id, "overview") + ver(capture)}
             alt={`Overview of photo #${capture.seq}`}
             shot={shot}
+            overlaySrc={showClip && capture.evidence.has_clip_overlay ? imageUrl(capture.id, "clip_overlay") + ver(capture) : null}
           />
           {capture.evidence.crops.length > 0 && (
             <div className="crops">
@@ -155,9 +164,12 @@ export function CaptureViewer({
         </form>
       )}
 
+      {measurements && capture.histogram_insights && (
+        <HistogramReading insights={capture.histogram_insights} m={measurements} changes={capture.histogram_changes} />
+      )}
       {measurements ? (
-        <details className="measure-details" open>
-          <summary>Measurements</summary>
+        <details className="measure-details">
+          <summary>Measurements (numbers)</summary>
           <MeasurementsView m={measurements} regionLabels={regionLabels} />
         </details>
       ) : (

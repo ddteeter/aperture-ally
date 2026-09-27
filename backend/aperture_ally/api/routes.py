@@ -37,6 +37,8 @@ from ..domain.models import (
     ShotRequirement,
     utcnow,
 )
+from ..imaging.interpret import compare as compare_tonality
+from ..imaging.interpret import interpret
 from ..services import ApertureAllyApp, NotFound
 from ..telemetry.export import export_telemetry, export_timing
 from ..telemetry.timing import summarize
@@ -149,6 +151,11 @@ async def _capture_or_404(app: ApertureAllyApp, cid: str) -> Capture:
     return c
 
 
+def _region_labels(ev: dict[str, Any]) -> dict[str, str]:
+    return {x["id"]: ("auto-picked detail area" if x.get("source") == "auto" else x.get("label") or x["id"])
+            for x in ev.get("crops", [])}
+
+
 def _capture_view(c: Capture, latest: Assessment | None) -> dict[str, Any]:
     d = c.model_dump()
     d["exif_raw_tag_count"] = len(d.pop("exif_raw", {}) or {})
@@ -158,7 +165,10 @@ def _capture_view(c: Capture, latest: Assessment | None) -> dict[str, Any]:
         "width": ev.get("width"), "height": ev.get("height"),
         "crops": [{k: v for k, v in x.items() if k != "path"} for x in ev.get("crops", [])],
         "measurements": ev.get("measurements"),
+        "has_clip_overlay": bool(ev.get("clip_overlay")),
     }
+    if ev.get("measurements"):
+        d["histogram_insights"] = interpret(ev["measurements"], _region_labels(ev))
     d["source_names"] = [Path(p).name for p in c.source_paths]
     for k in ("jpeg_path", "raw_path"):
         d[k.replace("_path", "_name")] = Path(d[k]).name if d[k] else None
@@ -170,6 +180,18 @@ def _assessment_view(a: Assessment) -> dict[str, Any]:
     d = a.model_dump()
     d["evidence"] = [{k: v for k, v in e.items() if k != "path"} for e in a.evidence]
     return d
+
+
+def _with_tonality_changes(views: list[dict[str, Any]], caps: list[Capture]) -> list[dict[str, Any]]:
+    """Attach 'what your retake changed' sentences (vs the baseline photo) to each capture view."""
+    by_id = {c.id: c for c in caps}
+    for v, c in zip(views, caps, strict=True):
+        base = by_id.get(c.baseline_capture_id or "")
+        if base and base.evidence.get("measurements") and c.evidence.get("measurements"):
+            labels = _region_labels(c.evidence)
+            v["histogram_changes"] = {"baseline_seq": base.seq, "changes": compare_tonality(
+                base.evidence["measurements"], c.evidence["measurements"], labels)}
+    return views
 
 
 async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
@@ -191,7 +213,7 @@ async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
         "shots": [x.model_dump() for x in shots],
         "setup": revs[-1].model_dump() if revs else None,
         "setup_revisions": len(revs),
-        "captures": [_capture_view(c, latest.get(c.id)) for c in caps],
+        "captures": _with_tonality_changes([_capture_view(c, latest.get(c.id)) for c in caps], caps),
         "experiments": [e.model_dump() for e in await app.store.experiments(sid)],
         "keepers": [k.model_dump() for k in await app.store.active_keepers(sid)],
         "coverage": await compute_coverage(app.store, sid, verify=False),
@@ -388,6 +410,11 @@ async def get_capture(cid: str, request: Request):
     view["assessments"] = [_assessment_view(a) for a in assessments]
     view["experiments"] = [e.model_dump() for e in exps]
     view["is_latest_for_shot"] = app.tracker.is_latest(c.session_id, c.shot_id, c.id)
+    base = await app.store.get(Capture, c.baseline_capture_id) if c.baseline_capture_id else None
+    if base and base.evidence.get("measurements") and c.evidence.get("measurements"):
+        view["histogram_changes"] = {"baseline_seq": base.seq,
+                                     "changes": compare_tonality(
+                                         base.evidence["measurements"], c.evidence["measurements"], _region_labels(c.evidence))}
     return view
 
 
@@ -417,6 +444,15 @@ async def capture_image(cid: str, kind: str, request: Request):
         path = (ev.get("overview") or {}).get("path")
     elif kind == "thumb":
         path = ev.get("thumb")
+    elif kind == "clip_overlay":
+        if ev.get("clip_overlay") and ev.get("image_path") and Path(ev["image_path"]).exists():
+            from ..imaging.evidence import ensure_clip_overlay
+
+            out = Path(ev["clip_overlay"])
+            if out.resolve().is_relative_to(app.session_root(c.session_id).resolve()):
+                await asyncio.get_running_loop().run_in_executor(
+                    app.executor, lambda: ensure_clip_overlay(Path(ev["image_path"]), ev["overview"], out))
+                path = str(out)
     elif kind == "original":
         path = c.jpeg_path or c.pairing.get("raw_preview_path")
     elif kind.startswith("crop_"):
@@ -427,7 +463,8 @@ async def capture_image(cid: str, kind: str, request: Request):
     p = Path(path).resolve()
     if not p.is_relative_to(app.session_root(c.session_id).resolve()) or not p.exists():
         raise HTTPException(404, "image not available")
-    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+    media = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
+    return FileResponse(p, media_type=media, headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.post("/captures/{cid}/assess", status_code=202)
