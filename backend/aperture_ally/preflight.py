@@ -146,7 +146,9 @@ class Preflight:
             async def _noop() -> None:
                 return None
 
-            await speech.speak("Microphone test. After the tone, say: testing, one, two, three.", _noop)
+            await speech.speak("Microphone test. After the tone, please say out loud: testing one two three.", _noop)
+            # `say` returns when the audio is handed off; Bluetooth headphones are still playing the last ~0.3 s.
+            await asyncio.sleep(0.7)
             cues.play("received")
             await asyncio.sleep(0.4)
         try:
