@@ -186,10 +186,11 @@ class Preflight:
         if not self.keys:
             self.add("push-to-talk key", SKIP, "--skip-keys")
             return
-        if self.s.global_keys != "pynput":
+        if self.s.global_keys == "none":
             self.add("push-to-talk key", WARN, "global keys off: only the on-screen button / Space work "
-                     "(APERTURE_ALLY_GLOBAL_KEYS=pynput for the remote)")
+                     "(APERTURE_ALLY_GLOBAL_KEYS=gamepad for the 8BitDo in S mode, pynput for a keyboard remote)")
             return
+        from .input.gamepad import GamepadListener
         from .input.global_keys import GlobalKeyListener
 
         actions: list[str] = []
@@ -204,13 +205,27 @@ class Preflight:
         async def failed(err: str) -> None:
             actions.append(f"failure:{err}")
 
-        listener = GlobalKeyListener(self.s.ptt_key, self.s.cancel_key, self.s.ptt_mode, dispatch, failed,
-                                     self.s.pause_key)
+        gamepad = self.s.global_keys == "gamepad"
+        key = self.s.gamepad_ptt if gamepad else self.s.ptt_key
+        listener = (GamepadListener(self.s.gamepad_ptt, self.s.gamepad_cancel, self.s.ptt_mode, dispatch, failed,
+                                    self.s.gamepad_pause) if gamepad else
+                    GlobalKeyListener(self.s.ptt_key, self.s.cancel_key, self.s.ptt_mode, dispatch, failed,
+                                      self.s.pause_key))
         listener.start(asyncio.get_running_loop())
-        if listener.error:
+        if listener.error and not gamepad:
             self.add("push-to-talk key", NO_GO, listener.error)
             return
-        self.out(f"   … press and HOLD the push-to-talk key ({self.s.ptt_key}) for ~2 s, then release (20 s timeout)")
+        what = f"the {key.upper()} button on the controller" if gamepad else f"the push-to-talk key ({key})"
+        self.out(f"   … press and HOLD {what} for ~2 s, then release (20 s timeout)")
+        if gamepad:  # the owner is holding the remote, not reading the terminal
+            from .services import build_speech
+
+            speech = build_speech(self.s)
+            if speech.name == "say":
+                async def _noop() -> None:
+                    return None
+
+                await speech.speak(f"Remote test. Press and hold {key.upper()} for two seconds, then let go.", _noop)
         try:
             await asyncio.wait_for(done.wait(), 20)
         except TimeoutError:
@@ -220,11 +235,12 @@ class Preflight:
         holds = [e.get("hold_ms") for e in log if e["kind"] == "release"]
         repeats = sum(1 for e in log if e["kind"] == "repeat")
         if want <= set(actions):
-            self.add("push-to-talk key", GO, f"{self.s.ptt_key}: events {[e['kind'] for e in log][:6]}"
+            self.add("push-to-talk key", GO, f"{key}: events {[e['kind'] for e in log][:6]}"
                      + (f", hold {holds[-1]:.0f} ms" if holds else "") + f", {repeats} auto-repeats ignored")
         else:
-            self.add("push-to-talk key", NO_GO, f"saw {actions or 'nothing'} — grant Input Monitoring to your terminal, "
-                     "or find the remote's key with Diagnostics → Learn key")
+            hint = (f"controller: {listener.error or 'connected, but no press seen'} (S mode? paired? awake?)" if gamepad
+                    else "grant Input Monitoring to your terminal, or find the remote's key with Diagnostics → Learn key")
+            self.add("push-to-talk key", NO_GO, f"saw {actions or 'nothing'} — {hint}")
 
     async def check_network(self) -> None:
         from .telemetry.recorder import PROVIDER_HOSTS, probe_host

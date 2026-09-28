@@ -17,6 +17,20 @@ def _check(name: str, ok: bool | None, detail: str = "", fix: str = "") -> dict[
     return {"name": name, "status": "ok" if ok else ("warn" if ok is None else "fail"), "detail": detail, "fix": fix}
 
 
+def gamepad_check() -> dict[str, Any]:
+    try:
+        import hid
+
+        from .input.gamepad import SWITCH_PRO
+
+        found = hid.enumerate(*SWITCH_PRO)
+    except Exception as exc:
+        return _check("gamepad", None, f"hidapi: {exc}", "uv sync")
+    return _check("gamepad", True if found else None,
+                  f"{found[0].get('product_string')} connected" if found else "not connected",
+                  "" if found else "8BitDo Micro: slide to S, press a button to wake it, pair it in Bluetooth settings")
+
+
 def headset_mic_check(mic: str | None, output: str | None, always_open: bool = False) -> dict[str, Any]:
     """Recording from the headphones' own mic flips Bluetooth headphones into call mode: playback garbles
     and the first moments of speech are lost while it switches (seen with AirPods Pro). With the mic held
@@ -116,9 +130,12 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     else:
         out.append(_check("sounddevice", None, err, "uv sync (PortAudio bundled on macOS wheels)"))
     # keys / permissions
-    out.append(_check("global keys", True if s.global_keys == "pynput" else None,
-                      f"mode={s.global_keys} key={s.ptt_key} ({s.ptt_mode})",
-                      "APERTURE_ALLY_GLOBAL_KEYS=pynput to enable (macOS)"))
+    out.append(_check("global keys", True if s.global_keys in ("pynput", "gamepad") else None,
+                      f"mode={s.global_keys} key={s.gamepad_ptt if s.global_keys == 'gamepad' else s.ptt_key} "
+                      f"({s.ptt_mode})",
+                      "APERTURE_ALLY_GLOBAL_KEYS=gamepad (8BitDo Micro in S mode) or pynput (keyboard remote)"))
+    if s.global_keys == "gamepad":
+        out.append(gamepad_check())
     if mac and s.global_keys != "pynput":
         # Only the global key listener needs these; the browser keys and an 8BitDo in S mode (gamepad) don't.
         out.append(_check("Input Monitoring permission", True, "not needed: global keys off"))

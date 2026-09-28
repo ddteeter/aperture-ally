@@ -202,7 +202,7 @@ class ApertureAllyApp:
         active = await self.active_session()
         if watch and active:
             await self.ingest.watch(active, startup=True)
-        if self.settings.global_keys == "pynput":
+        if self.settings.global_keys in ("pynput", "gamepad"):
             await self.start_global_keys()
         self.telemetry.record("app.started", startup_snapshot(
             self.settings, {"schema_version": self.store_sync.schema_version(), "log_file": str(self.log_path),
@@ -258,6 +258,7 @@ class ApertureAllyApp:
                 self.tracker.capture_ready(s.id, c.shot_id, c.id, c.seq, self.tracker.later_bracket_frame(c.exif))
 
     async def start_global_keys(self) -> None:
+        from .input.gamepad import GamepadListener
         from .input.global_keys import GlobalKeyListener
 
         async def dispatch(action: str) -> None:
@@ -278,14 +279,20 @@ class ApertureAllyApp:
             elif action == "learned":
                 self.bus.publish("keys.learned", key=self.keys.tracker.learned if self.keys else None)
 
-        self.keys = GlobalKeyListener(self.settings.ptt_key, self.settings.cancel_key, self.settings.ptt_mode,
-                                      dispatch, self.voice.listener_failed, self.settings.pause_key)
+        s = self.settings
+        if s.global_keys == "gamepad":
+            self.keys = GamepadListener(s.gamepad_ptt, s.gamepad_cancel, s.ptt_mode, dispatch,
+                                        self.voice.listener_failed, s.gamepad_pause)
+        else:
+            self.keys = GlobalKeyListener(s.ptt_key, s.cancel_key, s.ptt_mode, dispatch, self.voice.listener_failed,
+                                          s.pause_key)
         loop = asyncio.get_running_loop()
         self.keys.tracker.on_log = lambda entry: loop.call_soon_threadsafe(
             self.telemetry.record, "keys.event", {**entry, "mode": self.settings.ptt_mode, "source": "global"})
         self.keys.start(loop)
         self.telemetry.record("keys.listener", {"running": self.keys.running, "error": self.keys.error,
-                                                 "ptt_key": self.settings.ptt_key, "mode": self.settings.ptt_mode})
+                                                 "source": s.global_keys, "mode": s.ptt_mode,
+                                                 "ptt_key": s.gamepad_ptt if s.global_keys == "gamepad" else s.ptt_key})
 
     # --- sessions ------------------------------------------------------------------------
     async def active_session(self) -> Session | None:
