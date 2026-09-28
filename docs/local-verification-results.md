@@ -387,3 +387,63 @@ late and incompletely; camera-button presses were missed (1 of 2) and ORFs not f
 list and download the new objects right away. Estimated JPEG arrival ≈ 0.3 s + 0.4 s transfer; **unproven
 until a small spike does it in code**. That spike, plus decoding the bracketing properties, is the next step
 before any decision to drop OM Capture.
+
+### Keys, smoke test, audio and mic (session 0, 2026-09-28)
+
+**Live smoke test: PASS.** Every call validated first time, no repair; all said `needs_retake` on the synthetic
+glare fixture. One call each (n=1, synthetic image: says nothing about quality):
+
+| Model (effort) | Model call | ≈ $/photo |
+|---|---|---|
+| claude-sonnet-5-5 (low / default high) | 8.8 s / 10.3 s | $0.023 / $0.025 |
+| claude-opus-5-5 (low / default medium) | 11.5 s / 35.1 s | $0.047 / $0.061 |
+| gemini-3.8-flash (default) | 12.5 s (18–23 s in later preflights) | $0.012 |
+| gpt-6-sol (default medium) | 19.2 s (13.5–14.7 s later) | $0.018 |
+
+Shoot 1 runs on **Sonnet 5.5** (owner's call); Opus 5.5 at its default effort is too slow for at-camera coaching.
+Every provider is far above the 5 s median target, so streaming the spoken advice is a priority after
+session 0. Claude Sonnet 5.5 (released 2026-09-28, $2/$10) added to the docs. Fix `a7eaa60`: an empty setting
+(e.g. `APERTURE_ALLY_CLAUDE_EFFORT=`) no longer fails start-up.
+
+**Speech and cues: PASS after fixes.**
+- Output: AirPods Pro over Bluetooth, heard in the headphones.
+- The owner picked **270 wpm** (≈ 1.5×; 190 felt slow) and **Glass** as the received sound (Pop and Tink got
+  lost under speech).
+- Both are now **live settings in the Coaching popover** with "hear it" samples, saved per person (`a9ca6fe`).
+- `say` lost the **last ~0.2 s of every utterance** on the AirPods ("cherry" → "cher"), even with no cue or mic
+  involved. A 400 ms trailing silence fixed it in an A/B listen (`b5e29cb`).
+
+**Microphone: PASS after fixes.**
+- **Default input switch:** macOS switched the default input to the AirPods when they connected. Opening their
+  mic flips them to call mode (24 kHz), which garbled a tone that was playing.
+- **Why the AirPods mic anyway:** it's the practical one at the camera. A MacBook mic is estimated to be
+  reliable only within ~1 m indoors, and less outdoors in wind (estimate, not measured).
+- **Measured:** opening the AirPods mic takes **0.62 s** before audio flows. The owner couldn't hear a quality
+  difference in call mode.
+- **So the mic is held open** (`APERTURE_ALLY_MIC_ALWAYS_OPEN`, `87f6343`), with a **300 ms pre-roll**: the first
+  word survived when the owner spoke as they pressed. Audio outside a turn stays in a 2 s memory ring.
+- **Headphones leaving mid-shoot:** with the AirPods in the case, the stream died, and every reopen failed until
+  restart (PortAudio reads the device list once).
+  - Fixed: the device list is re-read before each open; the app falls back to the Mac mic ~1 s after the AirPods
+    leave, and switches back within ~5 s of their return; liveness detection catches a stream that's "open"
+    but silent (`c0cf723`, `d3c234f`).
+  - Verified at the desk: AirPods → fallback (1 s) → AirPods; a question afterwards was transcribed and answered.
+  - A press made just as the AirPods leave loses that turn (seen once).
+- **Transcription and answers:** gpt-transcribe 1.3–2.1 s; typed/voice answers from Sonnet 5.5 about 4.2–4.4 s;
+  release → speech ≈ 5.5–6.4 s.
+- **Bug fixed** (`06a8af0`): an empty transcript fell back to the SDK object's repr and would have been sent to
+  the coach as a question.
+
+**preflight: GO** (warnings only: global keys off; headphones unconfirmed under `--yes`; Gemini slow). Fixes from
+running it:
+- no false Input Monitoring NO-GO with global keys off;
+- the mic prompt is spoken, not only printed (the owner couldn't see it);
+- the tone plays in full, and the mic window is 5 s;
+- the Gemini SDK warning is off (`06a8af0`, `ca7222a`).
+
+**Still open after session 0:**
+- The app can't read the 8BitDo in S mode yet, so remote push-to-talk isn't wired up. Browser Space works.
+- Sonnet 5.5 latency: 9–10 s per photo.
+- Transcription is priced per minute, which the price table can't express; shown as "unpriced", never capped.
+
+Spend in session 0 ≈ **$0.21**.
