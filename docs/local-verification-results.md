@@ -364,3 +364,26 @@ before the model call). The faster ingest exposed two races, both fixed and test
 
 **Host note.** This session runs under `herdr` (launched by launchd, not a terminal window). Any macOS
 permission prompts (microphone, Input Monitoring) will name that host.
+
+### Direct USB control without OM Capture (owner step 3b): PARTIAL PASS, promising
+
+gphoto2 2.5.32 / libgphoto2 2.5.34 (Homebrew), OM Capture quit, camera in the camera→screen USB mode. No need
+to stop macOS's `ptpcamerad`. libgphoto2 recognised the Olympus OM-D extension (vendor id `0xfffd`).
+
+| Check | Result |
+|---|---|
+| Detect / summary | PASS: `E-M1MarkII`, battery level readable (22%), 300+ properties |
+| Read settings | PASS: aperture (f/1.0–f/91, was f/8.0), shutter speed, ISO (Auto), exposure comp, focus mode, image format (Large Fine JPEG+RAW), white balance, metering; bracketing props `0xd110` (frames, coded) and `0xd111` (step) exist, meaning not yet decoded |
+| **Set aperture** | **PASS**: f/8.0 → f/5.6 from the Mac; the camera display updated (owner) and the next photo was f/5.6 |
+| Set focus mode | PASS: Manual and back to Automatic |
+| **Live view** | **PASS**: 1024×768 frames; **≈ 6 fps** streaming (~88 kB/frame); a single-frame command takes ~3.1 s, almost all of it reconnecting |
+| **Remote trigger** | **PASS, slow in the CLI**: the shutter fired every time (owner heard each), the photo downloaded (JPEG + ORF, correct settings). `--capture-image-and-download` took 17–21 s; with `--trigger-capture`, the camera reports "captured" (event `c101`) **≈ 0.3 s** after the trigger, but the gphoto2 CLI only fetches new files when its wait ends (+9 s). Photos sent to the PC reuse a placeholder name (`_9280578`), so an app must name files itself |
+| **Camera-button shots** | **PARTIAL**: a press on the camera raised `c101` (and `c105`), and the JPEG downloaded at the end of the wait; **the ORF did not**, and only one photo of (probably) two came through |
+| Connect time | ~2.8 s per CLI invocation (one-off for a persistent connection) |
+
+**Assessment.** The camera side is capable: settings, live view, trigger and "photo taken" events all work over
+USB without OM Capture. The CLI's event handling is the weak point: it ignores Olympus's `c101`, and it fetches
+late and incompletely. An app would hold one connection (python-gphoto2 or libgphoto2 directly), and on `c101`
+list and download the new objects right away. Estimated JPEG arrival ≈ 0.3 s + 0.4 s transfer; **unproven
+until a small spike does it in code**. That spike, plus decoding the bracketing properties, is the next step
+before any decision to drop OM Capture.
