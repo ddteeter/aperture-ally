@@ -43,7 +43,8 @@ to uncomment). Price keys must match the *resolved* model id shown on an assessm
 | Provider | Model id | Role | USD per 1M tokens (in / out) | Source |
 |---|---|---|---|---|
 | Claude | `claude-opus-5-5` | **default** (Anthropic's recommended starting model) | $4 / $20 | [pricing](https://platform.claude.com/docs/en/about-claude/pricing), [models](https://platform.claude.com/docs/en/about-claude/models/overview) |
-| Claude | `claude-sonnet-5` | cheaper candidate to evaluate | $2 / $10 | same |
+| Claude | `claude-sonnet-5-5` | cheaper candidate to evaluate (released 2026-09-28; "fast"; default effort high) | $2 / $10 | same (checked 2026-09-28) |
+| Claude | `claude-sonnet-5` | superseded by Sonnet 5.5 at the same price | $2 / $10 | same |
 | Claude | `claude-opus-5` | previous default, still active | $5 / $25 | same |
 | OpenAI | `gpt-6-sol` | suggested | $2 / $10 | [model page](https://developers.openai.com/api/docs/models/gpt-6-sol), [pricing](https://developers.openai.com/api/docs/pricing) |
 | OpenAI | `gpt-6-luna` | cheaper | $0.10 / $0.50 | [model page](https://developers.openai.com/api/docs/models/gpt-6-luna) |
