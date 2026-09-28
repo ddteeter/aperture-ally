@@ -10,15 +10,38 @@ works if you're away from the laptop.
 
 ## Before you start (decide once)
 
-- [ ] **Budget for the day**, e.g. "up to $5 of API calls". Claude sets the session cap to match and won't
-      ask again below it. Rough costs: Opus 5.5 ≈ $0.08–0.12 per photo, gpt-6-sol ≈ $0.05, gemini-3.8-flash ≈ $0.02.
-- [ ] **Provider for shoot 1**: Claude Opus 5.5 (default), or name another.
-- [ ] Kit: E-M1 II charged + USB cable, OM Capture, Bluetooth headphones, 8BitDo Micro (charged, paired),
-      phone for 120/240 fps video (latency), shoes/garments and lights set up.
+- [ ] **Budget for the day**, e.g. "up to $10 of API calls". Claude sets the session cap to match and won't
+      ask again below it. Measured per photo (session 0): Sonnet 5.5 ≈ $0.025, Opus 5.5 ≈ $0.06,
+      gpt-6-sol ≈ $0.018, gemini-3.8-flash ≈ $0.012; a voice question ≈ $0.005.
+- [ ] **Provider for shoot 1**: Claude **Sonnet 5.5** (chosen in session 0: ~10 s per photo vs ~35 s for Opus 5.5).
+- [ ] Kit:
+  - E-M1 II charged, spare battery, USB-C cable; OM Capture set to PC + SD
+  - **laptop charger** (the Air died mid-session 0)
+  - AirPods Pro charged (they're the mic too, held open)
+  - 8BitDo Micro charged, slider on **S** (hold L = talk, R = pause, B = cancel)
+  - phone for 120/240 fps video (latency)
+  - shoes/garments and lights set up
+
+### Outdoors (if shoot 1 is outside)
+
+- [ ] **Network at the spot:** run a speed test there. Each photo uploads ~0.5–1 MB to the model; a phone
+      hotspot is the fallback. If the network drops, keep shooting: photos, measurements and keepers still
+      work, and coaching can be retried later.
+- [ ] **Power:** plug the Air in, or start near 100% and check it at each break. Keep the AirPods case and
+      the Micro charged.
+- [ ] **Screen:** switch to **Daylight** (☀ or `L`), brightness to full, laptop in shade or angled away from
+      the sun. Note whether you can read the verdict and the "DO THIS" line at arm's length.
+- [ ] **Light:** note sun or cloud and the time for each loop. Changing light between the baseline and the
+      retake affects the comparison, and the coach can only guess at it.
+- [ ] **Range:** check hold-to-talk works from the tripod: the Micro and AirPods to the laptop over Bluetooth.
+- [ ] **Wind:** the AirPods mic handles it far better than the laptop's; if a transcript comes back wrong,
+      turn out of the wind and ask again.
 
 ---
 
-## Session 0: setup (~45 min, no photography pressure)
+## Session 0: setup (~45 min, no photography pressure) — done 2026-09-28
+
+Results and fixes: docs/local-verification-results.md ("Session 0 at the desk" onwards).
 
 | # | You | Claude | Tell Claude |
 |---|---|---|---|
