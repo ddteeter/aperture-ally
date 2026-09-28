@@ -83,15 +83,18 @@ uv run aperture-ally eval session-labels --session <id-prefix>
 uv run aperture-ally eval session --session <id-prefix> --config mock
 # candidates vs the recorded session (paid, bounded)
 uv run aperture-ally eval session --session <id-prefix> \
-    --config openai:<model-A> --config gemini:<model-B> \
-    --config claude:claude-opus-5-5@low --config claude:claude-opus-5-5@high \
+    --config claude:claude-sonnet-5-5@high --config claude:claude-sonnet-5-5@medium \
+    --config claude:claude-opus-5-5@medium --config openai:gpt-6-sol@medium --config gemini:gemini-3.8-flash@low \
     --labels <data dir>/sessions/<id>/exports/replay_labels.jsonl \
     --repeats 2 --max-calls 200 --confirm-paid
 ```
 
 Options:
-- Config syntax: `provider[:model][@effort]`. `@effort` (Claude only) sets `output_config.effort`, so a
-  latency/cost/quality sweep on the same model shows up as separate rows (`claude@low:…`, `claude@high:…`).
+- Config syntax: `provider[:model][@effort]`. `@effort` sets Claude `output_config.effort`
+  (low … max), OpenAI `reasoning.effort` (none … max) or Gemini `thinking_level` (minimal … high). Invalid
+  values are rejected before any call. A latency/cost/quality sweep on one model shows up as separate rows
+  (`claude@low:…`, `claude@high:…`). Pin effort in every config you compare: model defaults differ
+  (Opus 5.5 medium, Sonnet 5.5 high, gpt-6 medium, gemini-3.8-flash medium).
 - `--mode frozen` (default): identical requests. Retakes still carry the *original* model's previous advice,
   exactly as in the session.
 - `--mode chained`: comparisons and history use the candidate's *own* earlier result for the baseline photo.

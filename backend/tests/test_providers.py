@@ -204,8 +204,15 @@ def test_claude_registry_and_replay_effort_spec(tmp_path):
 
     p, s2 = make_provider("claude:claude-sonnet-5@low", s)
     assert p.model == "claude-sonnet-5" and p.effort == "low" and s2.claude_effort == "low"
+    s3 = fast_settings(tmp_path, openai_api_key="sk-test", gemini_api_key="g-test")
+    p, s4 = make_provider("openai:gpt-6-sol@low", s3)
+    assert p.model == "gpt-6-sol" and p.effort == "low" and s4.openai_effort == "low"
+    p, s5 = make_provider("gemini:gemini-3.8-flash@low", s3)
+    assert p.model == "gemini-3.8-flash" and p.thinking_level == "low" and s5.gemini_thinking_level == "low"
+    with pytest.raises(SystemExit, match="must be one of"):
+        make_provider("claude:claude-sonnet-5-5@turbo", s)
     with pytest.raises(SystemExit):
-        make_provider("openai:x@low", s)
+        make_provider("mock@low", s)
 
 
 def test_empty_optional_settings_mean_default(tmp_path, monkeypatch):

@@ -198,15 +198,26 @@ def rebuild_request(item: dict, instructions: str, chained: dict[str, dict] | No
     return req, vctx, substitutions
 
 
+EFFORT_FIELD = {"claude": "claude_effort", "openai": "openai_effort", "gemini": "gemini_thinking_level"}
+
+
 def make_provider(spec: str, settings: Settings):
-    """``provider[:model][@effort]`` — effort applies to Claude (output_config.effort), e.g. claude:claude-opus-5-5@low."""
+    """``provider[:model][@effort]``, e.g. claude:claude-sonnet-5-5@low, openai:gpt-6-sol@medium,
+    gemini:gemini-3.8-flash@low. Effort maps to Claude output_config.effort, OpenAI reasoning.effort and Gemini
+    thinking_level; pin it in every config you compare (model defaults differ)."""
+    from typing import get_args
+
     spec, _, effort = spec.partition("@")
     name, _, model = spec.partition(":")
     update: dict[str, Any] = {f"{name}_model": model} if model and name in ("openai", "gemini", "claude") else {}
     if effort:
-        if name != "claude":
-            raise SystemExit(f"@effort is only supported for claude configs, not {name}")
-        update["claude_effort"] = effort
+        field = EFFORT_FIELD.get(name)
+        if field is None:
+            raise SystemExit(f"@effort is not supported for {name}")
+        allowed = [a for a in get_args(get_args(Settings.model_fields[field].annotation)[0])]
+        if effort not in allowed:
+            raise SystemExit(f"{name} effort must be one of {allowed}, not {effort!r}")
+        update[field] = effort
     s = settings.model_copy(update=update)
     return ProviderRegistry(s).get(name), s
 
