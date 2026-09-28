@@ -378,12 +378,12 @@ to stop macOS's `ptpcamerad`. libgphoto2 recognised the Olympus OM-D extension (
 | Set focus mode | PASS: Manual and back to Automatic |
 | **Live view** | **PASS**: 1024×768 frames; **≈ 6 fps** streaming (~88 kB/frame); a single-frame command takes ~3.1 s, almost all of it reconnecting |
 | **Remote trigger** | **PASS, slow in the CLI**: the shutter fired every time (owner heard each), the photo downloaded (JPEG + ORF, correct settings). `--capture-image-and-download` took 17–21 s; with `--trigger-capture`, the camera reports "captured" (event `c101`) **≈ 0.3 s** after the trigger, but the gphoto2 CLI only fetches new files when its wait ends (+9 s). Photos sent to the PC reuse a placeholder name (`_9280578`), so an app must name files itself |
-| **Camera-button shots** | **PARTIAL**: a press on the camera raised `c101` (and `c105`), and the JPEG downloaded at the end of the wait; **the ORF did not**, and only one photo of (probably) two came through |
+| **Camera-button shots** | **FAIL as-is**: the owner pressed **twice**. The first press raised only `c105`, nothing downloaded; the second raised `c101`, and its JPEG downloaded at the end of the wait; **the ORF did not** |
 | Connect time | ~2.8 s per CLI invocation (one-off for a persistent connection) |
 
 **Assessment.** The camera side is capable: settings, live view, trigger and "photo taken" events all work over
 USB without OM Capture. The CLI's event handling is the weak point: it ignores Olympus's `c101`, and it fetches
-late and incompletely. An app would hold one connection (python-gphoto2 or libgphoto2 directly), and on `c101`
+late and incompletely; camera-button presses were missed (1 of 2) and ORFs not fetched. `c105` needs decoding. An app would hold one connection (python-gphoto2 or libgphoto2 directly), and on `c101`
 list and download the new objects right away. Estimated JPEG arrival ≈ 0.3 s + 0.4 s transfer; **unproven
 until a small spike does it in code**. That spike, plus decoding the bracketing properties, is the next step
 before any decision to drop OM Capture.
