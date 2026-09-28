@@ -319,3 +319,48 @@ for ingestion, for self-shots (live view on the laptop, remote trigger), and for
 Write `pairs.csv` lines like `a,light moved,~/Pictures/x/P1.JPG,~/Pictures/x/P2.JPG`, then run
 `cd backend && uv run python ../scripts/framing_pairs.py ~/pairs.csv` and paste the table. Two or three pairs per
 case give a better threshold.
+
+---
+
+## Session 0 at the desk (2026-09-28)
+
+**Camera over USB: PASS.** The E-M1 II offers six USB modes when connected (Storage, MTP, PC RAW,
+camera→screen icon, Print, PCM Recorder). **The camera→screen icon is tethering**; "PC RAW" is RAW editing
+with the camera's engine. The Mac then sees `OLYMPUS E-M1MarkII`, USB id `0x07B4:0x0130`, at **USB 2.0
+(480 Mb/s)**. That's the id libgphoto2 lists with capture + live view. OM Capture 3.2.0.1 was set to save
+to PC + SD.
+
+**OM Capture file behaviour (fswatch + a 20 ms size poll): PASS, best case for us.**
+
+| | Observed |
+|---|---|
+| Folder | `~/Pictures/OM Capture/<YYYY_MM_DD>/` (dated subfolder; the app's watcher is recursive) |
+| How files appear | **renamed in, already at final size**; never grew, never rewritten, no sidecars |
+| RAW+JPEG order | **JPEG first**, ORF **0.94–1.39 s later** (median ≈ 1.06 s; the ~21.6 MB ORF over USB 2.0 ≈ 21 MB/s) |
+| Sizes | LF JPEG ≈ 8.6 MB, ORF ≈ 21.6 MB |
+| Quick shots | the next JPEG queues behind the previous ORF (≈ 1.4 s apart) |
+| Shutter → JPEG on the Mac | ≈ 1–2 s (JPEG capture time has 1 s resolution only; phone video in shoot 1 will measure it) |
+| Brackets (AE, 7 frames here) | every frame transferred; RAW-only when the camera is set to RAW |
+
+On macOS a rename into the folder reaches watchdog as "file created" ~10 ms later (tested), so the app sees
+each file at once.
+
+Fix from this (`9dc27d7`): a JPEG that fully decodes on first sight is ready immediately (≈ 750 ms saved
+before the model call). The faster ingest exposed two races, both fixed and tested:
+- one file under two paths (`/var` vs `/private/var`) became two captures;
+- later bracket frames made the base frame's advice look stale, so it was suppressed.
+
+**8BitDo Micro: PASS in S mode.**
+- **K mode:** a Bluetooth keyboard `0x2DC8:0x9021` (keyboard, consumer and system-control interfaces).
+  Opening it is refused without Input Monitoring.
+- **S mode:** a **Switch Pro Controller** `0x057E:0x2009` (gamepad). It **opens with no permission**.
+  Report `0x3F` sends clean press/release events: A `0x02`, B `0x01`, L `0x10`, R `0x20` in byte 1; the
+  D-pad is reported as the left stick (byte 7: up = `0x00`, centre = `0x80`). A 3.74 s hold of L arrived as
+  exactly one press and one release, with no auto-repeat.
+- **Conclusion:** use S mode, read directly by the app. No Karabiner, no remapping, no Input Monitoring,
+  and nothing leaks into OM Capture.
+- Still to check: sleep/wake and reconnect behaviour, range.
+- The owner notes the iOS app can remap K mode to custom keys/combos; that's the fallback.
+
+**Host note.** This session runs under `herdr` (launched by launchd, not a terminal window). Any macOS
+permission prompts (microphone, Input Monitoring) will name that host.
