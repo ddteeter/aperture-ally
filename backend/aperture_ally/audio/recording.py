@@ -227,12 +227,14 @@ class ContinuousRecorder:
         if why:
             self.last_stall = f"{why} (reopened)"
             self._close_stream()
-        elif (self.fallback and self.is_open and self._clip is None and self._opened_at is not None
-              and self._clock() - self._opened_at > self.FALLBACK_RECHECK_S):
+        recheck = False
+        if not why and (self.fallback and self.is_open and self._clip is None and self._opened_at is not None
+                        and self._clock() - self._opened_at > self.FALLBACK_RECHECK_S):
             self._close_stream()  # look for the pinned mic again (not mid-turn); reopen picks it if it's back
+            recheck = True
         if self.is_open:
             return True
-        opened_before = self._opened_at is not None
+        opened_before = self._opened_at is not None and not recheck
         try:
             self.open()
             if opened_before:

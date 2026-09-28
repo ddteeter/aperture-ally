@@ -416,3 +416,19 @@ def test_always_open_mic_falls_back_while_the_headphones_are_away_and_switches_b
     now[0] += 5.0
     assert rec.ensure_open() and streams[-1].device == "AirPods" and not rec.fallback
     assert len(refreshes) == len(streams)     # the device list is re-read before every open
+
+
+def test_fallback_rechecks_are_not_counted_as_reopens():
+    from aperture_ally.audio.recording import ContinuousRecorder
+
+    streams: list[_FakeStream] = []
+    now = [0.0]
+    rec = ContinuousRecorder("AirPods", stream_factory=lambda **k: streams.append(_FakeStream(**k)) or streams[-1],
+                             list_inputs=lambda: ["MacBook Air Microphone"], refresh_devices=lambda: None)
+    rec._clock = lambda: now[0]
+    rec.open()
+    for _ in range(3):
+        now[0] += 6.0
+        streams[-1].feed(10, 0.1)
+        rec.ensure_open()
+    assert rec.fallback and len(streams) == 4 and rec.reopened == 0
