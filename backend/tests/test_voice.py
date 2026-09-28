@@ -254,3 +254,115 @@ def test_say_ends_with_silence_so_bluetooth_keeps_the_last_word():
 
     assert SaySpeech().text_for("Move the light left.") == "Move the light left. [[slnc 400]]"
     assert SaySpeech(tail_silence_ms=0).text_for("Move the light left.") == "Move the light left."
+
+
+def test_doctor_warns_when_recording_from_the_headphones_mic():
+    from aperture_ally.doctor import headset_mic_check
+
+    bad = headset_mic_check("Drew’s AirPods Pro", "Drew’s AirPods Pro")
+    assert bad["status"] == "warn" and "INPUT_DEVICE" in bad["fix"]
+    assert headset_mic_check("MacBook Air Microphone", "Drew’s AirPods Pro")["status"] == "ok"
+
+
+class _FakeStream:
+    """Stands in for sounddevice.InputStream: the test pushes audio through the callback."""
+
+    def __init__(self, callback, **_kw):
+        self.callback = callback
+        self.active = False
+
+    def start(self):
+        self.active = True
+
+    def stop(self):
+        self.active = False
+
+    def close(self):
+        pass
+
+    def feed(self, value: int, seconds: float):
+        import numpy as np
+
+        n = int(16000 * seconds)
+        for i in range(0, n, 1600):  # 100 ms blocks, like a real callback
+            self.callback(np.full((min(1600, n - i), 1), value, np.int16), 0, None, None)
+
+
+def _continuous(**kw):
+    from aperture_ally.audio.recording import ContinuousRecorder
+
+    streams: list[_FakeStream] = []
+
+    def factory(**k):
+        streams.append(_FakeStream(**k))
+        return streams[-1]
+
+    return ContinuousRecorder(stream_factory=factory, **kw), streams
+
+
+def test_always_open_mic_keeps_preroll_and_only_the_turn():
+    rec, streams = _continuous(preroll_ms=300, ring_s=2.0)
+    rec.open()
+    s = streams[0]
+    s.feed(100, 5.0)                     # before the press: only a bounded ring, nothing kept beyond ~2 s
+    assert rec._ring_n <= 2.1 * 16000
+    s.feed(200, 0.5)                     # the speaker starts a word just before pressing
+    rec.start()
+    s.feed(900, 1.0)
+    clip = rec.stop()
+    assert abs(clip.duration_s - 1.3) < 0.01          # 300 ms pre-roll + 1 s held
+    s.feed(100, 1.0)                     # after release: not part of the clip
+    rec.start()
+    rec.abort()
+    assert rec._clip is None
+
+
+def test_always_open_mic_reopens_after_the_headphones_drop():
+    rec, streams = _continuous()
+    rec.open()
+    streams[0].active = False            # AirPods back in the case: the stream dies
+    assert not rec.is_open
+    assert rec.ensure_open() and len(streams) == 2 and rec.reopened == 1
+
+
+def test_always_open_mic_start_reports_why_the_mic_is_down():
+    import pytest
+
+    from aperture_ally.audio.recording import ContinuousRecorder
+
+    def broken(**_k):
+        raise RuntimeError("device unavailable")
+
+    rec = ContinuousRecorder(stream_factory=broken)
+    assert not rec.ensure_open() and "device unavailable" in rec.last_error
+    with pytest.raises(RuntimeError):
+        rec.start()
+
+
+def test_doctor_accepts_the_headphones_mic_when_held_open():
+    from aperture_ally.doctor import headset_mic_check
+
+    assert headset_mic_check("Drew’s AirPods Pro", "Drew’s AirPods Pro", always_open=True)["status"] == "ok"
+
+
+async def test_app_opens_the_always_open_mic_reports_it_and_closes_it(tmp_path):
+    from aperture_ally.audio.recording import MockTranscriber
+    from aperture_ally.audio.speech import MockSpeech
+    from aperture_ally.services import ApertureAllyApp
+
+    from .conftest import fast_settings
+
+    rec, streams = _continuous()
+    app = ApertureAllyApp(fast_settings(tmp_path / "data"), speech=MockSpeech(), recorder=rec,
+                          transcriber=MockTranscriber())
+    await app.start()
+    try:
+        for _ in range(50):
+            if rec.is_open:
+                break
+            await asyncio.sleep(0.02)
+        assert rec.is_open
+        assert any(e["type"] == "mic.status" and e["payload"]["open"] for e in app.bus.recent)
+    finally:
+        await app.stop()
+    assert not rec.is_open

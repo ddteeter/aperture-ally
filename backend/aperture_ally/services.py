@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .audio.recording import (
+    ContinuousRecorder,
     MockRecorder,
     MockTranscriber,
     OpenAITranscriber,
@@ -82,6 +83,8 @@ def build_speech(settings: Settings) -> SpeechBackend:
 
 def build_recorder(settings: Settings) -> Recorder:
     if settings.recorder == "sounddevice":
+        if settings.mic_always_open:
+            return ContinuousRecorder(settings.input_device, settings.ptt_preroll_ms)
         return SoundDeviceRecorder(settings.input_device)
     return MockRecorder()
 
@@ -129,6 +132,7 @@ class ApertureAllyApp:
             self.coaching.poke_online() if any(p.get("ok") for p in result.get("probes", [])) else None)
         self.cues = cues or build_cues(settings)
         self.prefs = PrefsStore(settings.data_dir / "prefs.json", settings)
+        self._mic_task: asyncio.Task | None = None
         self.apply_prefs()
         self.bus.sinks.append(self._cue_sink)
         self.ingest = IngestService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
@@ -205,10 +209,29 @@ class ApertureAllyApp:
                             "active_session": active.id if active else None, "speech": self.speech.name,
                             "recorder": self.voice.recorder.name, "transcriber": self.voice.transcriber.name}),
             session_id=active.id if active else None)
+        if isinstance(self.voice.recorder, ContinuousRecorder):
+            self._mic_task = asyncio.create_task(self._mic_watchdog(self.voice.recorder))
         self.network.start()
         self.started = True
 
+    async def _mic_watchdog(self, rec: ContinuousRecorder, every_s: float = 2.0) -> None:
+        """Always-open mic: open it, keep it open (reopen after the headphones come back), report changes."""
+        loop = asyncio.get_running_loop()
+        was: bool | None = None
+        while True:
+            ok = await loop.run_in_executor(None, rec.ensure_open)
+            if ok != was:
+                self.bus.publish("mic.status", open=ok, device=rec.device, error=rec.last_error,
+                                 reopened=rec.reopened)
+                self.telemetry.record("mic.status", {"open": ok, "device": rec.device, "error": rec.last_error})
+                was = ok
+            await asyncio.sleep(every_s)
+
     async def stop(self) -> None:
+        if self._mic_task:
+            self._mic_task.cancel()
+        if isinstance(self.voice.recorder, ContinuousRecorder):
+            self.voice.recorder.close()
         await self.network.stop()
         self.telemetry.record("app.stopping", {})
         if self.keys:

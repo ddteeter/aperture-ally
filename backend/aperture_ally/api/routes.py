@@ -799,6 +799,13 @@ async def preview_prefs(request: Request, body: PreviewBody):
 
 
 # --- diagnostics -----------------------------------------------------------------------------
+def _mic_status(app) -> dict[str, Any]:
+    rec = app.voice.recorder
+    return {"recorder": rec.name, "always_open": hasattr(rec, "ensure_open"),
+            "open": getattr(rec, "is_open", None), "error": getattr(rec, "last_error", None),
+            "reopened": getattr(rec, "reopened", 0), "device": getattr(rec, "device", None)}
+
+
 @router.get("/diagnostics")
 async def diagnostics(request: Request, session_id: str | None = None):
     from ..doctor import run_checks
@@ -813,6 +820,7 @@ async def diagnostics(request: Request, session_id: str | None = None):
         "keys": app.keys.diagnostics() if app.keys else {"running": False, "error": "global keys disabled (APERTURE_ALLY_GLOBAL_KEYS=none)"},
         "voice": app.voice.snapshot(),
         "speech_backend": app.speech.name,
+        "mic": _mic_status(app),
         "speech_stop_latency_ms": {"n": len(stops), "last": stops[-5:], "max": max(stops) if stops else None},
         "providers": {"configured": app.providers.configured(), "health": app.providers.health},
         "timing": summarize(marks),

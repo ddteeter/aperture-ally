@@ -137,7 +137,7 @@ class Preflight:
         if rec.name == "mock":
             self.add("microphone", WARN, "recorder is 'mock' (APERTURE_ALLY_RECORDER=sounddevice for the real mic)")
             return
-        self.out("   … say “testing one two three” after the tone (3 seconds)")
+        self.out("   … say “testing one two three” after the tone (5 seconds)")
         # Spoken, not just printed: at the camera nobody is looking at the terminal.
         from .services import build_cues, build_speech
 
@@ -150,10 +150,11 @@ class Preflight:
             # `say` returns when the audio is handed off; Bluetooth headphones are still playing the last ~0.3 s.
             await asyncio.sleep(0.7)
             cues.play("received")
-            await asyncio.sleep(0.4)
+            # Let the tone finish (Glass is 1.65 s): opening the mic while it rings garbled it on the owner's AirPods.
+            await asyncio.sleep(1.8)
         try:
             rec.start()
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(5.0)
             clip = rec.stop()
         except Exception as exc:
             self.add("microphone", NO_GO, f"{exc} — grant Microphone permission to your terminal")

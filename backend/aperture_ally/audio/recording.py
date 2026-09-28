@@ -92,6 +92,124 @@ class SoundDeviceRecorder:
         self._frames.clear()
 
 
+class ContinuousRecorder:
+    """Keeps the mic open for the whole run and slices push-to-talk clips out of it.
+
+    Opening a Bluetooth headset's mic switches it to call mode, which took ~0.6 s on the owner's AirPods Pro,
+    and speech in that window was lost. Holding the stream open removes the switch from every turn, and
+    enables a pre-roll: a clip starts ``preroll_ms`` before the press. Outside a turn, audio only lives in a
+    ~2 s ring buffer that is continuously overwritten: never stored, never sent. A dead stream (headphones
+    in the case, battery) is reopened by ``ensure_open``; ``last_error`` says why it's down.
+    """
+
+    name = "sounddevice-open"
+
+    def __init__(self, device: str | int | None = None, preroll_ms: int = 300, ring_s: float = 2.0,
+                 stream_factory=None):
+        import threading
+
+        self.device = device
+        self.preroll = int(SAMPLE_RATE * preroll_ms / 1000)
+        self.ring_max = int(SAMPLE_RATE * ring_s)
+        self._factory = stream_factory
+        self._lock = threading.Lock()
+        self._ring: deque[np.ndarray] = deque()
+        self._ring_n = 0
+        self._clip: list[np.ndarray] | None = None
+        self._stream = None
+        self.last_error: str | None = None
+        self.reopened = 0
+
+    # --- the PortAudio thread ----------------------------------------------------------------
+    def _on_audio(self, indata, frames, t, status) -> None:
+        a = indata.reshape(-1).copy()
+        with self._lock:
+            self._ring.append(a)
+            self._ring_n += a.size
+            while self._ring and self._ring_n - self._ring[0].size >= self.ring_max:
+                self._ring_n -= self._ring.popleft().size
+            if self._clip is not None:
+                self._clip.append(a)
+
+    # --- lifecycle ---------------------------------------------------------------------------
+    @property
+    def is_open(self) -> bool:
+        s = self._stream
+        return s is not None and bool(getattr(s, "active", True))
+
+    def open(self) -> None:
+        if self.is_open:
+            return
+        self._close_stream()
+        factory = self._factory
+        if factory is None:
+            import sounddevice as sd
+
+            factory = sd.InputStream
+        try:
+            self._stream = factory(samplerate=SAMPLE_RATE, channels=1, dtype="int16", device=self.device,
+                                   callback=self._on_audio)
+            self._stream.start()
+            self.last_error = None
+        except Exception as exc:
+            self._stream = None
+            self.last_error = f"{type(exc).__name__}: {exc}"
+            raise
+
+    def ensure_open(self) -> bool:
+        """Reopen a dead stream (called periodically). True when the mic is open afterwards."""
+        if self.is_open:
+            return True
+        try:
+            self.open()
+            self.reopened += 1
+            return True
+        except Exception:
+            return False
+
+    def _close_stream(self) -> None:
+        s, self._stream = self._stream, None
+        if s is not None:
+            try:
+                s.stop()
+                s.close()
+            except Exception:
+                pass
+
+    def close(self) -> None:
+        self._close_stream()
+        with self._lock:
+            self._ring.clear()
+            self._ring_n = 0
+            self._clip = None
+
+    # --- push-to-talk ------------------------------------------------------------------------
+    def start(self) -> None:
+        if not self.is_open:
+            self.open()  # raises with the reason if the mic is gone
+        with self._lock:
+            tail: list[np.ndarray] = []
+            n = 0
+            for a in reversed(self._ring):
+                if n >= self.preroll:
+                    break
+                tail.append(a)
+                n += a.size
+            pre = np.concatenate(tail[::-1])[-self.preroll:] if tail and self.preroll else np.zeros(0, np.int16)
+            self._clip = [pre]
+
+    def stop(self) -> Clip:
+        with self._lock:
+            parts, self._clip = self._clip or [], None
+        data = np.concatenate(parts).reshape(-1) if parts else np.zeros(0, np.int16)
+        rms = float(np.sqrt(np.mean(data.astype(np.float32) ** 2))) if data.size else 0.0
+        return Clip(to_wav(data), data.size / SAMPLE_RATE, rms)
+
+    def abort(self) -> None:
+        with self._lock:
+            self._clip = None
+
+
 class MockRecorder:
     """Simulated mic: duration = hold time; loudness configurable so tests can model silence."""
 

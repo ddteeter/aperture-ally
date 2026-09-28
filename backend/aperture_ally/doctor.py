@@ -17,6 +17,19 @@ def _check(name: str, ok: bool | None, detail: str = "", fix: str = "") -> dict[
     return {"name": name, "status": "ok" if ok else ("warn" if ok is None else "fail"), "detail": detail, "fix": fix}
 
 
+def headset_mic_check(mic: str | None, output: str | None, always_open: bool = False) -> dict[str, Any]:
+    """Recording from the headphones' own mic flips Bluetooth headphones into call mode: playback garbles
+    and the first moments of speech are lost while it switches (seen with AirPods Pro). With the mic held
+    open (APERTURE_ALLY_MIC_ALWAYS_OPEN) the switch happens once, at start-up, so that's the intended setup."""
+    same = bool(mic and output and (mic == output or mic in output or output in mic))
+    if same and always_open:
+        return _check("microphone vs headphones", True, f"mic={mic}; headphones' own mic, held open (call mode)")
+    return _check("microphone vs headphones", None if same else True,
+                  f"mic={mic}; output={output}" + ("; the headphones' own mic" if same else ""),
+                  "APERTURE_ALLY_MIC_ALWAYS_OPEN=true, or set APERTURE_ALLY_INPUT_DEVICE to the Mac's microphone"
+                  if same else "")
+
+
 def _import(mod: str) -> tuple[bool, str]:
     try:
         m = importlib.import_module(mod)
@@ -96,6 +109,8 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
             default = sd.query_devices(kind="input")["name"] if inputs else None
             out.append(_check("input devices", bool(inputs) or None, f"default={default}; all={inputs[:8]}",
                               "grant Microphone permission to your terminal app"))
+            output = sd.query_devices(kind="output")["name"] if sd.query_devices() else None
+            out.append(headset_mic_check(s.input_device or default, output, always_open=s.mic_always_open))
         except Exception as exc:
             out.append(_check("input devices", None, f"PortAudio: {exc}"))
     else:

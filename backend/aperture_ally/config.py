@@ -116,6 +116,10 @@ class Settings(BaseSettings):
                                      "headphones don't clip the last word; 0 = off")
     say_audio_device: str | None = Field(None, description="`say -a` device name/ID; None = system output")
     recorder: Literal["sounddevice", "mock"] = "mock"
+    mic_always_open: bool = Field(
+        False, description="Keep the mic open while the app runs (a Bluetooth headset's mic then never has to "
+                           "switch to call mode per turn); audio outside a turn stays in a 2 s memory ring")
+    ptt_preroll_ms: int = Field(300, ge=0, le=1500, description="Always-open mic: audio kept from before the press")
     input_device: str | None = None
     transcriber: Literal["openai", "mock"] = "mock"
     transcription_model: str | None = None
