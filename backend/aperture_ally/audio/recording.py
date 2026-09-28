@@ -92,6 +92,19 @@ class SoundDeviceRecorder:
         self._frames.clear()
 
 
+def _sd_input_names() -> list[str]:
+    import sounddevice as sd
+
+    return [d["name"] for d in sd.query_devices() if d["max_input_channels"] > 0]
+
+
+def _sd_refresh() -> None:
+    import sounddevice as sd
+
+    sd._terminate()
+    sd._initialize()
+
+
 class ContinuousRecorder:
     """Keeps the mic open for the whole run and slices push-to-talk clips out of it.
 
@@ -104,11 +117,19 @@ class ContinuousRecorder:
 
     name = "sounddevice-open"
 
+    FALLBACK_RECHECK_S = 5.0  # on the fallback mic: how often to look for the pinned mic again
+
     def __init__(self, device: str | int | None = None, preroll_ms: int = 300, ring_s: float = 2.0,
-                 stream_factory=None):
+                 stream_factory=None, list_inputs=None, refresh_devices=None):
         import threading
 
-        self.device = device
+        self.device = device                      # the pinned mic (name/index), None = system default
+        self.active_device: str | int | None = None
+        self.fallback = False                     # pinned mic absent: recording from the system default
+        self._list_inputs = list_inputs or _sd_input_names
+        # PortAudio reads the device list once at start-up; headphones that leave and come back get a new
+        # identity, so reopening against the stale list failed forever (-9986) until the app restarted.
+        self._refresh_devices = refresh_devices or (_sd_refresh if stream_factory is None else (lambda: None))
         self.preroll = int(SAMPLE_RATE * preroll_ms / 1000)
         self.ring_max = int(SAMPLE_RATE * ring_s)
         self._factory = stream_factory
@@ -167,7 +188,7 @@ class ContinuousRecorder:
     def status(self) -> dict:
         now = self._clock()
         return {"open": self.is_open, "stalled": self.stalled(), "error": self.last_error, "reopened": self.reopened,
-                "last_stall": self.last_stall,
+                "last_stall": self.last_stall, "active_device": self.active_device, "fallback": self.fallback,
                 "device": self.device, "level": round(self.level, 1),
                 "since_audio_s": round(now - self.last_audio_at, 2) if self.last_audio_at else None}
 
@@ -181,8 +202,16 @@ class ContinuousRecorder:
 
             factory = sd.InputStream
         try:
-            self._stream = factory(samplerate=SAMPLE_RATE, channels=1, dtype="int16", device=self.device,
+            self._refresh_devices()
+            names = self._list_inputs()
+            pinned = self.device
+            use = pinned if pinned is None or isinstance(pinned, int) or pinned in names else None
+            if use is None and not names:
+                raise RuntimeError("no microphone available")
+            self._stream = factory(samplerate=SAMPLE_RATE, channels=1, dtype="int16", device=use,
                                    callback=self._on_audio)
+            self.active_device = use if use is not None else "system default"
+            self.fallback = pinned is not None and use is None
             self._stream.start()
             self._opened_at = self._clock()
             self.last_audio_at = self.last_signal_at = None
@@ -198,6 +227,9 @@ class ContinuousRecorder:
         if why:
             self.last_stall = f"{why} (reopened)"
             self._close_stream()
+        elif (self.fallback and self.is_open and self._clip is None and self._opened_at is not None
+              and self._clock() - self._opened_at > self.FALLBACK_RECHECK_S):
+            self._close_stream()  # look for the pinned mic again (not mid-turn); reopen picks it if it's back
         if self.is_open:
             return True
         opened_before = self._opened_at is not None

@@ -384,3 +384,35 @@ def test_always_open_mic_notices_a_stream_that_stops_delivering_and_reopens_it()
     now[0] += 3.5
     streams[1].feed(0, 0.2)
     assert rec.stalled().startswith("silent")
+
+
+def test_always_open_mic_falls_back_while_the_headphones_are_away_and_switches_back():
+    from aperture_ally.audio.recording import ContinuousRecorder
+
+    present = ["AirPods", "MacBook Air Microphone"]
+    refreshes = []
+    streams: list[_FakeStream] = []
+
+    def factory(**k):
+        s = _FakeStream(**k)
+        s.device = k["device"]
+        streams.append(s)
+        return s
+
+    now = [0.0]
+    rec = ContinuousRecorder("AirPods", stream_factory=factory, list_inputs=lambda: list(present),
+                             refresh_devices=lambda: refreshes.append(1))
+    rec._clock = lambda: now[0]
+    rec.open()
+    assert streams[-1].device == "AirPods" and not rec.fallback
+    present.remove("AirPods")                 # into the case: the stream dies
+    streams[-1].active = False
+    assert rec.ensure_open() and streams[-1].device is None and rec.fallback   # system default meanwhile
+    assert rec.status()["active_device"] == "system default"
+    present.insert(0, "AirPods")              # back in the ears
+    now[0] += 1.0
+    rec.ensure_open()
+    assert streams[-1].device is None         # not re-checked yet (every 5 s)
+    now[0] += 5.0
+    assert rec.ensure_open() and streams[-1].device == "AirPods" and not rec.fallback
+    assert len(refreshes) == len(streams)     # the device list is re-read before every open
