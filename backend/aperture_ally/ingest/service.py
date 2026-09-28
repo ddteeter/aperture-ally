@@ -152,6 +152,7 @@ class IngestService:
         self.on_ready = on_ready
         self._inflight: dict[tuple[str, str], asyncio.Task] = {}
         self._locks: dict[str, asyncio.Lock] = {}
+        self._hash_locks: dict[tuple[str, str], asyncio.Lock] = {}
         self._pending_raw: dict[tuple[str, str, str], PendingRaw] = {}
         self._observer = None
         self._reconcile_task: asyncio.Task | None = None
@@ -292,6 +293,9 @@ class IngestService:
         auto_coach: bool = True,
         quick: bool = False,
     ) -> asyncio.Task:
+        # One canonical path per file: watcher events report the real path (/private/var/…), scans the
+        # configured one (/var/…); treating them as two files ingested one photo twice.
+        path = Path(os.path.realpath(path))
         key = (session_id, str(path))
         if key in self._inflight:
             return self._inflight[key]
@@ -358,28 +362,35 @@ class IngestService:
         size, mtime_ns = stable
         det.timings["source_bytes"] = stable[0]
         sha = await det.timed("hash_ms", self._run(sha256_file, path))
-        dup = await self.store.source_by_hash(sid, sha)
-        if dup:
-            status = "ingested" if dup["source_path"] == str(path) else "duplicate"
-            await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind, status=status,
-                                           sha256=sha, capture_id=dup["capture_id"], note=f"same content as {dup['source_path']}")
-            if status == "duplicate":
-                self.bus.publish("capture.duplicate", session_id=sid, capture_id=dup["capture_id"], path=path.name)
-            return dup["capture_id"]
+        # Same bytes seen via two paths at once (a symlinked folder, a re-save): only one may create the capture.
+        lock = self._hash_locks.setdefault((sid, sha), asyncio.Lock())
         try:
-            if kind == "raw":
-                return await self._ingest_raw(det, sha, size, mtime_ns)
-            return await self._ingest_primary(det, sha, size, mtime_ns)
-        except ChangedDuringCopy as exc:
-            await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind,
-                                           status="pending_retry", note=str(exc))
-            return None
-        except Exception as exc:
-            log.exception("ingest failed for %s", path)
-            await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind, status="failed",
-                                           sha256=sha, note=str(exc))
-            self.bus.publish("capture.ingest_failed", session_id=sid, path=path.name, error=str(exc))
-            return None
+            async with lock:
+                dup = await self.store.source_by_hash(sid, sha)
+                if dup:
+                    status = "ingested" if dup["source_path"] == str(path) else "duplicate"
+                    await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind, status=status,
+                                                   sha256=sha, capture_id=dup["capture_id"], note=f"same content as {dup['source_path']}")
+                    if status == "duplicate":
+                        self.bus.publish("capture.duplicate", session_id=sid, capture_id=dup["capture_id"], path=path.name)
+                    return dup["capture_id"]
+                try:
+                    if kind == "raw":
+                        return await self._ingest_raw(det, sha, size, mtime_ns)
+                    return await self._ingest_primary(det, sha, size, mtime_ns)
+                except ChangedDuringCopy as exc:
+                    await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind,
+                                                   status="pending_retry", note=str(exc))
+                    return None
+                except Exception as exc:
+                    log.exception("ingest failed for %s", path)
+                    await self.store.record_source(sid, str(path), size=size, mtime_ns=mtime_ns, kind=kind, status="failed",
+                                                   sha256=sha, note=str(exc))
+                    self.bus.publish("capture.ingest_failed", session_id=sid, path=path.name, error=str(exc))
+                    return None
+        finally:
+            if not lock.locked() and self._hash_locks.get((sid, sha)) is lock:
+                del self._hash_locks[(sid, sha)]
 
     async def _wait_stable(self, path: Path, kind: str, *, quick: bool = False,
                            stats: dict[str, int] | None = None) -> tuple[int, int] | None:
@@ -393,6 +404,20 @@ class IngestService:
         deadline = time.monotonic() + self.settings.stability_timeout_s
         prev: tuple[int, int] | None = None
         count = 0
+        if kind != "raw" and not quick and self.settings.fast_ready_images:
+            # Tethering software that moves finished files into the folder (OM Capture does) needs no quiet
+            # period: a full decode proves the image is complete. A file still being written fails to decode
+            # (no end-of-image marker) and falls through to the quiet-poll checks below.
+            try:
+                st = path.stat()
+            except FileNotFoundError:
+                return None
+            stats["polls"] += 1
+            if st.st_size > 0 and await self._decodes(path, kind):
+                stats["fast_ready"] = 1
+                return (st.st_size, st.st_mtime_ns)
+            stats["decode_failures"] += 1
+            prev = (st.st_size, st.st_mtime_ns)
         while time.monotonic() < deadline:
             try:
                 st = path.stat()
@@ -594,7 +619,8 @@ class IngestService:
         await self.store.put(cap)
         await self.timer.mark("file_detected", at=det.detected, session_id=cap.session_id, capture_id=cap.id)
         await self.timer.mark("file_ready", session_id=cap.session_id, capture_id=cap.id)
-        self.tracker.capture_ready(cap.session_id, cap.shot_id, cap.id, cap.seq)
+        self.tracker.capture_ready(cap.session_id, cap.shot_id, cap.id, cap.seq,
+                                   self.tracker.later_bracket_frame(cap.exif))
         self.bus.publish("capture.ready", session_id=cap.session_id, capture_id=cap.id, seq=cap.seq,
                          shot_id=cap.shot_id, recovered=cap.recovered, ambiguous=cap.attribution_ambiguous)
         ok = await self._refresh_evidence(cap)
@@ -749,7 +775,8 @@ class IngestService:
             c.ready_at = c.ready_at or utcnow()
 
         cap = await self.store.update(Capture, cap.id, ready) or cap
-        self.tracker.capture_ready(cap.session_id, cap.shot_id, cap.id, cap.seq)
+        self.tracker.capture_ready(cap.session_id, cap.shot_id, cap.id, cap.seq,
+                                   self.tracker.later_bracket_frame(cap.exif))
         self.bus.publish("capture.updated", session_id=cap.session_id, capture_id=cap.id, reread=True)
         return True, None
 

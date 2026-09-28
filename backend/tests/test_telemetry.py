@@ -68,7 +68,7 @@ async def test_ingest_and_evidence_substage_timings(h, fx):
     for k in ("stability_wait_ms", "stability_polls", "hash_ms", "metadata_ms", "copy_ms", "source_bytes",
               "file_age_at_first_stat_ms"):
         assert k in t, k
-    assert t["stability_polls"] >= 3
+    assert t["stability_polls"] >= 1 and t["stability_fast_ready"] == 1  # complete JPEG: ready on first sight
     ev = t["evidence"]
     for k in ("decode_orient_color_ms", "overview_thumb_ms", "crops_and_region_stats_ms", "global_stats_ms",
               "executor_queue_wait_ms", "total_ms"):

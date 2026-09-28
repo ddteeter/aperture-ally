@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     frontend_dist: Path = REPO_ROOT / "frontend" / "dist"
 
     # --- ingestion -------------------------------------------------------------------------
+    fast_ready_images: bool = Field(
+        True, description="A JPEG/TIFF/PNG that fully decodes on first sight is ready at once (OM Capture moves "
+                          "complete files in by rename, verified on the E-M1 II); otherwise the quiet-poll checks apply")
     stability_interval_ms: int = 250
     stability_checks: int = 3
     stability_timeout_s: float = 30.0

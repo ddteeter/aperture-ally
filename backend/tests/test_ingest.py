@@ -195,3 +195,67 @@ async def test_manual_import_respects_roots(make_harness, fx):
     assert os.path.exists(fx / "P9260001.JPG")
     assert not await h.app.store.assessments(s.id)  # imports are not auto-coached by default
     _ = Assessment
+
+
+async def test_complete_jpeg_is_ready_on_first_sight(h, fx):
+    # OM Capture renames finished files into the folder: no quiet period needed when the image fully decodes.
+    s = await h.session()
+    h.drop(s, fx / "P9260001.JPG")
+    (cap,) = await h.n_captures(s, 1)
+    assert cap.timings["stability_fast_ready"] == 1 and cap.timings["stability_polls"] == 1
+
+
+async def test_fast_ready_off_uses_quiet_polls(make_harness, fx):
+    h = await make_harness(fast_ready_images=False)
+    s = await h.session()
+    h.drop(s, fx / "P9260001.JPG")
+    (cap,) = await h.n_captures(s, 1)
+    assert "stability_fast_ready" not in cap.timings and cap.timings["stability_polls"] >= 3
+
+
+async def test_jpeg_missing_only_its_end_marker_is_not_ready(h, fx):
+    # A JPEG cut just before its final FF D9 still decodes cleanly, so decoding alone can't prove it is
+    # complete (found with the replay's chunked writer). It must wait, then be ingested exactly once.
+    s = await h.session()
+    data = (fx / "P9260001.JPG").read_bytes()
+    dest = Path(s.watch_folder) / "P9260001.JPG"
+    dest.write_bytes(data[:-2])
+    await asyncio.sleep(0.6)
+    assert await h.captures(s) == []
+    with open(dest, "ab") as f:
+        f.write(data[-2:])
+    await h.n_captures(s, 1)
+    await h.settled()
+    caps = await h.captures(s)
+    assert len(caps) == 1 and caps[0].jpeg_sha256 == sha256_file(fx / "P9260001.JPG")
+
+
+async def test_one_file_seen_via_two_paths_becomes_one_capture(h, fx, tmp_path):
+    # macOS: /var is a symlink to /private/var, so the watcher and the folder scan can name one file two ways.
+    real = tmp_path / "real"
+    real.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(real, target_is_directory=True)
+    s = await h.session(watch_folder=str(alias))
+    (real / "P9260002.JPG").write_bytes((fx / "P9260002.JPG").read_bytes())
+    t1 = h.app.ingest.schedule(s.id, alias / "P9260002.JPG", "watch")
+    t2 = h.app.ingest.schedule(s.id, real / "P9260002.JPG", "watch")
+    assert t1 is t2  # same canonical path → one ingest task
+    await h.settled()
+    assert len(await h.captures(s)) == 1
+    rows = await h.app.store.source_files(s.id)
+    assert len({r["source_path"] for r in rows}) == 1
+
+
+async def test_same_bytes_ingested_concurrently_create_one_capture(h, fx):
+    # Two different files with identical bytes racing through ingest: the hash lock lets only one win.
+    s = await h.session()
+    folder = Path(s.watch_folder)
+    for name in ("A.JPG", "B.JPG"):
+        (folder / name).write_bytes((fx / "P9260002.JPG").read_bytes())
+    await asyncio.gather(h.app.ingest.schedule(s.id, folder / "A.JPG", "watch"),
+                         h.app.ingest.schedule(s.id, folder / "B.JPG", "watch"))
+    await h.settled()
+    assert len(await h.captures(s)) == 1
+    statuses = sorted(r["status"] for r in await h.app.store.source_files(s.id))
+    assert statuses == ["duplicate", "ingested"]

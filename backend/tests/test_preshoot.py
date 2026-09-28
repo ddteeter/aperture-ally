@@ -196,6 +196,7 @@ async def test_in_camera_bracket_coaches_only_the_base_frame(make_harness, fx):
         h.drop(s, fx / name)
         await h.n_captures(s, shots[name])
     await h.settled(15)
+    await h.wait(lambda: h.speech.spoken, 10, "base frame advice spoken")
     caps = {c.seq: c for c in await h.captures(s)}
     assessed = {a.capture_id for a in await h.app.store.assessments(s.id)}
     assert assessed == {caps[1].id}                              # base frame only; no paid calls for 2 and 3

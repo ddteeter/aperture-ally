@@ -51,10 +51,15 @@ class ContextTracker:
             ctx.bump()
         return ctx
 
-    def capture_ready(self, session_id: str, shot_id: str | None, capture_id: str, seq: int) -> bool:
-        """Record a new ready capture; returns True if it is now the newest for its shot."""
+    def capture_ready(self, session_id: str, shot_id: str | None, capture_id: str, seq: int,
+                      later_bracket_frame: bool = False) -> bool:
+        """Record a new ready capture; returns True if it is now the newest for its shot.
+
+        Later frames of an in-camera bracket (shot 2..N) don't count: the base frame stands for the set, so its
+        advice isn't suppressed as stale while the rest of the set arrives.
+        """
         ctx = self.get(session_id)
-        if shot_id is None:
+        if shot_id is None or later_bracket_frame:
             return False
         if seq >= ctx.latest_seq.get(shot_id, -1):
             ctx.latest_capture[shot_id] = capture_id
@@ -64,6 +69,11 @@ class ContextTracker:
         return False
 
     # --- guards --------------------------------------------------------------------------
+    @staticmethod
+    def later_bracket_frame(exif: dict | None) -> bool:
+        b = (exif or {}).get("bracket")
+        return bool(b and b.get("shot", 1) > 1)
+
     def auto_guard(self, session_id: str, shot_id: str | None, capture_id: str) -> Guard:
         ctx = self.get(session_id)
         epoch = ctx.voice_epoch

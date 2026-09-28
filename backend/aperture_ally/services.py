@@ -217,7 +217,7 @@ class ApertureAllyApp:
         self.tracker.get(s.id).setup_revision_id = s.current_setup_revision_id
         for c in await self.store.captures(s.id):
             if c.processing_state not in ("discovered", "stabilizing"):
-                self.tracker.capture_ready(s.id, c.shot_id, c.id, c.seq)
+                self.tracker.capture_ready(s.id, c.shot_id, c.id, c.seq, self.tracker.later_bracket_frame(c.exif))
 
     async def start_global_keys(self) -> None:
         from .input.global_keys import GlobalKeyListener
@@ -489,7 +489,8 @@ class ApertureAllyApp:
             cap.shot_id = shot_id
             cap.attribution_ambiguous = False
             if shot_id:
-                self.tracker.capture_ready(cap.session_id, shot_id, cap.id, cap.seq)
+                self.tracker.capture_ready(cap.session_id, shot_id, cap.id, cap.seq,
+                                           self.tracker.later_bracket_frame(cap.exif))
         if "extra_shot_ids" in patch:
             cap.extra_shot_ids = list(dict.fromkeys(patch["extra_shot_ids"]))
         if "baseline_capture_id" in patch:
