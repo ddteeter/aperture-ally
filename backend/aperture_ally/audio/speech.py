@@ -31,9 +31,16 @@ class SpeechBackend(Protocol):
 class SaySpeech:
     name = "say"
 
-    def __init__(self, voice: str | None = None, rate_wpm: int | None = None, audio_device: str | None = None):
+    def __init__(self, voice: str | None = None, rate_wpm: int | None = None, audio_device: str | None = None,
+                 tail_silence_ms: int = 400):
         self.exe = shutil.which("say")
         self.voice, self.rate, self.device = voice, rate_wpm, audio_device
+        self.tail_silence_ms = tail_silence_ms
+
+    def text_for(self, text: str) -> str:
+        """Trailing silence: `say` exits as soon as its audio is handed off, and Bluetooth headphones then lose the
+        last ~0.2 s (the owner's AirPods dropped the end of the last word every time). The silence is what's lost."""
+        return f"{text} [[slnc {self.tail_silence_ms}]]" if self.tail_silence_ms > 0 else text
 
     @property
     def available(self) -> bool:
@@ -57,7 +64,7 @@ class SaySpeech:
                                                     stderr=asyncio.subprocess.PIPE)
         await on_started()
         try:
-            _, err = await proc.communicate(text.encode())
+            _, err = await proc.communicate(self.text_for(text).encode())
             if proc.returncode not in (0, None):
                 raise RuntimeError(f"say exited {proc.returncode}: {err.decode(errors='ignore')[:200]}")
         except asyncio.CancelledError:

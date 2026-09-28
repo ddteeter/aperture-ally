@@ -73,7 +73,8 @@ def build_cues(settings: Settings):
 
 def build_speech(settings: Settings) -> SpeechBackend:
     if settings.speech_provider == "say":
-        return SaySpeech(settings.say_voice, settings.say_rate_wpm, settings.say_audio_device)
+        return SaySpeech(settings.say_voice, settings.say_rate_wpm, settings.say_audio_device,
+                         settings.say_tail_silence_ms)
     if settings.speech_provider == "mock":
         return MockSpeech()
     return NullSpeech()

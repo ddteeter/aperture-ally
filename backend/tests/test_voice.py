@@ -247,3 +247,10 @@ def test_doctor_input_monitoring_only_needed_for_global_keys(tmp_path):
         return
     checks = {c["name"]: c for c in run_checks(fast_settings(tmp_path, global_keys="none"), quick=True)}
     assert checks["Input Monitoring permission"]["status"] == "ok"
+
+
+def test_say_ends_with_silence_so_bluetooth_keeps_the_last_word():
+    from aperture_ally.audio.speech import SaySpeech
+
+    assert SaySpeech().text_for("Move the light left.") == "Move the light left. [[slnc 400]]"
+    assert SaySpeech(tail_silence_ms=0).text_for("Move the light left.") == "Move the light left."

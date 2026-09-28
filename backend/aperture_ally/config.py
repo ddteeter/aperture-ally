@@ -112,6 +112,8 @@ class Settings(BaseSettings):
     speech_provider: Literal["say", "mock", "none"] = "mock"
     say_voice: str | None = None
     say_rate_wpm: int | None = 190
+    say_tail_silence_ms: int = Field(400, ge=0, le=2000, description="Silence after each utterance so Bluetooth "
+                                     "headphones don't clip the last word; 0 = off")
     say_audio_device: str | None = Field(None, description="`say -a` device name/ID; None = system output")
     recorder: Literal["sounddevice", "mock"] = "mock"
     input_device: str | None = None
