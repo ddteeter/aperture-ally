@@ -447,3 +447,12 @@ running it:
 - Transcription is priced per minute, which the price table can't express; shown as "unpriced", never capped.
 
 Spend in session 0 ≈ **$0.21**.
+
+**Remote push-to-talk (8BitDo Micro, S mode): PASS** (`7f66293`, `APERTURE_ALLY_GLOBAL_KEYS=gamepad`).
+- **Talk:** with another app in front, holding **L** for 1.97 s gave *"What does ISO do?"*, transcribed exactly
+  (1.8 s) and answered (3.5 s).
+- **Cancel:** **B** stopped the spoken answer.
+- **Pause:** **R** paused coaching, and **R** again resumed it, each with a spoken confirmation.
+- No Input Monitoring needed, nothing typed into the app in front.
+- After the laptop died and woke, the Micro reconnected on a button press; the app needed no restart.
+- Still to check at the camera: range, and sleep/wake mid-shoot.
