@@ -217,14 +217,15 @@ class ApertureAllyApp:
     async def _mic_watchdog(self, rec: ContinuousRecorder, every_s: float = 2.0) -> None:
         """Always-open mic: open it, keep it open (reopen after the headphones come back), report changes."""
         loop = asyncio.get_running_loop()
-        was: bool | None = None
+        was: tuple | None = None
         while True:
             ok = await loop.run_in_executor(None, rec.ensure_open)
-            if ok != was:
-                self.bus.publish("mic.status", open=ok, device=rec.device, error=rec.last_error,
-                                 reopened=rec.reopened)
-                self.telemetry.record("mic.status", {"open": ok, "device": rec.device, "error": rec.last_error})
-                was = ok
+            now = (ok, rec.reopened, rec.last_error, rec.last_stall)
+            if now != was:
+                st = rec.status()
+                self.bus.publish("mic.status", **st)
+                self.telemetry.record("mic.status", st)
+                was = now
             await asyncio.sleep(every_s)
 
     async def stop(self) -> None:

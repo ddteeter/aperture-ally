@@ -801,9 +801,9 @@ async def preview_prefs(request: Request, body: PreviewBody):
 # --- diagnostics -----------------------------------------------------------------------------
 def _mic_status(app) -> dict[str, Any]:
     rec = app.voice.recorder
-    return {"recorder": rec.name, "always_open": hasattr(rec, "ensure_open"),
-            "open": getattr(rec, "is_open", None), "error": getattr(rec, "last_error", None),
-            "reopened": getattr(rec, "reopened", 0), "device": getattr(rec, "device", None)}
+    if hasattr(rec, "status"):
+        return {"recorder": rec.name, "always_open": True, **rec.status()}
+    return {"recorder": rec.name, "always_open": False}
 
 
 @router.get("/diagnostics")

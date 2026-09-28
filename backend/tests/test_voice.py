@@ -352,7 +352,7 @@ async def test_app_opens_the_always_open_mic_reports_it_and_closes_it(tmp_path):
 
     from .conftest import fast_settings
 
-    rec, streams = _continuous()
+    rec, _streams = _continuous()
     app = ApertureAllyApp(fast_settings(tmp_path / "data"), speech=MockSpeech(), recorder=rec,
                           transcriber=MockTranscriber())
     await app.start()
@@ -366,3 +366,21 @@ async def test_app_opens_the_always_open_mic_reports_it_and_closes_it(tmp_path):
     finally:
         await app.stop()
     assert not rec.is_open
+
+
+def test_always_open_mic_notices_a_stream_that_stops_delivering_and_reopens_it():
+    # AirPods in the case: the stream can stay "active" while no audio (or only zeros) arrives.
+    rec, streams = _continuous()
+    now = [100.0]
+    rec._clock = lambda: now[0]
+    rec.open()
+    streams[0].feed(50, 0.5)
+    assert rec.stalled() is None and rec.status()["level"] == 50.0
+    now[0] += 2.0                                   # no callbacks for 2 s
+    assert rec.stalled().startswith("no audio")
+    assert rec.ensure_open() and len(streams) == 2 and rec.reopened == 1
+    assert rec.last_stall.startswith("no audio") and rec.last_error is None
+    streams[1].feed(0, 0.2)                          # callbacks, but pure zeros
+    now[0] += 3.5
+    streams[1].feed(0, 0.2)
+    assert rec.stalled().startswith("silent")

@@ -116,13 +116,24 @@ class ContinuousRecorder:
         self._ring: deque[np.ndarray] = deque()
         self._ring_n = 0
         self._clip: list[np.ndarray] | None = None
+        self._opened_at: float | None = None
         self._stream = None
         self.last_error: str | None = None
         self.reopened = 0
+        self.last_stall: str | None = None        # why the stream was last reopened
+        self._clock = time.monotonic
+        self.last_audio_at: float | None = None   # any callback
+        self.last_signal_at: float | None = None  # a callback that wasn't all zeros (a live mic never is)
+        self.level = 0.0                          # rms of the latest block
 
     # --- the PortAudio thread ----------------------------------------------------------------
     def _on_audio(self, indata, frames, t, status) -> None:
         a = indata.reshape(-1).copy()
+        now = self._clock()
+        self.last_audio_at = now
+        if a.size and np.any(a):
+            self.last_signal_at = now
+        self.level = float(np.sqrt(np.mean(a.astype(np.float32) ** 2))) if a.size else 0.0
         with self._lock:
             self._ring.append(a)
             self._ring_n += a.size
@@ -132,10 +143,33 @@ class ContinuousRecorder:
                 self._clip.append(a)
 
     # --- lifecycle ---------------------------------------------------------------------------
+    NO_AUDIO_S = 1.5      # no callbacks: the device went away under an "active" stream
+    ZERO_SIGNAL_S = 3.0   # callbacks of pure zeros: a dead or muted device
+
     @property
     def is_open(self) -> bool:
         s = self._stream
         return s is not None and bool(getattr(s, "active", True))
+
+    def stalled(self) -> str | None:
+        """Why an open stream isn't really delivering audio (e.g. AirPods in the case), else None."""
+        if not self.is_open or self._opened_at is None:
+            return None
+        now = self._clock()
+        last_audio = self.last_audio_at or self._opened_at
+        if now - last_audio > self.NO_AUDIO_S:
+            return f"no audio for {now - last_audio:.1f} s"
+        last_signal = self.last_signal_at or self._opened_at
+        if now - last_signal > self.ZERO_SIGNAL_S:
+            return f"silent (all zeros) for {now - last_signal:.1f} s"
+        return None
+
+    def status(self) -> dict:
+        now = self._clock()
+        return {"open": self.is_open, "stalled": self.stalled(), "error": self.last_error, "reopened": self.reopened,
+                "last_stall": self.last_stall,
+                "device": self.device, "level": round(self.level, 1),
+                "since_audio_s": round(now - self.last_audio_at, 2) if self.last_audio_at else None}
 
     def open(self) -> None:
         if self.is_open:
@@ -150,6 +184,8 @@ class ContinuousRecorder:
             self._stream = factory(samplerate=SAMPLE_RATE, channels=1, dtype="int16", device=self.device,
                                    callback=self._on_audio)
             self._stream.start()
+            self._opened_at = self._clock()
+            self.last_audio_at = self.last_signal_at = None
             self.last_error = None
         except Exception as exc:
             self._stream = None
@@ -157,12 +193,18 @@ class ContinuousRecorder:
             raise
 
     def ensure_open(self) -> bool:
-        """Reopen a dead stream (called periodically). True when the mic is open afterwards."""
+        """Reopen a dead or stalled stream (called periodically). True when the mic is open and live afterwards."""
+        why = self.stalled()
+        if why:
+            self.last_stall = f"{why} (reopened)"
+            self._close_stream()
         if self.is_open:
             return True
+        opened_before = self._opened_at is not None
         try:
             self.open()
-            self.reopened += 1
+            if opened_before:
+                self.reopened += 1
             return True
         except Exception:
             return False
