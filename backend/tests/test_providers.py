@@ -206,3 +206,15 @@ def test_claude_registry_and_replay_effort_spec(tmp_path):
     assert p.model == "claude-sonnet-5" and p.effort == "low" and s2.claude_effort == "low"
     with pytest.raises(SystemExit):
         make_provider("openai:x@low", s)
+
+
+def test_empty_optional_settings_mean_default(tmp_path, monkeypatch):
+    # .env.example documents `APERTURE_ALLY_CLAUDE_EFFORT=` (empty) as "API default"; it used to fail startup.
+    from aperture_ally.config import Settings
+
+    env = tmp_path / ".env"
+    env.write_text("APERTURE_ALLY_CLAUDE_EFFORT=\nAPERTURE_ALLY_OPENAI_EFFORT=\nAPERTURE_ALLY_GEMINI_THINKING_LEVEL=\n")
+    monkeypatch.setenv("APERTURE_ALLY_SESSION_BUDGET_USD", "")
+    s = Settings(_env_file=env)
+    assert s.claude_effort is None and s.openai_effort is None and s.gemini_thinking_level is None
+    assert s.session_budget_usd is None

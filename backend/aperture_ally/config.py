@@ -31,7 +31,8 @@ class ModelPrice(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="APERTURE_ALLY_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_prefix="APERTURE_ALLY_", env_file=".env", env_file_encoding="utf-8", extra="ignore",
+        env_ignore_empty=True,  # `APERTURE_ALLY_CLAUDE_EFFORT=` means "use the default", as .env.example says
     )
 
     # --- storage ---------------------------------------------------------------------------
