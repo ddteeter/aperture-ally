@@ -138,7 +138,7 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
         out.append(gamepad_check())
     if mac and s.global_keys != "pynput":
         # Only the global key listener needs these; the browser keys and an 8BitDo in S mode (gamepad) don't.
-        out.append(_check("Input Monitoring permission", True, "not needed: global keys off"))
+        out.append(_check("Input Monitoring permission", True, f"not needed (global keys: {s.global_keys})"))
     elif mac:
         ok, err = _import("pynput")
         out.append(_check("pynput", ok, err))
