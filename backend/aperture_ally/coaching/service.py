@@ -47,6 +47,7 @@ from .budget import BudgetExceeded, usage_summary
 from .prompt import (
     ANSWER_PROMPT_VERSION,
     PROMPT_VERSION,
+    SPOKEN_FIRST_NOTE,
     SYSTEM_ANSWER,
     SYSTEM_ASSESS,
     ImageInput,
@@ -55,6 +56,7 @@ from .prompt import (
     metadata_for_model,
 )
 from .providers.base import Provider, ProviderError, ProviderUnavailable, estimate_cost
+from .streaming import completed_string_field, spoken_first_schema
 
 log = logging.getLogger(__name__)
 
@@ -371,7 +373,8 @@ class CoachingService:
         assessment = Assessment(
             session_id=session.id, capture_id=capture.id, shot_id=capture.shot_id,
             setup_revision_id=capture.setup_revision_id, baseline_capture_id=baseline.id if baseline else None,
-            kind="compare" if baseline else "assess", trigger=trigger, prompt_version=PROMPT_VERSION,
+            kind="compare" if baseline else "assess", trigger=trigger,
+            prompt_version=PROMPT_VERSION if self.settings.spoken_first else PROMPT_VERSION + "-spoken-last",
             provider=provider_name, model_requested=self.settings.model_for(provider_name), status="running",
             context_generation=self.tracker.get(session.id).generation,
         )
@@ -415,7 +418,10 @@ class CoachingService:
                 assessment.timings["queue_wait_ms"] = wait_ms
                 await self.timer.mark("model_request_started", **ids)
                 t0 = time.monotonic()
-                resp, call = await self.recorder.call(lambda: provider.generate(req), purpose="assess", attempt=0,
+                early = self._early_speech(trigger, speak, provider, guard, session, capture, assessment, t_start)
+                gen_kw = {"on_text": early.on_text} if early else {}
+                resp, call = await self.recorder.call(lambda: provider.generate(req, **gen_kw), purpose="assess",
+                                                      attempt=0,
                                                       provider=provider, req=req, queue_wait_ms=wait_ms,
                                                       timeout_s=timeout, collect=assessment.model_call_ids, **ids)
                 assessment.timings["model_ms"] = (time.monotonic() - t0) * 1000
@@ -477,7 +483,25 @@ class CoachingService:
             await self._fail(assessment, capture.id, str(exc))
             return assessment
 
-        if speak and trigger != "eval":
+        early_task = early.task if early else None
+        if speak and trigger != "eval" and early_task is not None:
+            # spoken_text was already being spoken while the rest streamed in: finish it, then add what only the
+            # validated result can say (exposure starting point, teaching prompt), or correct it after a repair.
+            text = self.spoken_for(assessment)
+            t_sp = time.monotonic()
+            status = await early_task
+            final = (assessment.result or {}).get("spoken_text", "").strip()
+            meta = {"session_id": session.id, "capture_id": capture.id, "assessment_id": assessment.id,
+                    "kind": "advice"}
+            if final != (early.text or "").strip():
+                self.bus.publish("coach.speech.corrected", session_id=session.id, capture_id=capture.id,
+                                 assessment_id=assessment.id)
+                status = await self.audio.speak(f"Correction: {text}", guard, meta)
+            elif status == "spoken" and text.strip() != final:
+                await self.audio.speak(text.strip()[len(final):].strip(), guard, meta)
+            speech_ms = (time.monotonic() - t_sp) * 1000
+            assessment.timings["spoken_early"] = 1
+        elif speak and trigger != "eval":
             text = self.spoken_for(assessment)
             if trigger == "user" and not self.tracker.is_latest(session.id, capture.shot_id, capture.id):
                 text = f"About earlier photo {capture.seq}: {text}"  # explicit review of an older photo
@@ -490,6 +514,9 @@ class CoachingService:
             status = "not_applicable"
 
         def set_speech(a: Assessment) -> None:
+            if early_task is not None:
+                a.timings["spoken_early"] = 1
+                a.timings["spoken_text_ready_ms"] = early.ready_ms
             if status != "not_applicable":
                 a.timings["speech_call_ms"] = speech_ms
                 a.timings["spoken_words"] = len(text.split())
@@ -501,6 +528,14 @@ class CoachingService:
             self.bus.publish("coach.speech.suppressed", session_id=session.id, capture_id=capture.id,
                              assessment_id=assessment.id, reason="context no longer current")
         return await self.store.get(Assessment, assessment.id)
+
+    def _early_speech(self, trigger, speak, provider, guard, session, capture, assessment, t_start):
+        """Early speech for auto-coaching when the provider streams; None otherwise."""
+        if not (self.settings.stream_speech and self.settings.spoken_first and speak and trigger == "auto"
+                and getattr(provider, "supports_streaming", False)):
+            return None
+        return _EarlySpeech(self, guard, {"session_id": session.id, "capture_id": capture.id,
+                                          "assessment_id": assessment.id, "kind": "advice"}, t_start)
 
     async def check_budget(self, session: Session, provider) -> None:
         if getattr(provider, "name", "") == "mock":
@@ -625,7 +660,13 @@ class CoachingService:
             "frame_of_reference": FRAME_OF_REFERENCE,
             "capture_seq": capture.seq,
         }
-        req = ModelRequest("assess", SYSTEM_ASSESS, context, images, "assessment", provider_json_schema(AssessmentResult))
+        schema = provider_json_schema(AssessmentResult)
+        if self.settings.spoken_first:
+            req = ModelRequest("assess", SYSTEM_ASSESS + SPOKEN_FIRST_NOTE, context, images, "assessment",
+                               spoken_first_schema(schema), PROMPT_VERSION)
+        else:
+            req = ModelRequest("assess", SYSTEM_ASSESS, context, images, "assessment", schema,
+                               PROMPT_VERSION + "-spoken-last")
         vctx = ValidationContext(
             region_ids=set(allowed), criterion_ids={c["id"] for c in criteria},
             baseline_capture_id=baseline.id if baseline_ctx else None, teaching_prompt_requested=teaching,
@@ -703,6 +744,28 @@ class CoachingService:
                 "latency_ms": (time.monotonic() - t0) * 1000, "queue_wait_ms": wait_ms,
                 "prompt_version": ANSWER_PROMPT_VERSION, "provider": provider.name, "model_call_ids": calls}
         return ans, meta
+
+
+class _EarlySpeech:
+    """Starts speaking `spoken_text` the moment its closing quote streams in (once per assessment)."""
+
+    def __init__(self, service: CoachingService, guard, meta: dict, t_start: float):
+        self.service, self.guard, self.meta, self.t_start = service, guard, meta, t_start
+        self.task: asyncio.Task | None = None
+        self.text: str | None = None
+        self.ready_ms: float | None = None
+
+    def on_text(self, partial: str) -> None:
+        if self.task is not None:
+            return
+        spoken = completed_string_field(partial, "spoken_text")
+        if not spoken or not spoken.strip():
+            return
+        self.text = spoken
+        self.ready_ms = round((time.monotonic() - self.t_start) * 1000, 1)
+        self.service.bus.publish("coach.speech.early", session_id=self.meta["session_id"],
+                                 capture_id=self.meta["capture_id"], ready_ms=self.ready_ms)
+        self.task = self.service._spawn(self.service.audio.speak(spoken, self.guard, self.meta))
 
 
 _VISUAL_WORDS = ("look", "see", "sharp", "focus", "blur", "glare", "shine", "reflect", "bright", "dark", "visible",

@@ -92,6 +92,10 @@ class Settings(BaseSettings):
     gemini_thinking_level: Literal["minimal", "low", "medium", "high"] | None = Field(
         None, description="thinking_config.thinking_level; None = model default. minimal is not valid on 3.8-flash")
     model_timeout_s: float = 45.0
+    spoken_first: bool = Field(True, description="Schema puts spoken_text right after verdict (prompt version "
+                                                "suffix '-spoken-last' when off); compare both in the eval")
+    stream_speech: bool = Field(True, description="Stream the model output and speak spoken_text as soon as it is "
+                                                 "complete (providers that support streaming; auto-coaching only)")
     max_model_concurrency: int = 2
     auto_coach: bool = True
     session_max_model_calls: int | None = Field(

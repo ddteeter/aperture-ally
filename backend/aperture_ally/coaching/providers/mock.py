@@ -78,8 +78,28 @@ class MockProvider:
         self.fail_mode: str = "none"  # none | invalid_once | invalid_always | unavailable | slow
         self.calls = 0
         self._invalid_sent = False
+        self.stream_chunk_s = 0.01
 
-    async def generate(self, req: ModelRequest) -> ModelResponse:
+    supports_streaming = True
+
+    async def generate(self, req: ModelRequest, on_text=None) -> ModelResponse:
+        resp = await self._generate(req)
+        if on_text is not None:  # stream the JSON in the schema's property order, a few characters at a time
+            order = list((req.schema or {}).get("properties", {}))
+            try:
+                body = json.loads(resp.text)
+                if order and isinstance(body, dict):
+                    body = {k: body[k] for k in order if k in body} | body
+                text = json.dumps(body)
+            except ValueError:
+                text = resp.text
+            for i in range(24, len(text) + 24, 24):
+                on_text(text[:i])
+                await asyncio.sleep(self.stream_chunk_s)
+            resp.text = text
+        return resp
+
+    async def _generate(self, req: ModelRequest) -> ModelResponse:
         self.calls += 1
         if self.fail_mode == "unavailable":
             raise ProviderUnavailable("mock: simulated network outage")

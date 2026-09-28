@@ -8,7 +8,10 @@ from typing import Any, Literal
 
 from ..domain.assessment import SPOKEN_SOFT_LIMIT_WORDS
 
-PROMPT_VERSION = "coach-2026-09-26.1"
+PROMPT_VERSION = "coach-2026-09-28.1"  # + "-spoken-last" when settings.spoken_first is off
+SPOKEN_FIRST_NOTE = """
+Write `spoken_text` right after `verdict`: Drew hears it while you write the remaining fields, so decide the one \
+main action first and keep every later field consistent with it."""
 ANSWER_PROMPT_VERSION = "answer-2026-09-26.1"
 
 SYSTEM_ASSESS = f"""You are a patient photography coach standing next to Drew, a beginner photographing running \

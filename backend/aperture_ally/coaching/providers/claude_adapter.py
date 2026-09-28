@@ -53,7 +53,10 @@ class ClaudeProvider:
                 "data": base64.standard_b64encode(Path(im.path).read_bytes()).decode("utf-8")}})
         return content
 
-    async def _call(self, req: ModelRequest, messages: list[dict[str, Any]]) -> ModelResponse:
+    supports_streaming = True
+
+    async def _call(self, req: ModelRequest, messages: list[dict[str, Any]], on_text=None) -> ModelResponse:
+        """``on_text(text_so_far)`` streams the JSON as it's written (used to speak `spoken_text` early)."""
         import anthropic
 
         output_config: dict[str, Any] = {"format": {"type": "json_schema", "schema": req.schema}}
@@ -72,10 +75,19 @@ class ClaudeProvider:
             params["fallbacks"] = "default"
         t0 = time.monotonic()
         try:
-            if self.refusal_fallback:
-                resp = await self.client.beta.messages.create(**params)
+            api = self.client.beta.messages if self.refusal_fallback else self.client.messages
+            if on_text is None:
+                resp = await api.create(**params)
             else:
-                resp = await self.client.messages.create(**params)
+                text = ""
+                async with api.stream(**params) as stream:
+                    async for ev in stream:
+                        if ev.type == "content_block_start" and getattr(ev.content_block, "type", "") == "fallback":
+                            text = ""  # a declined attempt was handed to the fallback model: start over
+                        elif ev.type == "content_block_delta" and getattr(ev.delta, "type", "") == "text_delta":
+                            text += ev.delta.text
+                            on_text(text)
+                    resp = await stream.get_final_message()
         except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.AuthenticationError,
                 anthropic.PermissionDeniedError, anthropic.RateLimitError, anthropic.OverloadedError,
                 anthropic.ServiceUnavailableError, anthropic.InternalServerError) as exc:
@@ -106,8 +118,8 @@ class ClaudeProvider:
         return ModelResponse(text=text, model_resolved=resp.model, usage=usage, response_id=resp.id,
                              latency_ms=(time.monotonic() - t0) * 1000)
 
-    async def generate(self, req: ModelRequest) -> ModelResponse:
-        return await self._call(req, [{"role": "user", "content": self._content(req)}])
+    async def generate(self, req: ModelRequest, on_text=None) -> ModelResponse:
+        return await self._call(req, [{"role": "user", "content": self._content(req)}], on_text)
 
     async def repair(self, req: ModelRequest, previous: ModelResponse, errors: list[str]) -> ModelResponse:
         messages = [
