@@ -56,6 +56,8 @@ class GeminiProvider:
             response_json_schema=req.schema,
             max_output_tokens=self.max_output_tokens,
             thinking_config=t.ThinkingConfig(thinking_level=self.thinking_level) if self.thinking_level else None,
+            # No tools are sent; turning AFC off also silences the SDK's per-call warning.
+            automatic_function_calling=t.AutomaticFunctionCallingConfig(disable=True),
         )
         t0 = time.monotonic()
         try:

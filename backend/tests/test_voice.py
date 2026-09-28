@@ -211,3 +211,39 @@ async def test_offline_question_gets_spoken_notice(h, fx):
     assert "offline" in h.speech.spoken[-1]
     (turn,) = await h.app.store.voice_turns(s.id)
     assert turn.status == "error" and turn.error.startswith("AI unavailable")
+
+
+async def test_empty_transcription_stays_empty():
+    # The OpenAI SDK returns Transcription(text=''); '' used to fall back to the object's repr, which then went
+    # to the coach as a question (found in preflight when nothing was said).
+    from types import SimpleNamespace
+
+    from aperture_ally.audio.recording import OpenAITranscriber
+
+    t = OpenAITranscriber("sk-test", "gpt-transcribe")
+
+    async def create(**_kw):
+        return SimpleNamespace(text="", usage=None)
+
+    t.client = SimpleNamespace(audio=SimpleNamespace(transcriptions=SimpleNamespace(create=create)))
+    clip = SimpleNamespace(wav=b"RIFF")
+    assert await t.transcribe(clip) == ""
+
+    async def create_str(**_kw):
+        return " hello "
+
+    t.client.audio.transcriptions.create = create_str
+    assert await t.transcribe(clip) == "hello"
+
+
+def test_doctor_input_monitoring_only_needed_for_global_keys(tmp_path):
+    import sys
+
+    from aperture_ally.doctor import run_checks
+
+    from .conftest import fast_settings
+
+    if sys.platform != "darwin":
+        return
+    checks = {c["name"]: c for c in run_checks(fast_settings(tmp_path, global_keys="none"), quick=True)}
+    assert checks["Input Monitoring permission"]["status"] == "ok"

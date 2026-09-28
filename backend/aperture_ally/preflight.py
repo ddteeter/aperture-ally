@@ -115,7 +115,7 @@ class Preflight:
             started.append(time.monotonic() - t0)
 
         try:
-            await speech.speak("Aperture Ally preflight. If you can hear this in your headphones, answer yes.", on_started)
+            await speech.speak("Aperture Ally preflight. You should hear this sentence in your headphones.", on_started)
         except Exception as exc:
             self.add("headphones (speech)", NO_GO, f"speech failed: {exc}")
             return
@@ -137,7 +137,18 @@ class Preflight:
         if rec.name == "mock":
             self.add("microphone", WARN, "recorder is 'mock' (APERTURE_ALLY_RECORDER=sounddevice for the real mic)")
             return
-        self.out("   … say “testing one two three” now (3 seconds)")
+        self.out("   … say “testing one two three” after the tone (3 seconds)")
+        # Spoken, not just printed: at the camera nobody is looking at the terminal.
+        from .services import build_cues, build_speech
+
+        speech, cues = build_speech(self.s), build_cues(self.s)
+        if speech.name == "say":
+            async def _noop() -> None:
+                return None
+
+            await speech.speak("Microphone test. After the tone, say: testing, one, two, three.", _noop)
+            cues.play("received")
+            await asyncio.sleep(0.4)
         try:
             rec.start()
             await asyncio.sleep(3.0)
@@ -158,6 +169,10 @@ class Preflight:
             text = await tr.transcribe(clip)
         except Exception as exc:
             self.add("transcription", NO_GO, str(exc))
+            return
+        if not text:
+            self.add("transcription", WARN, f"{tr.name}: empty transcript in {(time.monotonic() - t0) * 1000:.0f} ms "
+                     "(nothing said, or too quiet)")
             return
         ok = self.confirm(f'Transcript: "{text}" — is that right?')
         self.add("transcription", WARN if ok is None or tr.name == "mock" else GO if ok else WARN,

@@ -104,7 +104,10 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     out.append(_check("global keys", True if s.global_keys == "pynput" else None,
                       f"mode={s.global_keys} key={s.ptt_key} ({s.ptt_mode})",
                       "APERTURE_ALLY_GLOBAL_KEYS=pynput to enable (macOS)"))
-    if mac:
+    if mac and s.global_keys != "pynput":
+        # Only the global key listener needs these; the browser keys and an 8BitDo in S mode (gamepad) don't.
+        out.append(_check("Input Monitoring permission", True, "not needed: global keys off"))
+    elif mac:
         ok, err = _import("pynput")
         out.append(_check("pynput", ok, err))
         im = _mac_permission("input_monitoring")

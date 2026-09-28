@@ -140,7 +140,10 @@ class OpenAITranscriber:
             res = await self.client.audio.transcriptions.create(model=self.model, file=("utterance.wav", clip.wav))
         except (openai.APIConnectionError, openai.APITimeoutError, openai.AuthenticationError) as exc:
             raise ProviderUnavailable(str(exc)) from exc
-        return (getattr(res, "text", None) or str(res)).strip()
+        # An empty transcript must stay empty (it used to fall back to the SDK object's repr, which then went
+        # to the coach as a "question"). A plain-text response format returns a str.
+        text = res if isinstance(res, str) else getattr(res, "text", None)
+        return (text or "").strip()
 
 
 class MockTranscriber:
