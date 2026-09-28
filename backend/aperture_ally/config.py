@@ -126,6 +126,7 @@ class Settings(BaseSettings):
         "sound", description="Audible confirmation that a photo arrived (sound mixes with speech; speech waits)")
     received_cue_sound: str = "/System/Library/Sounds/Pop.aiff"
     failure_cue_sound: str = "/System/Library/Sounds/Basso.aiff"
+    cue_volume: float = Field(1.0, ge=0.25, le=4.0, description="afplay -v for the cues; 1 = the sound's own level")
     ready_cue_sound: str = "/System/Library/Sounds/Tink.aiff"
     keep_voice_audio: bool = False
 

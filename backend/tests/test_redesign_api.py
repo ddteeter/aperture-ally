@@ -372,3 +372,45 @@ async def test_voice_snapshot_names_transcriber(api):
     assert (await c.get("/api/voice")).json()["transcriber"] == "mock"
     sid = (await c.post("/api/sessions", json={"name": "x"})).json()["id"]
     assert (await _state(c, sid))["voice"]["transcriber"] == "mock"
+
+
+# --- audio preferences -----------------------------------------------------------------------
+async def test_audio_prefs_validate_persist_and_preview(api):
+    c, h = api
+    v = (await c.get("/api/prefs")).json()
+    assert v["prefs"]["speech_rate_wpm"] == v["defaults"]["speech_rate_wpm"]
+    r = await c.patch("/api/prefs", json={"speech_rate_wpm": 270, "cue_volume": 2})
+    assert r.status_code == 200 and r.json()["prefs"]["speech_rate_wpm"] == 270
+    assert (h.app.settings.data_dir / "prefs.json").exists()
+    assert (await c.patch("/api/prefs", json={"speech_rate_wpm": 999})).status_code == 422
+    assert (await c.patch("/api/prefs", json={"volume": 1})).status_code == 422          # unknown field
+    if v["sounds"]:
+        assert (await c.patch("/api/prefs", json={"received_sound": "NoSuchSound"})).status_code == 422
+        assert (await c.patch("/api/prefs", json={"received_sound": v["sounds"][0]})).status_code == 200
+    # A preview is spoken but never becomes the advice that R repeats.
+    h.app.audio.last_spoken = None
+    assert (await c.post("/api/prefs/preview", json={"what": "speech"})).json() == {"playing": "speech"}
+    await h.wait(lambda: h.speech.spoken, 5, "preview spoken")
+    assert h.app.audio.last_spoken is None
+
+
+def test_prefs_apply_to_live_players_and_survive_restart(tmp_path):
+    from aperture_ally.audio.speech import CuePlayer, SaySpeech
+    from aperture_ally.prefs import PrefsStore
+
+    from .conftest import fast_settings
+
+    s = fast_settings(tmp_path / "data", say_rate_wpm=190)
+    store = PrefsStore(s.data_dir / "prefs.json", s)
+    store.update({"speech_rate_wpm": 270, "received_sound": "Glass", "cue_volume": 1.5})
+    again = PrefsStore(s.data_dir / "prefs.json", s)  # a restart reads the saved values
+    assert again.current.speech_rate_wpm == 270 and again.current.received_sound == "Glass"
+
+    class Host:  # the two lines of ApertureAllyApp.apply_prefs, against the real players
+        speech, cues, prefs = SaySpeech(rate_wpm=190), CuePlayer({"received": "/x/Pop.aiff"}), again
+
+    from aperture_ally.services import ApertureAllyApp
+
+    ApertureAllyApp.apply_prefs(Host)  # type: ignore[arg-type]
+    assert Host.speech.rate == 270 and "-r" in Host.speech.args() and "270" in Host.speech.args()
+    assert Host.cues.sounds["received"].endswith("Glass.aiff") and Host.cues.volume == 1.5

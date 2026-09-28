@@ -20,7 +20,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..coaching.providers.mock import MockProvider
 from ..comparison import attribution_hint, baseline_candidates, comparison_metrics, region_labels
@@ -739,6 +739,63 @@ async def coach_repeat(request: Request):
 @router.post("/coach/stop")
 async def coach_stop(request: Request):
     return {"stopped": await app_of(request).audio.stop("user")}
+
+
+# --- audio preferences (speech speed, received sound, cue volume) ------------------------------
+PREVIEW_TEXT = "Needs retake. The toe is clipping to pure white on the left side, so lower the exposure by one stop."
+
+
+def _prefs_view(app) -> dict[str, Any]:
+    from ..prefs import CUE_VOLUME_MAX, CUE_VOLUME_MIN, SPEECH_RATE_MAX, SPEECH_RATE_MIN, system_sounds
+
+    return {"prefs": app.prefs.current.model_dump(), "defaults": app.prefs.defaults.model_dump(),
+            "sounds": system_sounds(), "speech_rate_range": [SPEECH_RATE_MIN, SPEECH_RATE_MAX],
+            "cue_volume_range": [CUE_VOLUME_MIN, CUE_VOLUME_MAX], "received_cue": app.settings.received_cue,
+            "speech_backend": app.speech.name}
+
+
+@router.get("/prefs")
+async def get_prefs(request: Request):
+    return _prefs_view(app_of(request))
+
+
+class PrefsBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    speech_rate_wpm: int | None = None
+    received_sound: str | None = None
+    cue_volume: float | None = None
+
+
+class PreviewBody(BaseModel):
+    what: Literal["speech", "received", "mix"] = "speech"
+
+
+@router.patch("/prefs")
+async def patch_prefs(request: Request, body: PrefsBody):
+    app = app_of(request)
+    try:
+        app.prefs.update(body.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    app.apply_prefs()
+    return _prefs_view(app)
+
+
+@router.post("/prefs/preview")
+async def preview_prefs(request: Request, body: PreviewBody):
+    """Play a sample with the current preferences: 'speech', 'received' (the sound alone) or 'mix' (sound over speech)."""
+    app = app_of(request)
+    what = body.what
+    if what == "received":
+        app.cues.play("received")
+        return {"playing": what}
+    app.coaching._spawn(app.audio.speak(PREVIEW_TEXT, lambda: True, {"kind": "preview"}))
+    if what == "mix":
+        async def cue_mid_sentence() -> None:
+            await asyncio.sleep(1.8)  # `say` + Bluetooth take ~1 s to become audible
+            app.cues.play("received")
+        app.coaching._spawn(cue_mid_sentence())
+    return {"playing": what}
 
 
 # --- diagnostics -----------------------------------------------------------------------------

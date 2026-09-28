@@ -97,13 +97,14 @@ class NullSpeech:
         await on_started()
 
 
-def play_cue(path: str) -> None:
+def play_cue(path: str, volume: float = 1.0) -> None:
     """Fire-and-forget system sound (macOS ``afplay``)."""
     exe = shutil.which("afplay")
     if exe:
         import subprocess
 
-        subprocess.Popen([exe, path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        args = [exe, path] if volume == 1.0 else [exe, "-v", f"{volume:g}", path]
+        subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 class CuePlayer:
@@ -111,13 +112,14 @@ class CuePlayer:
 
     name = "afplay"
 
-    def __init__(self, sounds: dict[str, str]):
+    def __init__(self, sounds: dict[str, str], volume: float = 1.0):
         self.sounds = sounds
+        self.volume = volume
 
     def play(self, kind: str) -> None:
         path = self.sounds.get(kind)
         if path:
-            play_cue(path)
+            play_cue(path, self.volume)
 
 
 class MockCuePlayer:
@@ -191,7 +193,8 @@ class AudioController:
         try:
             await utt.task
             status = "spoken"
-            self.last_spoken = utt
+            if meta.get("kind") != "preview":  # a settings preview isn't advice: R keeps repeating the advice
+                self.last_spoken = utt
             if self.on_mark:
                 await self.on_mark("speech_completed", meta)
         except asyncio.CancelledError:

@@ -201,6 +201,12 @@ button.pill:hover { background: var(--raised); }
 .usd-input input:focus-visible { outline: none; }
 .usd-input:focus-within { outline: 2px solid var(--acc); outline-offset: 1px; }
 .pop-note { font-size: 11px; color: var(--t3); line-height: 1.4; }
+.audio-settings { display: flex; flex-direction: column; gap: 10px; font-size: 13px; margin-bottom: 10px; }
+.audio-row { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; }
+.audio-row .sub { display: block; font-size: 11px; color: var(--t3); }
+.audio-row input[type="range"] { width: 150px; accent-color: var(--accent, currentColor); }
+.audio-pick { display: flex; gap: 6px; }
+.audio-hear { display: flex; gap: 14px; flex-wrap: wrap; }
 .pop-rule { height: 1px; background: var(--line); }
 
 /* Honesty band: striped magenta, only for mock and simulated sessions. */

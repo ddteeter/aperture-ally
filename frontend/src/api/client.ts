@@ -1,5 +1,7 @@
 // Small typed fetch client for the Aperture Ally backend. All routes live under /api.
 import type {
+  AudioPrefs,
+  AudioPrefsView,
   BaselineCandidate,
   CaptureDetail,
   CapturePatch,
@@ -165,6 +167,11 @@ export const api = {
       ...body,
     }),
   coachStop: () => request<{ stopped: unknown }>("POST", "/coach/stop"),
+
+  // audio preferences (live; saved per person)
+  prefs: () => request<AudioPrefsView>("GET", "/prefs"),
+  patchPrefs: (body: Partial<AudioPrefs>) => request<AudioPrefsView>("PATCH", "/prefs", body),
+  previewPrefs: (what: "speech" | "received" | "mix") => request<{ playing: string }>("POST", "/prefs/preview", { what }),
 
   // diagnostics
   diagnostics: (sessionId?: string | null) =>

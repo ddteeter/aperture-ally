@@ -691,3 +691,22 @@ export type MockFailMode = "none" | "invalid_once" | "invalid_always" | "unavail
 
 /** zone_<ZoneName> is an alpha mask PNG (opaque where the pixel falls in that tonal zone), colourised in CSS via mask-image. */
 export type ImageKind = "overview" | "thumb" | "original" | "clip_overlay" | `zone_${ZoneName}` | `crop_${string}`;
+
+/** The owner's audio preferences, changed live from the Coaching popover (server: aperture_ally/prefs.py). */
+export interface AudioPrefs {
+  speech_rate_wpm: number;
+  received_sound: string;
+  cue_volume: number;
+}
+
+export interface AudioPrefsView {
+  prefs: AudioPrefs;
+  defaults: AudioPrefs;
+  /** macOS system sounds available for the received cue. */
+  sounds: string[];
+  speech_rate_range: [number, number];
+  cue_volume_range: [number, number];
+  /** sound | speech | none, from APERTURE_ALLY_RECEIVED_CUE. */
+  received_cue: string;
+  speech_backend: string;
+}

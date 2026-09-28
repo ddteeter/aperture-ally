@@ -44,6 +44,7 @@ from .events import EventBus
 from .imaging.metadata import MetadataReader
 from .ingest.service import IngestService
 from .persistence.db import AsyncStore, Store
+from .prefs import PrefsStore, sound_path
 from .runtime import ContextTracker
 from .telemetry.recorder import (
     PROVIDER_HOSTS,
@@ -65,7 +66,8 @@ class NotFound(Exception):
 
 def build_cues(settings: Settings):
     if settings.speech_provider == "say":
-        return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound})
+        return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound},
+                         settings.cue_volume)
     return MockCuePlayer()
 
 
@@ -125,6 +127,8 @@ class ApertureAllyApp:
         self.network.on_probe = lambda result: (
             self.coaching.poke_online() if any(p.get("ok") for p in result.get("probes", [])) else None)
         self.cues = cues or build_cues(settings)
+        self.prefs = PrefsStore(settings.data_dir / "prefs.json", settings)
+        self.apply_prefs()
         self.bus.sinks.append(self._cue_sink)
         self.ingest = IngestService(store=self.store, bus=self.bus, timer=self.timer, settings=settings,
                                     tracker=self.tracker, executor=self.executor, metadata=self.metadata,
@@ -163,6 +167,15 @@ class ApertureAllyApp:
 
     def session_root(self, session_id: str) -> Path:
         return self.settings.sessions_dir / session_id
+
+    def apply_prefs(self) -> None:
+        """Push the owner's audio preferences into the live speech and cue players."""
+        p = self.prefs.current
+        if isinstance(self.speech, SaySpeech):
+            self.speech.rate = p.speech_rate_wpm
+        if isinstance(self.cues, CuePlayer):
+            self.cues.sounds["received"] = sound_path(p.received_sound)
+            self.cues.volume = p.cue_volume
 
     async def _speech_mark(self, stage: str, meta: dict) -> None:
         if meta.get("capture_id") and meta.get("kind") == "advice":

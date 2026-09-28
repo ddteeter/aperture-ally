@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
-import type { Capture } from "../api/types";
+import type { AudioPrefs, AudioPrefsView, Capture } from "../api/types";
 import { useApp } from "../AppContext";
 import { shotTitle } from "../lib/format";
 
@@ -85,7 +85,7 @@ export function useDismiss(open: boolean, close: () => void, ref: RefObject<HTML
 }
 
 const CUE_TEXT: Record<string, string> = {
-  sound: "Sound: a short click when a new photo arrives.",
+  sound: "Sound: the received sound above plays when a new photo arrives.",
   speech: "Spoken: says “Received twelve” in your headphones.",
   none: "None: silent. Watch for the on-screen “Received” message.",
 };
@@ -93,6 +93,120 @@ const CUE_TEXT: Record<string, string> = {
 export function usageLine(calls: number | null, cap: number | null, cost: number | null): string {
   const c = calls == null ? "—" : String(calls);
   return `${cap != null ? `${c} / ${cap}` : c} calls · ≈ $${(cost ?? 0).toFixed(2)}`;
+}
+
+/** 1× ≈ conversational speech; shown so podcast listeners can think in their usual speed. */
+const NORMAL_WPM = 180;
+const VOLUMES: [number, string][] = [
+  [0.5, "Quiet"],
+  [1, "Normal"],
+  [2, "Loud"],
+  [3, "Louder"],
+];
+
+export function rateLabel(wpm: number): string {
+  return `${wpm} wpm · ≈${(wpm / NORMAL_WPM).toFixed(1)}×`;
+}
+
+/** Speech speed and the received sound, applied live and saved per person (not per shoot). */
+export function AudioSettings() {
+  const { run } = useApp();
+  const [view, setView] = useState<AudioPrefsView | null>(null);
+  const [wpm, setWpm] = useState<number | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .prefs()
+      .then((v) => {
+        if (!alive) return;
+        setView(v);
+        setWpm(v.prefs.speech_rate_wpm);
+      })
+      .catch(() => alive && setView(null));
+    return () => {
+      alive = false;
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  if (!view || wpm == null) return <p className="pop-note">Loading audio settings…</p>;
+  const [lo, hi] = view.speech_rate_range;
+  const save = async (body: Partial<AudioPrefs>) => {
+    const r = await run("Save audio settings", () => api.patchPrefs(body));
+    if (r) setView(r);
+    return r;
+  };
+  const onRate = (v: number) => {
+    setWpm(v);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void save({ speech_rate_wpm: v }), 350);
+  };
+  const hear = async (what: "speech" | "mix") => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+      if (wpm !== view.prefs.speech_rate_wpm) await save({ speech_rate_wpm: wpm });
+    }
+    void run("Play sample", () => api.previewPrefs(what));
+  };
+  const sayOff = view.speech_backend !== "say";
+
+  return (
+    <div className="audio-settings" data-testid="audio-settings">
+      <label className="audio-row">
+        <span>
+          Speech speed<span className="sub mono">{rateLabel(wpm)}</span>
+        </span>
+        <input
+          type="range"
+          min={lo}
+          max={hi}
+          step={10}
+          value={wpm}
+          aria-valuetext={rateLabel(wpm)}
+          onChange={(e) => onRate(Number(e.target.value))}
+        />
+      </label>
+      <div className="audio-row">
+        <span>
+          Received sound<span className="sub">Plays over speech; pick one that stands out</span>
+        </span>
+        <span className="audio-pick">
+          <select
+            aria-label="Received sound"
+            value={view.prefs.received_sound}
+            onChange={(e) => void save({ received_sound: e.target.value })}
+          >
+            {(view.sounds.length ? view.sounds : [view.prefs.received_sound]).map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+          <select
+            aria-label="Received sound volume"
+            value={String(view.prefs.cue_volume)}
+            onChange={(e) => void save({ cue_volume: Number(e.target.value) })}
+          >
+            {VOLUMES.map(([v, l]) => (
+              <option key={v} value={String(v)}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </span>
+      </div>
+      <div className="audio-hear">
+        <button type="button" className="btn-text" onClick={() => void hear("speech")}>
+          ▸ Hear the speed
+        </button>
+        <button type="button" className="btn-text" onClick={() => void hear("mix")}>
+          ▸ Hear the sound over speech
+        </button>
+      </div>
+      {sayOff && <p className="pop-note">Speech is {view.speech_backend} here, so samples are silent.</p>}
+    </div>
+  );
 }
 
 /** Top-bar coaching pill: on/paused, paid-call meter, and a popover with the caps. */
@@ -230,10 +344,11 @@ export function CoachingPill() {
             {u?.note && ` ${u.note}`}
           </p>
           <div className="pop-rule" />
+          <AudioSettings />
           <div className="field">
             <span className="small">When a photo is received</span>
             <p className="pop-note">
-              {cue == null ? "Checking…" : CUE_TEXT[cue] ?? "Not reported by the server."} Change it with
+              {cue == null ? "Checking…" : CUE_TEXT[cue] ?? "Not reported by the server."} Change the mode with
               APERTURE_ALLY_RECEIVED_CUE (sound, speech or none) and restart the app.
             </p>
           </div>

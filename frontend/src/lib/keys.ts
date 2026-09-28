@@ -27,6 +27,8 @@ type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "t
 
 export function shortcutFor(e: KeyLike): Shortcut | null {
   if (isTypingTarget(e.target)) return null;
+  // A focused slider (e.g. speech speed) owns its arrow keys; they must not also step the filmstrip.
+  if (e.key.startsWith("Arrow") && (e.target as HTMLInputElement | null)?.type === "range") return null;
   const mod = e.metaKey || e.ctrlKey;
   if (mod && !e.altKey && /^[1-6]$/.test(e.key)) return { kind: "tab", index: Number(e.key) - 1 };
   // Leave every other modified key to the browser and the other panels (⌘R, ⌘↵, ⌘F…).
