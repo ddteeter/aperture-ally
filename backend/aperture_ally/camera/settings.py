@@ -12,7 +12,8 @@ from typing import Literal
 
 Setting = Literal["aperture", "exposurecompensation", "iso"]
 SETTINGS: tuple[Setting, ...] = ("aperture", "exposurecompensation", "iso")
-LABEL = {"aperture": "Aperture", "exposurecompensation": "Exposure comp.", "iso": "ISO"}
+LABEL = {"aperture": "Aperture", "exposurecompensation": "Exposure comp.", "iso": "ISO", "shutterspeed": "Shutter"}
+READ_ONLY = ("shutterspeed",)  # shown, not stepped: in A mode the camera picks it
 
 
 def _num(v: str) -> float | None:
@@ -77,6 +78,8 @@ def display(setting: Setting, value: str | None) -> str:
         if round(v * 3) == 0:
             return "±0.0"
         return f"{'+' if v > 0 else '−'}{_thirds(v)}"
+    if setting == "shutterspeed":
+        return value if "/" in value else f"{value} s"
     return "ISO Auto" if value.strip().lower() == "auto" else f"ISO {value}"
 
 

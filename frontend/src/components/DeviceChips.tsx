@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import type { DeviceSummary } from "../api/types";
+import type { CameraSnapshot } from "../api/types";
 import { useApp, type ToastInput } from "../AppContext";
+import { useCamera } from "./camera/CameraContext";
 
 /** Mic and remote in the top bar (Shoot v2 · group 5). When all is well they are small grey glyphs with a
  *  tooltip; on a change the glyph grows into a labelled chip and a toast explains it once. After a device
@@ -12,7 +14,7 @@ const BACK_MS = 5000;
 
 type Tone = "quiet" | "unc" | "ret" | "ok";
 export interface ChipView {
-  key: "mic" | "remote";
+  key: "mic" | "remote" | "camera";
   glyph: string;
   label: string;
   title: string;
@@ -32,6 +34,26 @@ export function remoteChip(r: DeviceSummary["remote"], back: boolean): ChipView 
   if (r.state === "asleep") return { key: "remote", glyph: "▣", label: "Remote asleep", title: r.detail, tone: "unc" };
   if (back) return { key: "remote", glyph: "▣", label: "Remote back", title: r.detail, tone: "ok" };
   return { key: "remote", glyph: "▣", label: "", title: r.detail, tone: "quiet" };
+}
+
+/** The camera: quiet "You control" while connected; a chip when it's waiting, asleep or held elsewhere. */
+export function cameraChip(cam: CameraSnapshot | null): ChipView | null {
+  if (!cam || cam.mode === "off") return null;
+  const c = (label: string, tone: Tone) => ({ key: "camera" as const, glyph: "◎", label, title: cam.detail, tone });
+  switch (cam.state) {
+    case "connected":
+      return c("You control", "quiet");
+    case "connecting":
+      return c("Connecting…", "quiet");
+    case "asleep":
+      return c("Camera asleep", "unc");
+    case "busy_elsewhere":
+      return c("OM Capture", "quiet");
+    case "released":
+      return c("Released", "quiet");
+    default:
+      return c("Waiting for camera", "unc");
+  }
 }
 
 /** "Drew’s AirPods Pro" → "AirPods Pro"; the chip only needs the device type. */
@@ -64,6 +86,7 @@ export function transitionToast(prev: DeviceSummary, next: DeviceSummary): Toast
 
 export function DeviceChips() {
   const { toast } = useApp();
+  const { cam } = useCamera();
   const [d, setD] = useState<DeviceSummary | null>(null);
   const [back, setBack] = useState<{ mic: boolean; remote: boolean }>({ mic: false, remote: false });
   const prev = useRef<DeviceSummary | null>(null);
@@ -105,8 +128,10 @@ export function DeviceChips() {
     };
   }, [toast]);
 
-  if (!d) return null;
-  const chips = [micChip(d.mic, back.mic), remoteChip(d.remote, back.remote)].filter((c): c is ChipView => c != null);
+  const chips = [d && micChip(d.mic, back.mic), d && remoteChip(d.remote, back.remote), cameraChip(cam)].filter(
+    (c): c is ChipView => !!c,
+  );
+  if (!chips.length) return null;
   return (
     <div className="dev-chips" role="status" aria-live="polite" data-testid="devices">
       {chips.map((c) => (

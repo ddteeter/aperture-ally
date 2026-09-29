@@ -2,6 +2,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Diagnostics, MockFailMode } from "../api/types";
 import { useApp, useCoachEvents } from "../AppContext";
+import { useCamera } from "./camera/CameraContext";
 import "./workflows.css";
 import { REPLAYS, TIMING_LABELS, healthRows, seconds, type HealthRow } from "./workflowsLogic";
 
@@ -270,18 +271,47 @@ function DevicesPanel({ diag }: { diag: Diagnostics }) {
             ...(keys.error ? ([["Error", keys.error]] as [string, string][]) : []),
           ]}
         />
-        <DeviceCard
-          name="Camera"
-          glyph="◎"
-          state="Tethered through OM Capture"
-          tone="off"
-          rows={[
-            ["Photos arrive", "through the watch folder"],
-            ["Direct control", "not built yet (live view, remote aperture)"],
-          ]}
-        />
+        <CameraCard />
       </div>
     </div>
+  );
+}
+
+function CameraCard() {
+  const { cam } = useCamera();
+  if (!cam || cam.mode === "off")
+    return (
+      <DeviceCard
+        name="Camera"
+        glyph="◎"
+        state="Tethered through OM Capture"
+        tone="off"
+        rows={[
+          ["Photos arrive", "through the watch folder"],
+          ["Direct control", "off (APERTURE_ALLY_CAMERA=direct turns it on)"],
+        ]}
+      />
+    );
+  const on = cam.state === "connected";
+  const word = { connected: "Connected · Aperture Ally in control", connecting: "Connecting…", asleep: "Asleep · half-press to wake",
+    busy_elsewhere: "OM Capture has it", released: "Released to OM Capture", absent: "Waiting for a camera on USB", off: "Off" }[cam.state];
+  return (
+    <DeviceCard
+      name="Camera"
+      glyph="◎"
+      state={word}
+      tone={on ? "ok" : cam.state === "asleep" || cam.state === "absent" ? "unc" : "off"}
+      rows={[
+        ["Body", cam.model ?? "—"],
+        ["Controlled by", on ? "Aperture Ally" : cam.state === "busy_elsewhere" || cam.state === "released" ? "OM Capture" : "nobody"],
+        ["Live view", on ? (cam.live_watchers ? "on" : "off") : "off"],
+        ["Photos saved to", cam.destination ?? "—"],
+        ["Photos this connection", String(cam.photos)],
+        ["Battery", cam.battery != null ? `${cam.battery}%` : "not reported"],
+        ["Last command", cam.last_command ?? "none yet"],
+        ...(cam.mode === "mock" ? ([["Mode", "SIMULATED camera"]] as [string, string][]) : []),
+      ]}
+    />
   );
 }
 

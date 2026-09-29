@@ -39,7 +39,10 @@ describe("shortcutFor", () => {
     expect(shortcutFor(ev("p"))).toEqual({ kind: "pause" });
     expect(shortcutFor(ev("P"))).toEqual({ kind: "pause" });
     expect(shortcutFor(ev("h"))).toEqual({ kind: "lost" });
-    expect(shortcutFor(ev("l"))).toEqual({ kind: "theme" });
+    expect(shortcutFor(ev("d"))).toEqual({ kind: "theme" }); // Daylight moved from L to D (owner, 2026-09-29)
+    expect(shortcutFor(ev("l"))).toEqual({ kind: "live" });
+    expect(shortcutFor(ev("y"))).toEqual({ kind: "apply" });
+    expect(shortcutFor(ev("k", { metaKey: true }))).toEqual({ kind: "cameraControl" });
     expect(shortcutFor(ev("["))).toEqual({ kind: "rail" });
     expect(shortcutFor(ev("ArrowLeft"))).toEqual({ kind: "step", dir: -1 });
     expect(shortcutFor(ev("ArrowRight"))).toEqual({ kind: "step", dir: 1 });

@@ -184,6 +184,7 @@ class FakeDriver:
     files: dict[str, bytes] = field(default_factory=dict)
     connected: bool = False
     fail_next: str | None = None  # "lost" makes the next call raise CameraLost
+    raw: bool = True  # shoot JPEG+ORF (tests); mock mode shoots JPEG only (a fake ORF would stall ingest)
     log: list[str] = field(default_factory=list)
     shot: int = 0
 
@@ -228,10 +229,11 @@ class FakeDriver:
         self.shot += 1
         stem = f"_929{self.shot:04d}"
         self.files[f"/store_00010001/DCIM/100OLYMP/{stem}.JPG"] = self.jpeg
-        self.files[f"/store_00010001/DCIM/100OLYMP/{stem}.ORF"] = b"fake-orf"
-        self.events += [DriverEvent("ptp", code=0xC101), DriverEvent("file_added", "/store_00010001/DCIM/100OLYMP",
-                                                                     f"{stem}.JPG"),
-                        DriverEvent("file_added", "/store_00010001/DCIM/100OLYMP", f"{stem}.ORF")]
+        folder = "/store_00010001/DCIM/100OLYMP"
+        self.events += [DriverEvent("ptp", code=0xC101), DriverEvent("file_added", folder, f"{stem}.JPG")]
+        if self.raw:
+            self.files[f"{folder}/{stem}.ORF"] = b"fake-orf"
+            self.events.append(DriverEvent("file_added", folder, f"{stem}.ORF"))
         self.log.append("trigger")
 
     def preview(self) -> bytes:
@@ -248,6 +250,22 @@ class FakeDriver:
 
     def battery(self) -> int | None:
         return 100
+
+
+def simulated_jpeg(text: str = "SIMULATED CAMERA", size: tuple[int, int] = (1024, 768)) -> bytes:
+    """A plain grey frame labelled as simulated, for mock mode's live view and photos (never mistaken for real)."""
+    import io
+
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", size, (96, 96, 96))
+    d = ImageDraw.Draw(img)
+    for x in range(0, size[0], 64):
+        d.line([(x, 0), (x, size[1])], fill=(104, 104, 104))
+    d.text((24, 24), text, fill=(235, 235, 235))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=80)
+    return buf.getvalue()
 
 
 def default_driver(kind: str) -> Driver:

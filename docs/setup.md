@@ -212,13 +212,15 @@ use "Compare with…" to pick another baseline. All of it describes the processe
 hold a little more detail.
 
 **Studio and Daylight.** The dark Studio theme is for indoor shoots. Outdoors, switch to Daylight
-(☀ in the top bar, or `L`): light surfaces, heavier type and a mid-grey mat around the photo so it isn't
+(☀ in the top bar, or `D`): light surfaces, heavier type and a mid-grey mat around the photo so it isn't
 judged against white. New shoot → "Outdoor" starts a session in Daylight. In sun, trust the numbers (pure
 white %, the brightness headline) more than how the preview looks.
 
 **Keys** (never while typing in a field): Space talk · R repeat · S stop · P pause/resume coaching ·
 H lost detail · ← → previous/next photo · `[` collapse the shot list · ⌘↵ accept keeper ·
-⌘R retry when the coach failed · Esc cancel/close · ⌘1–6 tabs · L Daylight.
+⌘R retry when the coach failed · Esc cancel/close · ⌘1–7 tabs (Library ⌘6, Diagnostics ⌘7) · ⌘N new shoot ·
+N today's notes · ⌘I what the coach saw · ⌘, coaching & audio · ⌘⇧S save the shot list to its template ·
+D Daylight · with direct camera control: L live view · Y apply the coach's suggestion · ⌘K take/release the camera.
 
 **Received cue.** Every new photo plays a short sound (`APERTURE_ALLY_RECEIVED_CUE=sound`, the default,
 which mixes with speech). Use `speech` to hear "Got 12" instead; it's skipped if the coach is talking.

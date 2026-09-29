@@ -127,8 +127,8 @@ class CameraService:
             "mode": self.mode, "state": self.state, "detail": self.detail, "model": self.model,
             "battery": self.battery, "photos": self.photos, "first_photo_pending": self.first_photo,
             "live_watchers": self.live_watchers, "last_command": self.last_command,
-            "settings": {k: {"value": self.values.get(k), "display": S.display(k, self.values.get(k)),
-                             "choices": len(self.orders.get(k, []))} for k in S.SETTINGS},
+            "settings": {k: {"value": self.values.get(k), "display": S.display(k, self.values.get(k)),  # type: ignore[arg-type]
+                             "order": self.orders.get(k, [])} for k in (*S.SETTINGS, *S.READ_ONLY)},
             "destination": str(self.current_destination()),
         }
 
@@ -201,6 +201,8 @@ class CameraService:
         try:
             for k in S.SETTINGS:
                 self.orders[k] = S.ordered(k, driver.choices(k))
+                self.values[k] = driver.get(k)
+            for k in S.READ_ONLY:
                 self.values[k] = driver.get(k)
             self.battery = driver.battery()
         except CameraLost:
@@ -278,7 +280,7 @@ class CameraService:
 
     def _refresh_values(self) -> None:
         d = self._require()
-        for k in S.SETTINGS:
+        for k in (*S.SETTINGS, *S.READ_ONLY):
             v = d.get(k)
             if v != self.values.get(k):
                 self.values[k] = v

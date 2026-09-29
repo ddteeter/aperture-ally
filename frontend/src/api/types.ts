@@ -775,6 +775,36 @@ export interface AudioPrefs {
   my_preferences?: string;
 }
 
+// --- direct camera control (server: aperture_ally/camera) ------------------------------------------
+export type CameraSettingName = "aperture" | "exposurecompensation" | "iso";
+export type CameraState = "off" | "absent" | "connecting" | "connected" | "asleep" | "busy_elsewhere" | "released";
+
+export interface CameraSnapshot {
+  mode: "off" | "direct" | "mock";
+  state: CameraState;
+  detail: string;
+  model: string | null;
+  battery: number | null;
+  photos: number;
+  first_photo_pending: boolean;
+  live_watchers: number;
+  last_command: string | null;
+  /** aperture / exposurecompensation / iso (steppable, `order` = stepping order) and shutterspeed (read-only). */
+  settings: Record<string, { value: string | null; display: string; order: string[] }>;
+  destination: string | null;
+}
+
+/** A setting changed (payload of the camera.setting event, and the step/set responses). */
+export interface CameraSettingChange {
+  setting: string;
+  value: string;
+  display: string;
+  end: string | null;
+  spoken?: string;
+  source: "remote" | "ui" | "coach" | "camera";
+  clamped?: boolean;
+}
+
 /** GET /devices: the mic and remote reduced to what the top bar shows. */
 export interface DeviceSummary {
   mic: { state: "ok" | "fallback" | "none" | "stalled" | "unmanaged"; device: string | null; preferred: string | null; detail: string };

@@ -11,6 +11,7 @@ import { CoverageTab } from "./components/CoverageTab";
 import { DiagnosticsTab } from "./components/DiagnosticsTab";
 import { LibraryTab } from "./components/LibraryTab";
 import { NewShoot, type NewShootPreset } from "./components/NewShoot";
+import { CameraProvider } from "./components/camera/CameraContext";
 import { SetupTab } from "./components/SetupTab";
 import { ShotListTab } from "./components/ShotListTab";
 import { useEventStream } from "./hooks/useEventStream";
@@ -298,6 +299,7 @@ export function App() {
   const noSession = <NoSession onSessions={() => setTab("sessions")} />;
   return (
     <AppContext.Provider value={ctx}>
+      <CameraProvider>
       <div className="app">
         <a className="skip-link" href="#main">
           Skip to content
@@ -342,6 +344,7 @@ export function App() {
         </main>
         <Toasts onShoot={tab === "shoot" && !!state} />
       </div>
+      </CameraProvider>
     </AppContext.Provider>
   );
 }

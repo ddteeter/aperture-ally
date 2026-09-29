@@ -9,6 +9,7 @@ import { verdictMeta } from "../ui/status";
 import { BrightnessInspector, ZONE_CAPTION } from "./Measurements";
 import { RegionEditor } from "./RegionEditor";
 import { ReceivedOverlay } from "./ShootStatus";
+import { connected, useCamera } from "./camera/CameraContext";
 
 function ver(c: Capture): string {
   // Bust the (1 h) image cache when evidence appears or changes.
@@ -90,6 +91,7 @@ export function CaptureViewer({
   onToggleLost?: () => void;
 }) {
   const { state } = useApp();
+  const { cam } = useCamera();
   const [view, setView] = useState<"auto" | "photo" | "compare">("auto");
   const [pinScope, setPinScope] = useState<string | null>(null);
   const [hoverScope, setHoverScope] = useState<string | null>(null);
@@ -139,7 +141,9 @@ export function CaptureViewer({
             <p className="waiting-sub">
               {any
                 ? `${active?.title ?? "This shot"} · take the shot when you’re set`
-                : "Photos are read from the watch folder. The app can’t see the camera itself."}
+                : connected(cam)
+                  ? "You control the camera: press A on the remote or the shutter. L shows live view."
+                  : "Photos are read from the watch folder. The app can’t see the camera itself."}
             </p>
             <p className="waiting-folder mono">
               {state.session.watch_folder

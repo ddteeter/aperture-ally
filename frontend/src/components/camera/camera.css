@@ -1,0 +1,96 @@
+/* Direct camera control (Shoot v2 · group 6). cam-prefixed; colours from theme.css only. */
+
+/* big readout over the stage */
+.cam-readout {
+  position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; background: var(--ovl); color: var(--ovl-ink);
+  padding: 22px 36px 20px; border-radius: 16px; min-width: 460px; animation: cam-in .08s ease-out;
+}
+@keyframes cam-in { from { opacity: .4; } to { opacity: 1; } }
+.cam-readout-label { font-family: var(--mono); font-size: 13px; letter-spacing: .08em; }
+.cam-readout-value { font-family: var(--mono); font-size: 132px; font-weight: 600; line-height: 1; letter-spacing: -.03em; }
+.cam-ticks { display: flex; align-items: flex-end; gap: 5px; height: 26px; }
+.cam-tick { width: 4px; border-radius: 2px; background: color-mix(in oklch, var(--ovl-ink) 45%, transparent); }
+.cam-tick.is-end { background: var(--ovl-ink); }
+.cam-tick.is-cur { width: 8px; background: var(--acc); }
+.cam-readout-foot { display: flex; justify-content: space-between; width: 100%; font-family: var(--mono); font-size: 11px; }
+.cam-bold { font-weight: 600; }
+
+/* live view stage */
+.cam-live { flex: 1; min-height: 0; padding: 16px 20px; background: var(--stage); display: flex; }
+/* The biggest 4:3 box that fits both ways (container units: the stage is the container). */
+.cam-live-inner { flex: 1; min-width: 0; min-height: 0; container-type: size; display: grid; place-items: center; }
+.cam-live-frame {
+  position: relative; width: min(100cqw, calc(100cqh * 4 / 3)); aspect-ratio: 4 / 3; background: var(--ph1); box-shadow: 0 0 0 1px var(--line);
+}
+.cam-live-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cam-live-tag {
+  position: absolute; left: 10px; top: 10px; font-family: var(--mono); font-size: 11px; color: var(--ovl-ink); background: var(--ovl);
+  padding: 3px 7px; border-radius: 4px; display: flex; gap: 6px; align-items: center;
+}
+.cam-live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ret); }
+.cam-live-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 22px; padding: 8px; background: var(--ovl);
+  color: var(--ovl-ink); font-family: var(--mono); font-size: 14px;
+}
+.cam-live-bar .is-hot { color: var(--acc); font-weight: 700; }
+.cam-offline {
+  flex: 1; margin: 16px 20px; border: 1px dashed var(--line3); border-radius: 6px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; text-align: center; padding: 24px; background: var(--stage);
+}
+.cam-offline-g { font-family: var(--mono); font-size: 30px; color: var(--unc); }
+.cam-offline-title { font-size: 40px; font-weight: var(--wm); letter-spacing: -.01em; }
+.cam-offline-sub { font-size: 18px; color: var(--t2); max-width: 560px; line-height: 1.45; }
+.cam-offline-meta { font-family: var(--mono); font-size: 12px; color: var(--t3); }
+
+/* panel */
+.cam-panel { flex: 1; overflow: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+.cam-conn { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line2); border-radius: 10px; }
+.cam-conn.is-unc { border-color: var(--unc); }
+.cam-conn-g { font-family: var(--mono); font-size: 18px; color: var(--t3); }
+.cam-conn.is-ok .cam-conn-g, .cam-conn.is-ok .cam-conn-state { color: var(--ok); }
+.cam-conn.is-unc .cam-conn-g, .cam-conn.is-unc .cam-conn-state { color: var(--unc); }
+.cam-conn-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.cam-conn-state { font-size: 15px; font-weight: var(--wb); }
+.cam-conn-sub { font-size: 12px; color: var(--t2); overflow-wrap: anywhere; }
+.cam-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden;
+}
+.cam-grid.is-off { opacity: .45; }
+.cam-cell { background: var(--panel); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.cam-cell.is-hot { background: var(--acc-t); }
+.cam-cell-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--t3); }
+.cam-cell-val { font-family: var(--mono); font-size: 24px; font-weight: 600; }
+.cam-sug { border: 1px solid var(--acc); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.cam-sug-text { font-size: 20px; font-weight: var(--wm); line-height: 1.3; }
+.cam-remote { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+.cam-remote-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 5px; column-gap: 12px; font-size: 13px; color: var(--t2); }
+.cam-remote-row { display: grid; grid-template-columns: 48px minmax(0, 1fr); }
+.cam-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--t3); }
+.cam-mono { font-family: var(--mono); }
+.cam-t1 { color: var(--t1); }
+.cam-kbd { font-family: var(--mono); color: var(--t3); font-weight: var(--wbody); }
+.cam-btn {
+  height: 34px; min-height: 0; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line3); background: transparent; color: var(--t1);
+  font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.cam-btn:hover:not(:disabled) { background: var(--raised); }
+.cam-btn-pri { align-self: flex-start; height: 40px; padding: 0 16px; border: 0; background: var(--pri); color: var(--pri-ink); font-size: 14px; font-weight: var(--wb); }
+.cam-btn-pri:hover:not(:disabled) { background: var(--pri); filter: brightness(.94); }
+.cam-btn-pri .cam-kbd { color: inherit; opacity: .7; }
+.cam-btn-l { height: 44px; font-size: 15px; border-radius: 9px; padding: 0 16px; }
+
+/* release dialog */
+.cam-scrim { position: fixed; inset: 0; background: var(--scrim); display: grid; place-items: center; z-index: 60; }
+.cam-dialog {
+  width: min(560px, calc(100vw - 32px)); background: var(--panel); color: var(--t1); border: 1px solid var(--line3); border-radius: 14px;
+  box-shadow: var(--pop-shadow); padding: 24px; display: flex; flex-direction: column; gap: 16px;
+}
+.cam-stack-6 { display: flex; flex-direction: column; gap: 6px; }
+.cam-dialog-title { font-size: 22px; font-weight: var(--wb); }
+.cam-dialog-lede { font-size: 14px; color: var(--t2); line-height: 1.45; }
+.cam-dialog-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.4; }
+.cam-dialog-list li::before { content: "·"; font-family: var(--mono); color: var(--t3); margin-right: 10px; }
+.cam-dialog-actions { display: flex; gap: 8px; align-items: center; }
+.cam-dialog-note { font-size: 12px; color: var(--t3); margin-left: 6px; }

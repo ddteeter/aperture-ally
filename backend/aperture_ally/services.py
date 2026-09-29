@@ -150,10 +150,10 @@ class ApertureAllyApp:
                                      audio=self.audio, recorder=recorder or build_recorder(settings),
                                      transcriber=transcriber or build_transcriber(settings), app=self)
         self.keys = None
-        from .camera.driver import FakeDriver, GPhotoDriver
+        from .camera.driver import FakeDriver, GPhotoDriver, simulated_jpeg
         from .camera.service import CameraService
 
-        fake = FakeDriver() if settings.camera == "mock" else None
+        fake = FakeDriver(jpeg=simulated_jpeg(), raw=False) if settings.camera == "mock" else None
         self.camera = CameraService(
             settings.camera, (lambda: fake) if fake else GPhotoDriver, self.bus.publish,
             inbox=settings.data_dir / "camera-inbox", poll_s=settings.camera_poll_s,

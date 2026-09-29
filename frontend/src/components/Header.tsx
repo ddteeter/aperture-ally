@@ -124,8 +124,8 @@ export function Header(props: {
           className="sun-toggle"
           aria-pressed={daylight}
           aria-label="Daylight mode"
-          aria-keyshortcuts="L"
-          title="Daylight mode for outdoor shoots (L)"
+          aria-keyshortcuts="D"
+          title="Daylight mode for outdoor shoots (D)"
           onClick={() => setTheme(daylight ? "studio" : "daylight")}
         >
           <span aria-hidden="true">☀</span>

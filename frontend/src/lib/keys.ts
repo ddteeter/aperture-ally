@@ -9,6 +9,9 @@ export type Shortcut =
   | { kind: "settings" }
   | { kind: "saveTemplate" }
   | { kind: "notes" }
+  | { kind: "live" }
+  | { kind: "apply" }
+  | { kind: "cameraControl" }
   | { kind: "theme" }
   | { kind: "pause" }
   | { kind: "lost" }
@@ -39,15 +42,22 @@ export function shortcutFor(e: KeyLike): Shortcut | null {
   if (mod && !e.altKey && (e.key === "n" || e.key === "N") && !e.shiftKey) return { kind: "newShoot" };
   if (mod && !e.altKey && (e.key === "i" || e.key === "I") && !e.shiftKey) return { kind: "saw" };
   if (mod && !e.altKey && e.key === ",") return { kind: "settings" };
+  if (mod && !e.altKey && (e.key === "k" || e.key === "K") && !e.shiftKey) return { kind: "cameraControl" };
   if (mod && !e.altKey && e.shiftKey && (e.key === "s" || e.key === "S")) return { kind: "saveTemplate" };
   // Leave every other modified key to the browser and the other panels (⌘R, ⌘↵, ⌘F…).
   if (mod || e.altKey) return null;
   if (e.key === "Escape") return { kind: "escape" };
   if (e.repeat) return e.key === "ArrowLeft" || e.key === "ArrowRight" ? { kind: "step", dir: e.key === "ArrowLeft" ? -1 : 1 } : null;
   switch (e.key) {
+    case "d":
+    case "D":
+      return { kind: "theme" };
     case "l":
     case "L":
-      return { kind: "theme" };
+      return { kind: "live" };
+    case "y":
+    case "Y":
+      return { kind: "apply" };
     case "p":
     case "P":
       return { kind: "pause" };

@@ -5,6 +5,9 @@ import type {
   ShootTemplate,
   AudioPrefs,
   AudioPrefsView,
+  CameraSettingChange,
+  CameraSettingName,
+  CameraSnapshot,
   DeviceSummary,
   BaselineCandidate,
   CaptureDetail,
@@ -91,6 +94,8 @@ export async function request<T>(method: string, path: string, body?: unknown): 
 }
 
 const enc = encodeURIComponent;
+
+export const CAMERA_LIVE_URL = `${API_BASE}/camera/live`;
 
 export function imageUrl(captureId: string, kind: ImageKind): string {
   return `${API_BASE}/captures/${enc(captureId)}/image/${enc(kind)}`;
@@ -193,6 +198,13 @@ export const api = {
   // audio preferences (live; saved per person)
   prefs: () => request<AudioPrefsView>("GET", "/prefs"),
   devices: () => request<DeviceSummary>("GET", "/devices"),
+  camera: () => request<CameraSnapshot>("GET", "/camera"),
+  cameraTake: () => request<CameraSnapshot>("POST", "/camera/take"),
+  cameraRelease: () => request<CameraSnapshot>("POST", "/camera/release"),
+  cameraStep: (setting: CameraSettingName, dir: -1 | 1) => request<CameraSettingChange>("POST", "/camera/step", { setting, dir }),
+  cameraTrigger: () => request<{ first_photo: boolean }>("POST", "/camera/trigger"),
+  cameraApply: () => request<{ text: string }>("POST", "/camera/apply"),
+  cameraSuggestion: () => request<{ setting: string; value: string; display: string } | null>("GET", "/camera/suggestion"),
   patchPrefs: (body: Partial<AudioPrefs>) => request<AudioPrefsView>("PATCH", "/prefs", body),
   previewPrefs: (what: "speech" | "received" | "mix") => request<{ playing: string }>("POST", "/prefs/preview", { what }),
 
