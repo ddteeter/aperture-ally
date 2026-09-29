@@ -107,3 +107,38 @@ def test_foreign_host_and_origin_rejected(tmp_path):
         with pytest.raises(WebSocketDisconnect), client.websocket_connect(
                 "/api/events", headers={"origin": "http://evil.example"}) as ws:
             ws.receive_json()
+
+
+async def test_devices_summarise_mic_and_remote_for_the_top_bar(make_harness):
+    import httpx
+
+    from aperture_ally.app import create_app
+
+    h = await make_harness()
+    app = create_app(h.app.settings, coach=h.app)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
+        d = (await c.get("/api/devices")).json()
+    assert d["mic"]["state"] in ("unmanaged", "ok", "none", "fallback", "stalled")
+    assert d["remote"]["state"] in ("off", "keyboard", "ok", "asleep")
+
+
+def test_device_summary_names_the_fallback_mic_and_a_sleeping_remote():
+    from types import SimpleNamespace
+
+    from aperture_ally.api.routes import device_summary
+
+    class Rec:
+        name = "sounddevice"
+
+        def status(self):
+            return {"open": True, "error": None, "fallback": True, "stalled": False,
+                    "active_device": "MacBook Air Microphone", "device": "AirPods Pro"}
+
+    class Keys:
+        def diagnostics(self):
+            return {"running": True, "source": "gamepad", "connected": False, "reconnects": 2}
+
+    d = device_summary(SimpleNamespace(voice=SimpleNamespace(recorder=Rec()), keys=Keys()))
+    assert d["mic"] == {"state": "fallback", "device": "MacBook Air Microphone", "preferred": "AirPods Pro",
+                        "detail": "AirPods Pro unavailable. Using MacBook Air Microphone."}
+    assert d["remote"]["state"] == "asleep" and "Space still works" in d["remote"]["detail"]

@@ -261,7 +261,7 @@ export function VoiceBar({ captureId }: { captureId: string | null }) {
           Toggle
         </label>
         <span className="vb-hint">
-          {toggleMode ? "Press" : "Hold"} remote or <Kbd>Space</Kbd> to talk
+          {toggleMode ? "Press" : "Hold"} <Kbd>Space</Kbd> to talk · remote: L talk, R pause, B cancel
         </span>
       </div>
     </section>

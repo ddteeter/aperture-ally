@@ -756,6 +756,12 @@ export interface AudioPrefs {
   my_preferences?: string;
 }
 
+/** GET /devices: the mic and remote reduced to what the top bar shows. */
+export interface DeviceSummary {
+  mic: { state: "ok" | "fallback" | "none" | "stalled" | "unmanaged"; device: string | null; preferred: string | null; detail: string };
+  remote: { state: "ok" | "asleep" | "keyboard" | "off"; detail: string; reconnects: number };
+}
+
 export interface AudioPrefsView {
   prefs: AudioPrefs;
   defaults: AudioPrefs;

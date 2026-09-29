@@ -5,6 +5,7 @@ import type {
   ShootTemplate,
   AudioPrefs,
   AudioPrefsView,
+  DeviceSummary,
   BaselineCandidate,
   CaptureDetail,
   CapturePatch,
@@ -191,6 +192,7 @@ export const api = {
 
   // audio preferences (live; saved per person)
   prefs: () => request<AudioPrefsView>("GET", "/prefs"),
+  devices: () => request<DeviceSummary>("GET", "/devices"),
   patchPrefs: (body: Partial<AudioPrefs>) => request<AudioPrefsView>("PATCH", "/prefs", body),
   previewPrefs: (what: "speech" | "received" | "mix") => request<{ playing: string }>("POST", "/prefs/preview", { what }),
 

@@ -921,6 +921,39 @@ def _mic_status(app) -> dict[str, Any]:
     return {"recorder": rec.name, "always_open": False}
 
 
+def device_summary(app) -> dict[str, Any]:
+    """Mic and remote, reduced to what the top bar shows: ok (quiet glyph), or a state worth a labelled chip."""
+    mic = _mic_status(app)
+    if not mic.get("always_open"):
+        m = {"state": "unmanaged", "device": None, "detail": f"Mic opens per question ({mic['recorder']})"}
+    elif not mic.get("open") or mic.get("error"):
+        m = {"state": "none", "device": None, "detail": mic.get("error") or "No microphone available. Voice is off."}
+    elif mic.get("fallback"):
+        m = {"state": "fallback", "device": mic.get("active_device"),
+             "detail": f"{mic.get('device') or 'Preferred mic'} unavailable. Using {mic.get('active_device')}."}
+    elif mic.get("stalled"):
+        m = {"state": "stalled", "device": mic.get("active_device"), "detail": "Mic is open but silent; reopening."}
+    else:
+        m = {"state": "ok", "device": mic.get("active_device"), "detail": f"Mic: {mic.get('active_device')}, held open"}
+    m["preferred"] = mic.get("device")
+    keys = app.keys.diagnostics() if app.keys else None
+    if not keys or not keys.get("running"):
+        r = {"state": "off", "detail": "Remote not in use (keyboard only)"}
+    elif keys.get("source") != "gamepad":
+        r = {"state": "keyboard", "detail": "Global keys (keyboard mode)"}
+    elif keys.get("connected"):
+        r = {"state": "ok", "detail": "Remote connected"}
+    else:
+        r = {"state": "asleep", "detail": "Remote asleep or out of range. Press any button to wake it. Space still works as talk."}
+    r["reconnects"] = (keys or {}).get("reconnects", 0)
+    return {"mic": m, "remote": r}
+
+
+@router.get("/devices")
+async def devices(request: Request):
+    return device_summary(app_of(request))
+
+
 @router.get("/diagnostics")
 async def diagnostics(request: Request, session_id: str | None = None):
     from ..doctor import run_checks

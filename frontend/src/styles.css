@@ -175,7 +175,15 @@ dl.kv.config { grid-template-columns: 1fr; }
 .pill-warn { color: var(--unc); }
 .pill-bad { color: var(--ret); }
 button.pill:hover { background: var(--raised); }
-.sun-toggle { height: 28px; min-height: 0; padding: 0 10px; border-radius: 6px; border-color: var(--line2); color: var(--t2); font-size: 12px; font-weight: var(--wm); }
+.sun-toggle { height: 28px; width: 30px; min-height: 0; padding: 0; border-radius: 6px; border-color: var(--line2); color: var(--t2); font-family: var(--mono); font-size: 14px; }
+/* Device glyphs (mic, remote, connection): quiet grey glyphs; a labelled chip only on a change. */
+.dev-chips { display: flex; align-items: center; gap: 4px; }
+.dev-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 6px; border-radius: 6px; border: 1px solid transparent; font-size: 12px; color: var(--t3); white-space: nowrap; }
+.dev-chip .mono { font-size: 12px; }
+.dev-unc, .dev-ret, .dev-ok { padding: 0 9px; color: var(--t1); font-weight: var(--wm); }
+.dev-unc { border-color: var(--unc); background: var(--unc-t); }
+.dev-ret { border-color: var(--ret); background: var(--ret-t); }
+.dev-ok { border-color: var(--line2); }
 .sun-toggle[aria-pressed="true"] { background: var(--pri); color: var(--pri-ink); }
 .sun-toggle[aria-pressed="true"]:hover { background: var(--pri); }
 
@@ -190,7 +198,7 @@ button.pill:hover { background: var(--raised); }
 .meter { height: 3px; background: var(--line2); border-radius: 2px; display: block; overflow: hidden; }
 .meter > span { display: block; height: 100%; border-radius: 2px; background: var(--t2); }
 .meter.is-paused > span { background: var(--unc); }
-.coach-pop { right: 0; top: calc(100% + 8px); width: 340px; display: flex; flex-direction: column; gap: 14px; white-space: normal; }
+.coach-pop { right: 0; top: calc(100% + 8px); width: 392px; display: flex; flex-direction: column; gap: 14px; white-space: normal; }
 .coach-pop-head { display: flex; justify-content: space-between; align-items: center; }
 .coach-pop-head h2 { font-size: 15px; }
 .coach-pop-grid { display: grid; grid-template-columns: 1fr auto; align-items: center; row-gap: 10px; column-gap: 12px; font-size: 13px; }
@@ -203,12 +211,32 @@ button.pill:hover { background: var(--raised); }
 .usd-input input:focus-visible { outline: none; }
 .usd-input:focus-within { outline: 2px solid var(--acc); outline-offset: 1px; }
 .pop-note { font-size: 11px; color: var(--t3); line-height: 1.4; }
-.audio-settings { display: flex; flex-direction: column; gap: 10px; font-size: 13px; margin-bottom: 10px; }
-.audio-row { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; }
-.audio-row .sub { display: block; font-size: 11px; color: var(--t3); }
-.audio-row input[type="range"] { width: 150px; accent-color: var(--accent, currentColor); }
-.audio-pick { display: flex; gap: 6px; }
-.audio-hear { display: flex; gap: 14px; flex-wrap: wrap; }
+/* Audio settings in the Coaching popover (Shoot v2 · group 4). */
+.audio-settings { display: flex; flex-direction: column; gap: 14px; font-size: 13px; }
+.audio-head { display: flex; justify-content: space-between; align-items: baseline; }
+.audio-instant { font-size: 11px; color: var(--ok); }
+.audio-block { display: flex; flex-direction: column; gap: 6px; }
+.audio-line { display: flex; justify-content: space-between; align-items: baseline; }
+.audio-name { font-size: 14px; font-weight: var(--wm); color: var(--t1); }
+.audio-val { font-size: 15px; font-weight: 600; }
+.audio-x { color: var(--t2); }
+.audio-range { width: 100%; accent-color: var(--acc); min-height: 0; padding: 0; }
+.audio-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--t3); }
+.audio-play {
+  align-self: flex-start; height: 32px; min-height: 0; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line3);
+  background: transparent; color: var(--t1); font-size: 13px;
+}
+.audio-play.is-on { border-color: var(--acc); background: var(--acc-t); }
+.audio-sounds { display: flex; gap: 4px; flex-wrap: wrap; }
+.audio-sound {
+  height: 30px; min-height: 0; padding: 0 10px; border-radius: 15px; border: 1px solid var(--line2); background: transparent;
+  color: var(--t2); font-size: 12px; font-weight: var(--wm);
+}
+.audio-sound[aria-checked="true"] { border-color: var(--acc); background: var(--acc-t); color: var(--t1); }
+.audio-vol { display: grid; grid-template-columns: 60px minmax(0, 1fr) 44px; align-items: center; gap: 10px; }
+.audio-t2 { color: var(--t2); }
+.audio-pct { font-size: 12px; text-align: right; }
+.audio-note { font-size: 11px; color: var(--t3); line-height: 1.4; }
 .pop-rule { height: 1px; background: var(--line); }
 
 /* Honesty band: striped magenta, only for mock and simulated sessions. */

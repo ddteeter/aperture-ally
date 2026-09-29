@@ -2,6 +2,7 @@ import type { ProviderName, Session, SessionState } from "../api/types";
 import { useApp } from "../AppContext";
 import type { ConnectionStatus } from "../hooks/useEventStream";
 import { HIDDEN_TABS, TABS, type Tab } from "../tabs";
+import { DeviceChips } from "./DeviceChips";
 import { CoachingPill } from "./ShootStatus";
 
 export const PROVIDER_NAME: Record<ProviderName, string> = {
@@ -105,26 +106,29 @@ export function Header(props: {
             <span className="glyph" aria-hidden="true">⚠</span>Not watching folder
           </span>
         )}
+        {/* Quiet when connected (a grey dot with a tooltip); a labelled pill when reconnecting or offline. */}
+        <span
+          className={net.tone ? `pill ${net.tone}` : "dev-chip dev-quiet"}
+          role="status"
+          data-testid="connection-status"
+          title={`${net.label}. ${net.detail}`}
+        >
+          <span className="glyph" aria-hidden="true">{net.glyph}</span>
+          {net.tone ? net.label : <span className="sr-only">{net.label}</span>}
+          <span className="sr-only">. {net.detail}</span>
+        </span>
+        <DeviceChips />
         <button
           type="button"
           className="sun-toggle"
           aria-pressed={daylight}
+          aria-label="Daylight mode"
           aria-keyshortcuts="L"
           title="Daylight mode for outdoor shoots (L)"
           onClick={() => setTheme(daylight ? "studio" : "daylight")}
         >
-          <span aria-hidden="true">☀</span> Daylight
+          <span aria-hidden="true">☀</span>
         </button>
-        {state?.setup && (
-          <button type="button" className="pill" title={`Setup version ${state.setup.revision}`} onClick={() => props.onTab("setup")}>
-            v{state.setup.revision}
-          </button>
-        )}
-        <span className={`pill ${net.tone}`} role="status" data-testid="connection-status" title={net.detail}>
-          <span className="glyph" aria-hidden="true">{net.glyph}</span>
-          {net.label}
-          <span className="sr-only">. {net.detail}</span>
-        </span>
         {session && <CoachingPill />}
       </div>
     </header>

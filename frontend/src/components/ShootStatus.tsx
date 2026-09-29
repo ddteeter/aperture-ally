@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { AudioPrefs, AudioPrefsView, Capture } from "../api/types";
 import { useApp } from "../AppContext";
 import { shotTitle } from "../lib/format";
+import { useShortcuts } from "../lib/keys";
 
 /** How long "Received #N" stays on the stage after a capture.ready event. */
 export const RECEIVED_MS = 6000;
@@ -97,15 +98,13 @@ export function usageLine(calls: number | null, cap: number | null, cost: number
 
 /** 1× ≈ conversational speech; shown so podcast listeners can think in their usual speed. */
 const NORMAL_WPM = 180;
-const VOLUMES: [number, string][] = [
-  [0.5, "Quiet"],
-  [1, "Normal"],
-  [2, "Loud"],
-  [3, "Louder"],
-];
+
+export function speedX(wpm: number): string {
+  return String(Math.round((wpm / NORMAL_WPM) * 20) / 20);
+}
 
 export function rateLabel(wpm: number): string {
-  return `${wpm} wpm · ≈${(wpm / NORMAL_WPM).toFixed(1)}×`;
+  return `${wpm} wpm ≈ ${speedX(wpm)}×`;
 }
 
 /** Speech speed and the received sound, applied live and saved per person (not per shoot). */
@@ -113,7 +112,11 @@ export function AudioSettings() {
   const { run } = useApp();
   const [view, setView] = useState<AudioPrefsView | null>(null);
   const [wpm, setWpm] = useState<number | null>(null);
+  const [vol, setVol] = useState<number | null>(null);
+  const [playing, setPlaying] = useState<"speech" | "mix" | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const volTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -123,16 +126,18 @@ export function AudioSettings() {
         if (!alive) return;
         setView(v);
         setWpm(v.prefs.speech_rate_wpm);
+        setVol(v.prefs.cue_volume);
       })
       .catch(() => alive && setView(null));
     return () => {
       alive = false;
-      if (timer.current) clearTimeout(timer.current);
+      for (const t of [timer, volTimer, playTimer]) if (t.current) clearTimeout(t.current);
     };
   }, []);
 
-  if (!view || wpm == null) return <p className="pop-note">Loading audio settings…</p>;
+  if (!view || wpm == null || vol == null) return <p className="pop-note">Loading audio settings…</p>;
   const [lo, hi] = view.speech_rate_range;
+  const [vlo, vhi] = view.cue_volume_range;
   const save = async (body: Partial<AudioPrefs>) => {
     const r = await run("Save audio settings", () => api.patchPrefs(body));
     if (r) setView(r);
@@ -143,68 +148,113 @@ export function AudioSettings() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save({ speech_rate_wpm: v }), 350);
   };
+  const onVol = (v: number) => {
+    setVol(v);
+    if (volTimer.current) clearTimeout(volTimer.current);
+    volTimer.current = setTimeout(() => void save({ cue_volume: v }), 350);
+  };
   const hear = async (what: "speech" | "mix") => {
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
       if (wpm !== view.prefs.speech_rate_wpm) await save({ speech_rate_wpm: wpm });
     }
+    if (volTimer.current) {
+      clearTimeout(volTimer.current);
+      volTimer.current = null;
+      if (vol !== view.prefs.cue_volume) await save({ cue_volume: vol });
+    }
+    setPlaying(what);
+    if (playTimer.current) clearTimeout(playTimer.current);
+    // The sample sentence is ~20 words: long enough to judge, then the button settles back.
+    playTimer.current = setTimeout(() => setPlaying(null), Math.max(2500, (20 / wpm) * 60000 + 800));
     void run("Play sample", () => api.previewPrefs(what));
   };
-  const sayOff = view.speech_backend !== "say";
+  const silent = view.speech_backend === "mock" || view.speech_backend === "none";
+  const ticks = [lo, NORMAL_WPM, 270, 360].filter((t, i, a) => t >= lo && t <= hi && a.indexOf(t) === i);
+  const volPct = Math.round((vol / vhi) * 100);
+  const sounds = view.sounds.length ? view.sounds : [view.prefs.received_sound];
 
   return (
     <div className="audio-settings" data-testid="audio-settings">
-      <label className="audio-row">
-        <span>
-          Speech speed<span className="sub mono">{rateLabel(wpm)}</span>
+      <div className="audio-head">
+        <span className="label-caps">Audio · saved for you</span>
+        <span className="audio-instant">
+          <span className="mono">✓</span> applies instantly
         </span>
+      </div>
+      <div className="audio-block">
+        <div className="audio-line">
+          <span className="audio-name" id="speed-l">
+            Speech speed
+          </span>
+          <span className="audio-val mono">
+            {wpm} wpm <span className="audio-x">≈ {speedX(wpm)}×</span>
+          </span>
+        </div>
         <input
           type="range"
+          className="audio-range"
           min={lo}
           max={hi}
           step={10}
           value={wpm}
-          aria-valuetext={rateLabel(wpm)}
+          aria-labelledby="speed-l"
+          aria-valuetext={`${wpm} words per minute, about ${speedX(wpm)} times`}
           onChange={(e) => onRate(Number(e.target.value))}
         />
-      </label>
-      <div className="audio-row">
-        <span>
-          Received sound<span className="sub">Plays over speech; pick one that stands out</span>
-        </span>
-        <span className="audio-pick">
-          <select
-            aria-label="Received sound"
-            value={view.prefs.received_sound}
-            onChange={(e) => void save({ received_sound: e.target.value })}
-          >
-            {(view.sounds.length ? view.sounds : [view.prefs.received_sound]).map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <select
-            aria-label="Received sound volume"
-            value={String(view.prefs.cue_volume)}
-            onChange={(e) => void save({ cue_volume: Number(e.target.value) })}
-          >
-            {VOLUMES.map(([v, l]) => (
-              <option key={v} value={String(v)}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </span>
-      </div>
-      <div className="audio-hear">
-        <button type="button" className="btn-text" onClick={() => void hear("speech")}>
-          ▸ Hear the speed
-        </button>
-        <button type="button" className="btn-text" onClick={() => void hear("mix")}>
-          ▸ Hear the sound over speech
+        <div className="audio-ticks mono" aria-hidden="true">
+          {ticks.map((t) => (
+            <span key={t}>{t === lo ? t : `${speedX(t)}× ${t}`}</span>
+          ))}
+        </div>
+        <button type="button" className={playing === "speech" ? "audio-play is-on" : "audio-play"} onClick={() => void hear("speech")}>
+          {playing === "speech" ? `◀ Speaking at ${speedX(wpm)}×` : "▶ Hear the speed"}
         </button>
       </div>
-      {sayOff && <p className="pop-note">Speech is {view.speech_backend} here, so samples are silent.</p>}
+      <div className="audio-block">
+        <span className="audio-name" id="sound-l">
+          “Photo received” sound
+        </span>
+        <div className="audio-sounds" role="radiogroup" aria-labelledby="sound-l">
+          {sounds.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={view.prefs.received_sound === s}
+              className="audio-sound"
+              onClick={() => void save({ received_sound: s })}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <div className="audio-vol">
+          <span className="audio-t2" id="vol-l">
+            Volume
+          </span>
+          <input
+            type="range"
+            className="audio-range"
+            min={vlo}
+            max={vhi}
+            step={0.25}
+            value={vol}
+            aria-labelledby="vol-l"
+            aria-valuetext={`${volPct}%`}
+            onChange={(e) => onVol(Number(e.target.value))}
+          />
+          <span className="mono audio-pct">{volPct}%</span>
+        </div>
+        <button type="button" className={playing === "mix" ? "audio-play is-on" : "audio-play"} onClick={() => void hear("mix")}>
+          {playing === "mix" ? `◀ ${view.prefs.received_sound} over speech` : "▶ Hear it over speech"}
+        </button>
+        <span className="audio-note">
+          The sample plays the sound while a sentence is being spoken, which is how you'll hear it during a shoot.
+        </span>
+      </div>
+      {silent && <p className="pop-note">Speech is {view.speech_backend} here, so samples are silent.</p>}
     </div>
   );
 }
@@ -218,6 +268,13 @@ export function CoachingPill() {
   const wrap = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   useDismiss(open, () => setOpen(false), wrap, btn);
+  useShortcuts((s) => {
+    if (s.kind === "settings") {
+      setOpen((o) => !o);
+      return true;
+    }
+    return false;
+  });
 
   const session = state?.session;
   useEffect(() => {
@@ -282,7 +339,7 @@ export function CoachingPill() {
         className="coach-pill"
         aria-expanded={open}
         aria-haspopup="dialog"
-        aria-keyshortcuts="P"
+        aria-keyshortcuts="P Meta+,"
         onClick={() => setOpen((o) => !o)}
       >
         <span className={paused ? "coach-pill-state is-paused" : "coach-pill-state"} data-testid="coaching-status">
@@ -300,7 +357,7 @@ export function CoachingPill() {
       {open && (
         <div className="popover coach-pop" role="dialog" aria-label="Coaching">
           <div className="coach-pop-head">
-            <h2>Coaching</h2>
+            <h2>Coaching <span className="mono muted small">⌘,</span></h2>
             <div className="seg" role="group" aria-label="Coaching on or paused">
               <button type="button" aria-pressed={!paused} onClick={() => setPaused(false)}>On</button>
               <button type="button" aria-pressed={paused} onClick={() => setPaused(true)}>Paused</button>
