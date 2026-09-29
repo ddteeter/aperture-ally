@@ -27,7 +27,7 @@
 .st-today-text { font-size: 13px; line-height: 1.4; }
 .st-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--t3); }
 .st-pop {
-  position: absolute; left: calc(100% + 10px); bottom: 0; width: 400px; background: var(--panel); border: 1px solid var(--line3);
+  position: fixed; left: 258px; bottom: 170px; width: 400px; background: var(--panel); border: 1px solid var(--line3);
   border-radius: 12px; box-shadow: var(--pop-shadow); padding: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 30;
 }
 .st-pop-title { font-size: 15px; font-weight: var(--wb); }

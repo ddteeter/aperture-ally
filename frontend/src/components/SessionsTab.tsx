@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, imageUrl } from "../api/client";
 import type { Session } from "../api/types";
 import { useApp } from "../AppContext";
@@ -82,6 +82,10 @@ export function SessionsTab({
   onOpenTemplate: (templateId: string) => void;
 }) {
   const { sid, state, run, refresh, refreshSessions } = useApp();
+  // Counts, cover photos and template status change during a shoot; fetch them fresh on opening.
+  useEffect(() => {
+    void refreshSessions();
+  }, [refreshSessions]);
   const [by, setByState] = useState<GroupBy>(() => {
     try {
       return localStorage.getItem(GROUP_KEY) === "date" ? "date" : "template";

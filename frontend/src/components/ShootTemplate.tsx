@@ -237,6 +237,7 @@ function SaveDialog({ kind, onKind, onClose }: { kind: "save" | "new"; onKind: (
 export function TodayNotes() {
   const { sid, state, run, refresh } = useApp();
   const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   useShortcuts((s) => {
     if (s.kind === "notes" && state) {
       setOpen(true);
@@ -249,7 +250,7 @@ export function TodayNotes() {
   const nextSeq = Math.max(0, ...state.captures.map((c) => c.seq)) + 1;
   const lastSeq = nextSeq - 1;
   return (
-    <div className="st-today" data-testid="today-notes">
+    <div className="st-today" data-testid="today-notes" ref={boxRef}>
       <div className="st-row-between">
         <span className="st-eyebrow">TODAY</span>
         <button type="button" className="st-link st-small" aria-keyshortcuts="N" onClick={() => setOpen(true)}>
@@ -259,6 +260,7 @@ export function TodayNotes() {
       <span className="st-today-text">{text || <span className="st-t3">No notes for today. Light, place, anything different.</span>}</span>
       {open && (
         <NotesPopover
+          anchor={boxRef.current?.getBoundingClientRect() ?? null}
           initial={text}
           hint={`Used from the next photo (#${nextSeq}).${lastSeq > 0 ? ` #${lastSeq} keeps the advice it got.` : ""} Shortcut keys are off while you type.`}
           onClose={() => setOpen(false)}
@@ -275,11 +277,17 @@ export function TodayNotes() {
   );
 }
 
-function NotesPopover({ initial, hint, onSave, onClose }: { initial: string; hint: string; onSave: (v: string) => void; onClose: () => void }) {
+function NotesPopover(props: { anchor: DOMRect | null; initial: string; hint: string; onSave: (v: string) => void; onClose: () => void }) {
+  const { anchor, initial, hint, onSave, onClose } = props;
   const [v, setV] = useState(initial);
+  // Fixed to the window beside the notes box, so the rail's scrolling can't clip it.
+  const style = anchor
+    ? { left: Math.min(anchor.right + 10, window.innerWidth - 416), bottom: Math.max(8, window.innerHeight - anchor.bottom) }
+    : undefined;
   return (
     <div
       className="st-pop"
+      style={style}
       role="dialog"
       aria-label="Today's notes"
       onKeyDown={(e) => {

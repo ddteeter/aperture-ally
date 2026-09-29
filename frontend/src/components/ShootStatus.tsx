@@ -172,7 +172,7 @@ export function AudioSettings() {
   };
   const silent = view.speech_backend === "mock" || view.speech_backend === "none";
   const ticks = [lo, NORMAL_WPM, 270, 360].filter((t, i, a) => t >= lo && t <= hi && a.indexOf(t) === i);
-  const volPct = Math.round((vol / vhi) * 100);
+  const volPct = Math.round(vol * 100); // 100% = the sound as recorded
   const sounds = view.sounds.length ? view.sounds : [view.prefs.received_sound];
 
   return (

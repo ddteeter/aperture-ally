@@ -206,7 +206,7 @@ button.pill:hover { background: var(--raised); }
 .stepper { display: flex; align-items: center; border: 1px solid var(--line2); border-radius: 7px; overflow: hidden; }
 .stepper button { border: 0; border-radius: 0; width: 30px; min-height: 32px; padding: 0; font-size: 15px; }
 .stepper output { width: 44px; text-align: center; font-family: var(--mono); font-size: 14px; }
-.usd-input { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line2); border-radius: 7px; padding: 0 8px; height: 34px; }
+.usd-input { display: flex; flex-direction: row; align-items: center; gap: 4px; border: 1px solid var(--line2); border-radius: 7px; padding: 0 8px; height: 34px; }
 .usd-input input { width: 64px; border: 0; background: transparent; font-family: var(--mono); padding: 0; min-height: 0; }
 .usd-input input:focus-visible { outline: none; }
 .usd-input:focus-within { outline: 2px solid var(--acc); outline-offset: 1px; }
