@@ -74,9 +74,15 @@ Micro, gamepad mode) can go to sleep. Design a quiet top-bar indicator for: mic 
 (fallback) / unavailable; remote connected / asleep or disconnected. Only draw attention when something
 changed or is wrong. Diagnostics shows the detail (device, level, last reconnect, reason).
 
-6. LEAVE ROOM FOR (not now): direct camera control from the app: live view (~15 fps) for self-shots,
-remote shutter, changing aperture/ISO/exposure compensation from the remote or by voice, and "apply the
-coach's suggestion" in one press. Don't design it yet; just don't paint the Shoot screen into a corner.
+6. DIRECT CAMERA CONTROL (proven at the desk; design next): the app can drive the camera itself:
+live view (~15 fps) for self-shots, the shutter, and aperture / exposure compensation / ISO / focus mode
+from the remote (tested: D-pad up/down = aperture in 1/3 stops, left/right = compensation, A = shutter,
+X = read out settings; L/R/B stay talk/pause/cancel) or by voice, plus "apply the coach's suggestion" in one
+press. Owner feedback from the test: rapid presses must not each start speaking (only the last was heard,
+late). Design for: a short tick per step (a different one at the end of the range), the value spoken once
+~0.3 s after the last press, and a large transient on-screen readout of the value being changed. Also a
+connection state for the camera (connected / waiting / camera asleep) and a clear "release camera" when
+switching back to OM Capture.
 
 Deliver: screens for 1a–d, 2, 3, 4, 5 in both themes; empty, loading and error states; a note on where
 Library lives in the navigation and keyboard shortcuts for anything new.

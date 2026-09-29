@@ -490,6 +490,15 @@ No missed presses, no missed ORFs, no reconnects.
 - **AE bracket in Single drive is one press per frame** (as the owner shoots). In Sequential, one held press
   takes the whole bracket.
 
+**Remote control from the Micro, tried by the owner** (`remote_demo.py`):
+- **Aperture:** f/8 → f/1.4 in 1/3-stop steps, 30–52 ms each.
+- **Compensation:** ±0.7, 71–110 ms per step.
+- **Shutter on A:** JPEG on the Mac 2.2 s after the press (13.2 s for the first shot: the card listing).
+- **Settings** were restored on exit.
+- **Feedback problem:** rapid presses each restarted `say`, so only the last value was heard, and late. The fix
+  is a tick per step and the value spoken once after the presses stop (in the design brief).
+- **The Micro can't be opened by two programs,** so camera control must live inside the app.
+
 **Assessment.** Direct control can replace OM Capture for ingestion (JPEG ~2× faster) and add live view,
 remote trigger and settings. Remaining work for a real mode:
 - release control on exit;
