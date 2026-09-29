@@ -28,3 +28,6 @@ evals/results/*
 *.ORF
 *.orf
 .DS_Store
+
+# Claude Code agent worktrees (spikes etc.)
+.claude/worktrees/
