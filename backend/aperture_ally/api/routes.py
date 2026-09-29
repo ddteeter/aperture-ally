@@ -101,6 +101,7 @@ class TemplateBody(BaseModel):
 
 class SaveToTemplateBody(BaseModel):
     new_name: str | None = Field(None, max_length=120, description="Save as a new template instead of updating")
+    project_id: str | None = Field(None, description="With new_name: the project to put it in (default: the shoot's)")
 
 
 class ShotBody(BaseModel):
@@ -400,7 +401,8 @@ async def patch_template(tid: str, body: TemplateBody, request: Request):
 async def save_to_template(sid: str, body: SaveToTemplateBody, request: Request):
     app = app_of(request)
     s = await _session_or_404(app, sid)
-    return (await app.projects.save_session_to_template(s, new_name=body.new_name)).model_dump()
+    return (await app.projects.save_session_to_template(s, new_name=body.new_name,
+                                                        project_id=body.project_id)).model_dump()
 
 
 @router.get("/sessions/{sid}")

@@ -3,7 +3,7 @@ import { api } from "../api/client";
 import type { Criterion, Shot, ShotPatch } from "../api/types";
 import { useApp } from "../AppContext";
 import { nextCriterionId } from "../lib/regions";
-import { ShootOrigin } from "./Library";
+import { ShootOriginBar, TodayNotes } from "./ShootTemplate";
 import "./workflows.css";
 import { reorderPatches, sortedShots } from "./workflowsLogic";
 
@@ -43,7 +43,8 @@ export function ShotListTab() {
   return (
     <div className="wf-screen wf-split wf-split-rail-420">
       <nav className="wf-rail" aria-labelledby="shotlist-h">
-        <ShootOrigin />
+        <ShootOriginBar />
+        <TodayNotes />
         <div className="wf-rail-head">
           <h2 className="wf-title" id="shotlist-h">
             Shot list

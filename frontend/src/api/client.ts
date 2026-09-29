@@ -181,8 +181,12 @@ export const api = {
   template: (tid: string) => request<ShootTemplate>("GET", `/templates/${enc(tid)}`),
   patchTemplate: (tid: string, body: Partial<Pick<ShootTemplate, "name" | "preferences" | "archived" | "shots">>) =>
     request<ShootTemplate>("PATCH", `/templates/${enc(tid)}`, body),
-  saveToTemplate: (sid: string, newName?: string | null) =>
-    request<ShootTemplate>("POST", `/sessions/${enc(sid)}/save-to-template`, newName ? { new_name: newName } : {}),
+  saveToTemplate: (sid: string, newName?: string | null, projectId?: string | null) =>
+    request<ShootTemplate>(
+      "POST",
+      `/sessions/${enc(sid)}/save-to-template`,
+      newName ? { new_name: newName, ...(projectId ? { project_id: projectId } : {}) } : {},
+    ),
   assessmentCalls: (aid: string) => request<ModelCallView[]>("GET", `/assessments/${enc(aid)}/calls`),
 
   // audio preferences (live; saved per person)

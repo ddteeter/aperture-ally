@@ -143,14 +143,16 @@ class ProjectService:
         return await self.store.put(t)
 
     async def save_session_to_template(self, session: Session, template_id: str | None = None,
-                                       new_name: str | None = None) -> ShootTemplate:
+                                       new_name: str | None = None, project_id: str | None = None) -> ShootTemplate:
         """Copy the shoot's current shot list into its template (or a new template when `new_name` is given)."""
         shots = [to_template_shot(s) for s in await self.store.shots(session.id)]
         if new_name:
-            if not session.project_id:
+            project_id = project_id or session.project_id
+            if not project_id:
                 raise ValueError("this shoot has no project")
+            await self.project(project_id)
             old = await self.store.get(ShootTemplate, session.template_id) if session.template_id else None
-            t = ShootTemplate(project_id=session.project_id, name=_name(new_name), shots=shots,
+            t = ShootTemplate(project_id=project_id, name=_name(new_name), shots=shots,
                               preferences=old.preferences if old else "",
                               history=[TemplateVersion(version=1, how="from_shoot", session_id=session.id,
                                                        session_name=session.name,
@@ -162,7 +164,7 @@ class ProjectService:
             t.history.append(TemplateVersion(version=t.version, how="from_shoot", session_id=session.id,
                                              session_name=session.name, summary=summarize(changes)))
         await self.store.put(t)
-        session.template_id, session.template_version = t.id, t.version
+        session.project_id, session.template_id, session.template_version = t.project_id, t.id, t.version
         session.template_saved = {"template_id": t.id, "name": t.name, "version": t.version, "as_new": bool(new_name)}
         session.updated_at = utcnow()
         await self.store.put(session)

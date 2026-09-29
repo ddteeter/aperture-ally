@@ -54,6 +54,11 @@ async def test_duplicate_a_template_for_a_new_product_type_and_save_a_shoot_as_a
     hat = (await c.post(f"/api/sessions/{s['id']}/save-to-template", json={"new_name": "Hat"})).json()
     assert hat["name"] == "Hat" and hat["id"] != tights["id"] and len(hat["shots"]) == 8
     assert (await c.get(f"/api/templates/{tights['id']}")).json()["version"] == 1   # untouched
+    sale = (await c.post("/api/projects", json={"name": "Gear for sale"})).json()
+    listing = (await c.post(f"/api/sessions/{s['id']}/save-to-template",
+                            json={"new_name": "Listing", "project_id": sale["id"]})).json()
+    assert listing["project_id"] == sale["id"]
+    assert (await c.get(f"/api/sessions/{s['id']}")).json()["session"]["project_id"] == sale["id"]
     assert (await c.post(f"/api/projects/{p['id']}/templates", json={"name": "  "})).status_code == 422
     assert (await c.patch("/api/templates/nope", json={"name": "x"})).status_code == 404
 

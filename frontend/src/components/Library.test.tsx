@@ -6,8 +6,8 @@ import type { ModelCallView, Project } from "../api/types";
 import { makeCtx, renderWithCtx } from "../test/ctx";
 import { sessionState } from "../test/fixtures";
 import { CoachSaw } from "./coach/CoachSaw";
-import { ShootOrigin } from "./Library";
 import { LibraryTab } from "./LibraryTab";
+import { ShootOriginBar, TodayNotes, shotMarks } from "./ShootTemplate";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -88,18 +88,65 @@ describe("Library", () => {
     });
   });
 
-  it("shows where a shoot came from and saves to its template only after confirming", async () => {
+  it("shows where a shoot came from, what changed, and saves to its template only after confirming", async () => {
     vi.spyOn(api, "projects").mockResolvedValue([project()]);
     const save = vi.spyOn(api, "saveToTemplate").mockResolvedValue({ name: "Shoe review", version: 3 } as never);
     const st = sessionState();
     st.session = { ...st.session, project_id: "p1", template_id: "t-shoe", template_version: 2, shoot_preferences: "Overcast." };
-    renderWithCtx(<ShootOrigin />, makeCtx({ state: st }));
-    expect(await screen.findByText("Running blog › Shoe review · v2")).toBeInTheDocument();
-    expect(screen.getByLabelText("Day notes (this shoot only)")).toHaveValue("Overcast.");
-    await userEvent.click(screen.getByRole("button", { name: "Save to template" }));
+    st.origin = {
+      project_id: "p1", project_name: "Running blog", template_id: "t-shoe", template_name: "Shoe review", template_version: 2,
+      template_current_version: 2, saved: null,
+      changes: [
+        { g: "~", title: "2 · Outsole", detail: "Criterion added: “Lugs sharp”" },
+        { g: "+", title: "3 · Laces detail", detail: "New shot · 0 criteria" },
+      ],
+    };
+    const c = makeCtx({ state: st });
+    renderWithCtx(<><ShootOriginBar /><TodayNotes /></>, c);
+    expect(screen.getByRole("button", { name: "Running blog › Shoe review v2" })).toBeInTheDocument();
+    expect(screen.getByTestId("today-notes")).toHaveTextContent("Overcast.");
+    await userEvent.click(screen.getByRole("button", { name: /2 shots changed · Save…/ }));
+    const dlg = screen.getByRole("dialog", { name: "Save changes to Shoe review" });
+    expect(dlg).toHaveTextContent("v2 to v3");
+    expect(within(dlg).getByRole("list", { name: "Changes" })).toHaveTextContent("Laces detail");
+    expect(dlg).toHaveTextContent("Not saved: today's notes (“Overcast.”) stay with this shoot.");
     expect(save).not.toHaveBeenCalled();
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Save as v3" }));
+    await userEvent.click(within(dlg).getByRole("button", { name: "Save as v3" }));
     expect(save).toHaveBeenCalledWith(st.session.id);
+    expect(c.toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Saved to Shoe review · v3" }));
+  });
+
+  it("saves as a new template instead, and edits today's notes with N", async () => {
+    vi.spyOn(api, "projects").mockResolvedValue([project()]);
+    const save = vi.spyOn(api, "saveToTemplate").mockResolvedValue({ name: "Trail shoe review", version: 1 } as never);
+    const patch = vi.spyOn(api, "patchSession").mockResolvedValue({} as never);
+    const st = sessionState();
+    st.origin = {
+      project_id: "p1", project_name: "Running blog", template_id: "t-shoe", template_name: "Shoe review", template_version: 2,
+      template_current_version: 2, saved: null, changes: [{ g: "+", title: "3 · Laces detail", detail: "New shot" }],
+    };
+    renderWithCtx(<><ShootOriginBar /><TodayNotes /></>, makeCtx({ state: st }));
+    await userEvent.click(screen.getByRole("button", { name: /1 shot changed · Save…/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Save as new template instead" }));
+    const dlg = screen.getByRole("dialog", { name: "Save as a new template" });
+    await userEvent.type(within(dlg).getByLabelText("Name"), "Trail shoe review");
+    await userEvent.click(within(dlg).getByRole("button", { name: "Create “Trail shoe review”" }));
+    expect(save).toHaveBeenCalledWith(st.session.id, "Trail shoe review", "p1");
+
+    fireEvent.keyDown(window, { key: "n" });
+    const pop = await screen.findByRole("dialog", { name: "Today's notes" });
+    const box = within(pop).getByLabelText("Today's notes");
+    await userEvent.type(box, "Sun breaking through.");
+    fireEvent.keyDown(box, { key: "Enter", metaKey: true });
+    expect(patch).toHaveBeenCalledWith(st.session.id, { shoot_preferences: "Sun breaking through." });
+  });
+
+  it("marks shots that differ from the template", () => {
+    expect([...shotMarks([
+      { g: "~", title: "4 · Heel counter", detail: "Criterion added: “Pull tab”" },
+      { g: "+", title: "7 · Laces detail", detail: "New shot" },
+      { g: "−", title: "Old shot", detail: "Removed" },
+    ])]).toEqual([[4, "◆ edited: +1 criterion"], [7, "◆ added in this shoot"]]);
   });
 });
 

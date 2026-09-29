@@ -5,6 +5,7 @@ import { useApp } from "../AppContext";
 import { isAnalysing, splitList } from "../lib/format";
 import { nextCriterionId } from "../lib/regions";
 import { CAPTURE_STATE, shotStateMeta, type StatusMeta } from "../ui/status";
+import { ShootOriginBar, TodayNotes, shotMarks } from "./ShootTemplate";
 
 /** Shot rail: the shot list with glyph statuses and the coverage meter. Collapses to a 56 px rail with `[`. */
 export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?: boolean; onToggleCollapsed?: () => void }) {
@@ -14,6 +15,7 @@ export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?:
   const rows = useRef<(HTMLButtonElement | null)[]>([]);
   if (!state || !sid) return null;
   const activeId = pendingActive ?? state.session.active_shot_id;
+  const marks = shotMarks(state.origin?.changes ?? []);
   const cov = new Map(state.coverage.shots.map((c) => [c.shot_id, c]));
   const keepers = state.coverage.shots.filter((c) => c.state === "accepted").length;
   const total = state.shots.length;
@@ -73,6 +75,11 @@ export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?:
           <span aria-hidden="true">{collapsed ? "»" : "«"}</span>
         </button>
       </div>
+      {!collapsed && (
+        <div className="rail-origin">
+          <ShootOriginBar compact />
+        </div>
+      )}
       <div className="rail-list" role="radiogroup" aria-labelledby="shots-h">
         {state.shots.map((shot, i) => {
           const st = statusOf(shot);
@@ -96,7 +103,10 @@ export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?:
             >
               <span className="rail-line">
                 <span className="rail-n mono" aria-hidden="true">{n}</span>
-                <span className={collapsed ? "sr-only" : "rail-title"}>{shot.title}</span>
+                <span className={collapsed ? "sr-only" : "rail-title"}>
+                  {shot.title}
+                  {!collapsed && marks.get(n) && <span className="st-mark rail-mark">{marks.get(n)}</span>}
+                </span>
                 <span className="rail-glyph glyph" style={{ color: st.color }} aria-hidden="true">
                   {st.glyph}
                 </span>
@@ -126,6 +136,7 @@ export function ShotList({ collapsed = false, onToggleCollapsed }: { collapsed?:
           Next unresolved shot →
         </button>
       )}
+      {!collapsed && <TodayNotes />}
       <a className="rail-coverage" href="#coverage" aria-label={`Coverage: ${keepers} of ${total} keepers`}>
         {collapsed ? (
           <span className="mono small">
