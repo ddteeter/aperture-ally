@@ -529,8 +529,12 @@ class CoachingService:
                              assessment_id=assessment.id, reason="context no longer current")
         return await self.store.get(Assessment, assessment.id)
 
-    def preferences_for(self, session: Session, shot: ShotRequirement | None) -> dict[str, str | None]:
-        """Drew's taste, most general first. Project/template levels come from settings until projects exist."""
+    preferences_source = None  # set by the app: async (session) -> {yours, project, template, shoot}
+
+    async def preferences_for(self, session: Session | None) -> dict[str, str | None]:
+        """Drew's taste, most general first (the prompt says the most specific wins)."""
+        if self.preferences_source is not None:
+            return await self.preferences_source(session)
         return {"yours": self.settings.my_preferences, "project": self.settings.project_preferences,
                 "template": None, "shoot": None}
 
@@ -670,7 +674,7 @@ class CoachingService:
             "capture": {"raw_kept": raw_before,
                         "basis": "RAW paired with this photo" if raw_now else
                         "earlier photos this session had RAW" if raw_before else "no RAW seen this session"},
-            "preferences": self.preferences_for(session, shot),
+            "preferences": await self.preferences_for(session),
         }
         schema = provider_json_schema(AssessmentResult)
         if self.settings.spoken_first:
@@ -719,7 +723,7 @@ class CoachingService:
                                      capture.evidence["overview"]["path"]))
         context = {
             "question": question,
-            "preferences": self.preferences_for(session, shot) if session else None,
+            "preferences": await self.preferences_for(session),
             "is_older_photo": is_older,
             "capture_seq": capture.seq if capture else None,
             "shot": {"title": shot.title, "purpose": shot.purpose,

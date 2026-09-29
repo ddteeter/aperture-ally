@@ -6,7 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from aperture_ally.audio.speech import MockSpeech
-from aperture_ally.domain.models import Assessment, Capture
+from aperture_ally.domain.models import Assessment, Capture, Project
 from aperture_ally.input.global_keys import KeySpec, PTTKeyTracker
 from aperture_ally.persistence.db import MIGRATIONS, Store
 from aperture_ally.telemetry.export import export_telemetry, export_timing
@@ -168,7 +168,8 @@ def test_v1_database_migrates_to_latest(tmp_path):
     conn.commit()
     conn.close()
     store = Store(path)
-    assert store.schema_version() == len(MIGRATIONS) == 3
+    assert store.schema_version() == len(MIGRATIONS) == 4
+    assert store.query(Project) == []  # v4: projects exist, seeded by the app at start-up
     assert store.list_sessions()[0].name == "old"
     raw = store._conn.execute("SELECT data FROM sessions WHERE id='s1'").fetchone()[0]
     assert json.loads(raw)["ui_theme"] == "studio"  # v3 backfills the display theme

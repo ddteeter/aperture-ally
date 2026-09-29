@@ -25,8 +25,10 @@ from ..domain.models import (
     Experiment,
     KeeperDecision,
     ModelCall,
+    Project,
     Session,
     SetupRevision,
+    ShootTemplate,
     ShotRequirement,
     VoiceTurn,
     utcnow,
@@ -89,6 +91,13 @@ MIGRATIONS: list[str] = [
     """
     UPDATE sessions SET data = json_set(data, '$.ui_theme', 'studio') WHERE json_extract(data, '$.ui_theme') IS NULL;
     """,
+    # v4 — projects and reusable shoot templates (sessions are attached at start-up by the app)
+    """
+    CREATE TABLE projects (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE shoot_templates (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, created_at TEXT NOT NULL,
+        data TEXT NOT NULL);
+    CREATE INDEX shoot_templates_project ON shoot_templates(project_id);
+    """,
 ]
 
 _TABLES: dict[type[BaseModel], str] = {
@@ -101,14 +110,18 @@ _TABLES: dict[type[BaseModel], str] = {
     KeeperDecision: "keeper_decisions",
     VoiceTurn: "voice_turns",
     ModelCall: "model_calls",
+    Project: "projects",
+    ShootTemplate: "shoot_templates",
 }
 
 
 def _columns(obj: BaseModel) -> dict[str, Any]:
     d = obj.__dict__
     match obj:
-        case Session():
+        case Session() | Project():
             return {"created_at": d["created_at"]}
+        case ShootTemplate():
+            return {"project_id": d["project_id"], "created_at": d["created_at"]}
         case SetupRevision():
             return {"session_id": d["session_id"], "revision": d["revision"]}
         case ShotRequirement():

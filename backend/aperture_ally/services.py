@@ -46,6 +46,7 @@ from .imaging.metadata import MetadataReader
 from .ingest.service import IngestService
 from .persistence.db import AsyncStore, Store
 from .prefs import PrefsStore, sound_path
+from .projects import ProjectService, template_shot_fields
 from .runtime import ContextTracker
 from .telemetry.recorder import (
     PROVIDER_HOSTS,
@@ -132,6 +133,7 @@ class ApertureAllyApp:
             self.coaching.poke_online() if any(p.get("ok") for p in result.get("probes", [])) else None)
         self.cues = cues or build_cues(settings)
         self.prefs = PrefsStore(settings.data_dir / "prefs.json", settings)
+        self.projects = ProjectService(self.store, settings)
         self._mic_task: asyncio.Task | None = None
         self.apply_prefs()
         self.bus.sinks.append(self._cue_sink)
@@ -191,6 +193,9 @@ class ApertureAllyApp:
 
     # --- lifecycle -----------------------------------------------------------------------
     async def start(self, *, watch: bool = True) -> None:
+        await self.projects.ensure_defaults()
+        self.coaching.preferences_source = lambda session: self.projects.preferences_for(
+            session, self.prefs.current.my_preferences)
         # Assessments interrupted by a previous shutdown are failed, never replayed or spoken.
         for a in await self.store.query(Assessment, "status IN ('queued','running')"):
             a.status, a.error, a.speech_status = "failed", "interrupted by restart", "not_applicable"
@@ -310,10 +315,16 @@ class ApertureAllyApp:
     async def create_session(self, *, name: str, product: str = "", watch_folder: str | None = None,
                              template: str | None = "running_shoe", assess_provider: str | None = None,
                              teaching_mode: bool = True, setup: dict | None = None, simulated: bool = False,
-                             ui_theme: str = "studio") -> Session:
+                             ui_theme: str = "studio", template_id: str | None = None,
+                             project_id: str | None = None, shoot_preferences: str = "") -> Session:
+        tpl = await self.projects.template(template_id) if template_id else (
+            await self.projects.template_for_key(template) if template in TEMPLATES else None)
         s = Session(name=name, product=product, output_folder="", assess_provider=assess_provider or self.settings.assess_provider,
                     teaching_mode=teaching_mode, simulated=simulated, ui_theme=ui_theme,
-                    template=template if template in TEMPLATES else "empty")
+                    template=(tpl.source or "custom") if tpl else (template if template in TEMPLATES else "empty"),
+                    project_id=project_id or (tpl.project_id if tpl else None),
+                    template_id=tpl.id if tpl else None, template_version=tpl.version if tpl else None,
+                    shoot_preferences=(shoot_preferences or "").strip())
         s.output_folder = str(self.session_root(s.id))
         s.watch_folder = str(Path(watch_folder).expanduser()) if watch_folder else str(self.settings.data_dir / "incoming" / s.id)
         Path(s.output_folder).mkdir(parents=True, exist_ok=True)
@@ -327,7 +338,10 @@ class ApertureAllyApp:
         rev = SetupRevision(session_id=s.id, revision=1, **SetupFields(**(setup or {})).model_dump())
         await self.store.put(rev)
         s.current_setup_revision_id = rev.id
-        if template in TEMPLATES:
+        if tpl:
+            for i, shot in enumerate(tpl.shots):
+                await self.store.put(ShotRequirement(session_id=s.id, ordinal=i, **template_shot_fields(shot)))
+        elif template in TEMPLATES:
             for i, shot in enumerate(template_shots(template)):
                 await self.store.put(ShotRequirement(session_id=s.id, ordinal=i, **shot))
         shots = await self.store.shots(s.id)
@@ -341,7 +355,7 @@ class ApertureAllyApp:
     async def update_session(self, session_id: str, patch: dict[str, Any]) -> Session:
         s = await self.get_session(session_id)
         allowed = {"name", "product", "watch_folder", "assess_provider", "teaching_mode", "status",
-                   "coaching_paused", "budget_usd", "max_model_calls", "ui_theme"}
+                   "coaching_paused", "budget_usd", "max_model_calls", "ui_theme", "shoot_preferences"}
         rewatch = False
         for k, v in patch.items():
             if k not in allowed:

@@ -26,6 +26,7 @@ class AudioPrefs(BaseModel):
     speech_rate_wpm: int = Field(ge=SPEECH_RATE_MIN, le=SPEECH_RATE_MAX)
     received_sound: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9 _-]+$")  # a macOS system sound
     cue_volume: float = Field(ge=CUE_VOLUME_MIN, le=CUE_VOLUME_MAX)
+    my_preferences: str = Field("", max_length=2000, description="Your defaults: taste across all projects")
 
 
 def system_sounds() -> list[str]:
@@ -39,7 +40,7 @@ def sound_path(name: str) -> str:
 def defaults(settings: Settings) -> AudioPrefs:
     return AudioPrefs(speech_rate_wpm=settings.say_rate_wpm or 190,
                       received_sound=Path(settings.received_cue_sound).stem,
-                      cue_volume=settings.cue_volume)
+                      cue_volume=settings.cue_volume, my_preferences=settings.my_preferences or "")
 
 
 class PrefsStore:
@@ -65,7 +66,7 @@ class PrefsStore:
         except ValidationError as exc:
             raise ValueError(str(exc)) from exc
         sounds = system_sounds()
-        if sounds and new.received_sound not in sounds:
+        if "received_sound" in patch and sounds and new.received_sound not in sounds:
             raise ValueError(f"unknown sound {new.received_sound!r}; choose one of {sounds}")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")

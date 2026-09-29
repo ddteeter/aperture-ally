@@ -127,8 +127,49 @@ class Session(BaseModel):
     max_model_calls: int | None = Field(None, description="Per-session paid-call cap; None = config default")
     ui_theme: Literal["studio", "daylight"] = Field("studio", description="Display theme: Studio (dark) or Daylight")
     template: str | None = Field(None, description="Shot-list template the session started from; None = unknown")
+    project_id: str | None = None
+    template_id: str | None = None
+    template_version: int | None = Field(None, description="Template version the shot list was copied from")
+    shoot_preferences: str = Field("", description="This shoot only ('outdoors, no backdrop'); overrides above")
     status: SessionStatus = SessionStatus.active
     watch_since: str = Field(default_factory=utcnow)
+    created_at: str = Field(default_factory=utcnow)
+    updated_at: str = Field(default_factory=utcnow)
+
+
+class TemplateShot(BaseModel):
+    """One shot in a reusable shoot template (copied into each shoot created from it)."""
+
+    title: str
+    purpose: str = ""
+    must_show: list[str] = Field(default_factory=list)
+    framing: str = ""
+    criteria: list[Criterion] = Field(default_factory=list)
+    sharp_regions: list[Region] = Field(default_factory=list)
+
+
+class Project(BaseModel):
+    """A body of work with a consistent look, e.g. 'Running blog'."""
+
+    id: str = Field(default_factory=new_id)
+    name: str
+    preferences: str = Field("", description="The project's look/taste, passed to the coach")
+    archived: bool = False
+    created_at: str = Field(default_factory=utcnow)
+    updated_at: str = Field(default_factory=utcnow)
+
+
+class ShootTemplate(BaseModel):
+    """A reusable shoot for one product type ('Shoe review', 'Half tights'): its shot list and preferences."""
+
+    id: str = Field(default_factory=new_id)
+    project_id: str
+    name: str
+    preferences: str = Field("", description="Taste specific to this product type, passed to the coach")
+    shots: list[TemplateShot] = Field(default_factory=list)
+    version: int = 1
+    source: str | None = Field(None, description="Built-in starter it was seeded from (running_shoe, …)")
+    archived: bool = False
     created_at: str = Field(default_factory=utcnow)
     updated_at: str = Field(default_factory=utcnow)
 

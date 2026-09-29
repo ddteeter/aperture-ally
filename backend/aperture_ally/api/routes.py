@@ -64,6 +64,9 @@ class SessionCreate(BaseModel):
     simulated: bool = False
     ui_theme: Literal["studio", "daylight"] = "studio"
     setup: SetupFields | None = None
+    template_id: str | None = Field(None, description="Shoot template to copy the shot list from (wins over template)")
+    project_id: str | None = None
+    shoot_preferences: str = Field("", max_length=2000)
 
 
 class SessionPatch(BaseModel):
@@ -77,6 +80,26 @@ class SessionPatch(BaseModel):
     budget_usd: float | None = Field(None, ge=0)
     max_model_calls: int | None = Field(None, ge=0)
     ui_theme: Literal["studio", "daylight"] | None = None
+    shoot_preferences: str | None = Field(None, max_length=2000)
+
+
+class ProjectBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(None, max_length=120)
+    preferences: str | None = Field(None, max_length=2000)
+    archived: bool | None = None
+
+
+class TemplateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = Field(None, max_length=120)
+    preferences: str | None = Field(None, max_length=2000)
+    archived: bool | None = None
+    copy_from: str | None = Field(None, description="Create only: start from this template's shot list")
+
+
+class SaveToTemplateBody(BaseModel):
+    new_name: str | None = Field(None, max_length=120, description="Save as a new template instead of updating")
 
 
 class ShotBody(BaseModel):
@@ -286,9 +309,73 @@ async def create_session(body: SessionCreate, request: Request):
         name=body.name, product=body.product, watch_folder=body.watch_folder,
         template=None if body.template == "empty" else body.template, assess_provider=body.assess_provider,
         teaching_mode=body.teaching_mode, setup=body.setup.model_dump() if body.setup else None,
-        simulated=body.simulated, ui_theme=body.ui_theme,
+        simulated=body.simulated, ui_theme=body.ui_theme, template_id=body.template_id,
+        project_id=body.project_id, shoot_preferences=body.shoot_preferences,
     )
     return s.model_dump()
+
+
+# --- projects and shoot templates -------------------------------------------------------------
+def _project_errors(fn):
+    from functools import wraps
+
+    from ..projects import NotFoundError
+
+    @wraps(fn)
+    async def wrapped(*a, **kw):
+        try:
+            return await fn(*a, **kw)
+        except NotFoundError as e:
+            raise HTTPException(404, str(e)) from e
+        except ValueError as e:
+            raise HTTPException(422, str(e)) from e
+    return wrapped
+
+
+@router.get("/projects")
+async def list_projects(request: Request):
+    return await app_of(request).projects.overview()
+
+
+@router.post("/projects", status_code=201)
+@_project_errors
+async def create_project(body: ProjectBody, request: Request):
+    return (await app_of(request).projects.create_project(body.name or "", body.preferences or "")).model_dump()
+
+
+@router.patch("/projects/{pid}")
+@_project_errors
+async def patch_project(pid: str, body: ProjectBody, request: Request):
+    return (await app_of(request).projects.update_project(pid, body.model_dump(exclude_none=True))).model_dump()
+
+
+@router.post("/projects/{pid}/templates", status_code=201)
+@_project_errors
+async def create_template(pid: str, body: TemplateBody, request: Request):
+    t = await app_of(request).projects.create_template(pid, body.name or "", preferences=body.preferences or "",
+                                                       copy_from=body.copy_from)
+    return t.model_dump()
+
+
+@router.get("/templates/{tid}")
+@_project_errors
+async def get_template(tid: str, request: Request):
+    return (await app_of(request).projects.template(tid)).model_dump()
+
+
+@router.patch("/templates/{tid}")
+@_project_errors
+async def patch_template(tid: str, body: TemplateBody, request: Request):
+    patch = body.model_dump(exclude_none=True, exclude={"copy_from"})
+    return (await app_of(request).projects.update_template(tid, patch)).model_dump()
+
+
+@router.post("/sessions/{sid}/save-to-template")
+@_project_errors
+async def save_to_template(sid: str, body: SaveToTemplateBody, request: Request):
+    app = app_of(request)
+    s = await _session_or_404(app, sid)
+    return (await app.projects.save_session_to_template(s, new_name=body.new_name)).model_dump()
 
 
 @router.get("/sessions/{sid}")
@@ -764,6 +851,7 @@ class PrefsBody(BaseModel):
     speech_rate_wpm: int | None = None
     received_sound: str | None = None
     cue_volume: float | None = None
+    my_preferences: str | None = None
 
 
 class PreviewBody(BaseModel):
