@@ -243,6 +243,8 @@ export interface AssessmentResult {
   observations: Observation[];
   primary_action: PrimaryAction | null;
   alternative_causes: string[];
+  /** Issues probably fixable in editing (RAW-aware); the coach never spends its one action on these. Older results lack it. */
+  fixable_in_post?: string[];
   comparison: Comparison | null;
   question_for_user: string | null;
   teaching_prompt: string | null;

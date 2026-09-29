@@ -103,6 +103,15 @@ describe("CoachPanel", () => {
     await vi.waitFor(() => expect(f).toHaveBeenCalledTimes(2));
   });
 
+  it("lists what is probably fixable in post, apart from the one camera-side action", () => {
+    const a = retakeAssessment();
+    a.result = { ...a.result!, fixable_in_post: ["White balance is warm", "Slight tilt"] };
+    renderWithCtx(<CoachPanel capture={followUpCapture(a, { baseline_capture_id: null })} shot={shot} captures={[]} experiments={[]} keeper={null} />, ctxWith());
+    const box = screen.getByTestId("fixable-in-post");
+    expect(box).toHaveTextContent("Probably fixable in post");
+    expect(within(box).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["White balance is warm", "Slight tilt"]);
+  });
+
   it("renders a retake verdict: do this, why, coach asks, criteria, causes, model line", async () => {
     const f = mockFetch({ intent: "answer", answer: "ok", voice_turn_id: "v1" });
     const cap = followUpCapture(retakeAssessment(), { baseline_capture_id: null });

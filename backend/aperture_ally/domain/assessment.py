@@ -66,6 +66,8 @@ class AssessmentResult(_Strict):
     observations: list[Observation]
     primary_action: PrimaryAction | None
     alternative_causes: list[str]
+    fixable_in_post: list[str] = Field(description="Issues probably fixable in editing (RAW-aware); never the "
+                                                    "primary action. Empty list if none")
     comparison: Comparison | None
     question_for_user: str | None
     teaching_prompt: str | None = Field(description="Only when the request asks for one; otherwise null")

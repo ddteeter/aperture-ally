@@ -529,6 +529,11 @@ class CoachingService:
                              assessment_id=assessment.id, reason="context no longer current")
         return await self.store.get(Assessment, assessment.id)
 
+    def preferences_for(self, session: Session, shot: ShotRequirement | None) -> dict[str, str | None]:
+        """Drew's taste, most general first. Project/template levels come from settings until projects exist."""
+        return {"yours": self.settings.my_preferences, "project": self.settings.project_preferences,
+                "template": None, "shoot": None}
+
     def _early_speech(self, trigger, speak, provider, guard, session, capture, assessment, t_start):
         """Early speech for auto-coaching when the provider streams; None otherwise."""
         if not (self.settings.stream_speech and self.settings.spoken_first and speak and trigger == "auto"
@@ -638,6 +643,9 @@ class CoachingService:
                                     "comparison": (pa.result.get("comparison") or {}).get("outcome")})
         allowed = [d["region_id"] for d in crops_desc]
         criteria = [c.model_dump() for c in shot.criteria] if shot else []
+        # The JPEG arrives ~1 s before its ORF (OM Capture), so "RAW kept" also counts earlier pairs this session.
+        raw_now = bool(capture.raw_path)
+        raw_before = raw_now or any(c.raw_path for c in (await self.store.captures(session.id))[-10:])
         context = {
             "task": "compare" if baseline_ctx else "assess",
             "shot": {
@@ -659,6 +667,10 @@ class CoachingService:
             "teaching_prompt_requested": teaching,
             "frame_of_reference": FRAME_OF_REFERENCE,
             "capture_seq": capture.seq,
+            "capture": {"raw_kept": raw_before,
+                        "basis": "RAW paired with this photo" if raw_now else
+                        "earlier photos this session had RAW" if raw_before else "no RAW seen this session"},
+            "preferences": self.preferences_for(session, shot),
         }
         schema = provider_json_schema(AssessmentResult)
         if self.settings.spoken_first:
@@ -707,6 +719,7 @@ class CoachingService:
                                      capture.evidence["overview"]["path"]))
         context = {
             "question": question,
+            "preferences": self.preferences_for(session, shot) if session else None,
             "is_older_photo": is_older,
             "capture_seq": capture.seq if capture else None,
             "shot": {"title": shot.title, "purpose": shot.purpose,

@@ -56,7 +56,9 @@ async def test_advice_is_spoken_while_the_rest_of_the_result_streams(make_harnes
     (a,) = await h.app.store.assessments(s.id)
     assert started_while_analysing == [True]
     assert a.timings["spoken_early"] == 1 and a.timings["spoken_text_ready_ms"] > 0
-    assert a.prompt_version.endswith(".1") and h.speech.spoken[0] == a.result["spoken_text"]
+    from aperture_ally.coaching.prompt import PROMPT_VERSION
+
+    assert a.prompt_version == PROMPT_VERSION and h.speech.spoken[0] == a.result["spoken_text"]
     assert any(e["type"] == "coach.speech.early" for e in h.app.bus.recent)
 
 
@@ -154,3 +156,22 @@ async def test_claude_adapter_streams_text_and_restarts_after_a_fallback_block(f
     assert texts[0] == '{"verdict":"declined' and texts[1] == '{"verdict":"needs_retake",'
     assert texts[-1] == '{"verdict":"needs_retake","spoken_text":"Hi."}'
     assert resp.text == final.content[0].text and seen_kw["fallbacks"] == "default"
+
+
+async def test_the_coach_is_told_about_raw_and_the_owners_preferences(make_harness, fx):
+    h = await make_harness(my_preferences="I edit in Lightroom.", project_preferences="Hero: soft background.")
+    seen = {}
+    real = h.mock.generate
+
+    async def spy(req, on_text=None):
+        seen["ctx"], seen["instructions"] = req.context, req.instructions
+        return await real(req, on_text)
+
+    h.mock.generate = spy
+    await _auto_coach(h, fx)
+    await h.settled(15)
+    ctx = seen["ctx"]
+    assert ctx["preferences"] == {"yours": "I edit in Lightroom.", "project": "Hero: soft background.",
+                                  "template": None, "shoot": None}
+    assert ctx["capture"]["raw_kept"] is False and "no RAW" in ctx["capture"]["basis"]
+    assert "fixable_in_post" in seen["instructions"] and "Craft, on every shot" in seen["instructions"]

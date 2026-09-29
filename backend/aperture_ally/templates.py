@@ -14,6 +14,8 @@ RUNNING_SHOE_SHOTS: list[dict] = [
             ("c1", "Entire shoe in frame, nothing cropped"),
             ("c2", "Logo and upper details are sharp"),
             ("c3", "No distracting glare hiding the colourway"),
+            ("c4", "Background is clean and doesn't distract from the shoe"),
+            ("c5", "Shoe stands apart from the background (soft background or clean backdrop)"),
         ],
     },
     {
@@ -79,8 +81,9 @@ RUNNING_APPAREL_SHOTS: list[dict] = [
         "framing": "Front view, garment filling most of the frame with hem, sleeves/legs and neckline/waistband in shot",
         "criteria": [
             ("c1", "Whole garment in frame: hems, sleeves or legs not cropped"),
-            ("c2", "Colour looks true to the product (no strong colour cast)"),
+            ("c2", "Colour looks true to the product (no strong colour cast; with RAW this is usually fixable in post)"),
             ("c3", "Logo and front details are sharp"),
+            ("c4", "Background is clean and doesn't distract from the garment"),
         ],
     },
     {

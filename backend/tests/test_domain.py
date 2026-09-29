@@ -96,7 +96,8 @@ def _good(**over):
         "observations": [{"region_id": "r1", "observation": "clipped", "evidence_source": "pixels", "severity": "major"}],
         "primary_action": {"instruction": "Move the light camera-left", "explanation": "x", "expected_effect": "y",
                            "tradeoff": "z", "prerequisites": [], "hold_constant": None, "exposure_target": None},
-        "alternative_causes": [], "comparison": None, "question_for_user": None, "teaching_prompt": None,
+        "alternative_causes": [], "fixable_in_post": [], "comparison": None, "question_for_user": None,
+        "teaching_prompt": None,
         "spoken_text": "Needs a retake. Move the light camera-left.",
     }
     base.update(over)

@@ -92,6 +92,17 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
 
       <Warnings warnings={a.warnings} />
 
+      {(r.fixable_in_post?.length ?? 0) > 0 && (
+        <div className="cp-stack cp-gap-6" data-testid="fixable-in-post">
+          <Label>Probably fixable in post</Label>
+          <ul className="cp-causes">
+            {r.fixable_in_post!.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {r.alternative_causes.length > 0 && (
         <div className="cp-stack cp-gap-6">
           <button type="button" className="cp-disclosure" aria-expanded={causes} onClick={() => setCauses((v) => !v)}>

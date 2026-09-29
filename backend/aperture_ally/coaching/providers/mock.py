@@ -186,6 +186,7 @@ class MockProvider:
             "primary_action": action,
             "alternative_causes": (["missed focus point", "camera shake", "shallow depth of field"]
                                    if "soft" in kinds else []),
+            "fixable_in_post": [],
             "comparison": comparison,
             "question_for_user": None,
             "teaching_prompt": teaching,
