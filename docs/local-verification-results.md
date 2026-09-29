@@ -506,3 +506,25 @@ remote trigger and settings. Remaining work for a real mode:
   PC-only; the owner decides on card settings);
 - reconnect after the camera sleeps;
 - decode the drive and bracket properties.
+
+### Native audio spike (2026-09-28): in-process audio wins
+
+Branch `spike/native-audio` (`spikes/native_audio/README.md`). Method: request timestamps against a recording of the
+built-in speakers by the built-in mic, with onset set against ambient noise; 12 trials each; the loop's floor is
+~45 ms, so compare the differences.
+
+| Request → audible (median) | Today (subprocess) | In-process |
+|---|---|---|
+| Tick | `afplay` 168 ms | Python sounddevice stream 47 ms; Swift engine 48–59 ms |
+| Short spoken value | `say` 958 ms (start-up + voice load, every time) | Swift `AVSpeechSynthesizer` 112 ms; rendered 96 ms; cached 76 ms |
+| Interrupt + new utterance | ~960 ms | ~15–20 ms to start, ~100–125 ms to audible (estimated) |
+
+**Also found:**
+- `say` wasn't clipped on the built-in speakers, so the AirPods clipping is Bluetooth-specific.
+- `AVSpeechSynthesizer` reports "finished" ~0.23 s before playback ends. The companion must track actual playback.
+
+**Decision.**
+- **Ticks:** in-process in the Python backend (one persistent output stream).
+- **Speech:** a small long-lived Swift companion (one engine, rendered and cached values, newest replaces
+  playing, a playback-complete callback). It becomes the app's speech backend, cutting ~0.85 s off every
+  spoken start.
