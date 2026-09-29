@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0c0c0c;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button,input,textarea{font-family:inherit}
+input[type=range]{accent-color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc,oklch(0.80 0.10 230));outline-offset:2px}
+:root{--mono:'IBM Plex Mono',monospace;--mock:oklch(0.72 0.17 330)}
+[data-theme="dark"]{--stage:#101010;--app:#161616;--panel:#1a1a1a;--bar:#121212;--raised:#262626;--card:#222;--line:#262626;--line2:#333;--line3:#3a3a3a;--t1:#ececec;--t2:#b8b8b8;--t3:#8c8c8c;--inset:#141414;--ph1:#262626;--ph2:#2b2b2b;--acc:oklch(0.80 0.10 230);--acc-ink:#0f1a20;--ret:oklch(0.76 0.13 35);--ok:oklch(0.79 0.13 150);--unc:oklch(0.84 0.12 90);--acc-t:oklch(0.30 0.05 230);--ret-t:oklch(0.30 0.06 35);--ok-t:oklch(0.30 0.06 150);--unc-t:oklch(0.30 0.05 90);--pri:#e8e8e8;--pri-ink:#141414;--chip:#0e0e0e;--wm:500;--wb:600;--wbody:400;--scrim:rgba(0,0,0,.62);--pop-shadow:0 20px 50px rgba(0,0,0,.5);--ovl:rgba(0,0,0,.66);--ovl-ink:#ececec;color:var(--t1)}
+[data-theme="daylight"]{--stage:#d4d4d4;--app:#f2f2f2;--panel:#ffffff;--bar:#ffffff;--raised:#e2e2e2;--card:#eeeeee;--line:#cfcfcf;--line2:#b0b0b0;--line3:#808080;--t1:#0a0a0a;--t2:#242424;--t3:#3d3d3d;--inset:#ffffff;--ph1:#b6b6b6;--ph2:#c0c0c0;--acc:oklch(0.47 0.16 245);--acc-ink:#ffffff;--ret:oklch(0.50 0.18 30);--ok:oklch(0.46 0.14 150);--unc:oklch(0.50 0.12 70);--acc-t:oklch(0.93 0.04 245);--ret-t:oklch(0.93 0.05 30);--ok-t:oklch(0.93 0.05 150);--unc-t:oklch(0.93 0.06 85);--pri:#0a0a0a;--pri-ink:#ffffff;--chip:#ffffff;--wm:600;--wb:700;--wbody:500;--scrim:rgba(0,0,0,.45);--pop-shadow:0 12px 40px rgba(0,0,0,.25);--ovl:rgba(255,255,255,.94);--ovl-ink:#0a0a0a;color:var(--t1)}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 16px 40px;gap:10px">
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;font-size:12px;max-width:1440px">
+    <span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;letter-spacing:.06em;margin-right:6px">AT-CAMERA SCREENS</span>
+    <sc-for list="{{ groupTabs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.go }}" style="border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+    <a href="Aperture%20Ally%20Library.dc.html" style="font-size:12px;margin-left:8px">Library &amp; desk screens →</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;font-size:12px">
+    <span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;letter-spacing:.06em;margin-right:6px">STATE</span>
+    <sc-for list="{{ varTabs }}" as="t" hint-placeholder-count="5">
+      <button onClick="{{ t.go }}" style="border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+    <span style="width:1px;height:16px;background:#333;margin:0 6px"></span>
+    <button onClick="{{ toggleTheme }}" style="border:1px solid #333;background:#1c1c1c;color:#ececec;padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">☀ Theme: {{ themeLabel }}</button>
+  </div>
+
+  <div style="width:{{ boxW }}px;height:{{ boxH }}px;position:relative;flex:none">
+  <div data-theme="{{ theme }}" style="width:1440px;height:900px;transform:scale({{ scale }});transform-origin:0 0;position:absolute;left:0;top:0;background:var(--app);font-weight:var(--wbody);display:flex;flex-direction:column;overflow:hidden;border-radius:10px;box-shadow:0 0 0 1px #2a2a2a,0 30px 80px rgba(0,0,0,.5)">
+
+    <!-- Top bar -->
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bar);white-space:nowrap;border-bottom:1px solid var(--line);position:relative;z-index:6">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--t1);display:grid;place-items:center"><div style="width:6px;height:6px;border-radius:50%;background:var(--t1)"></div></div>
+        <span style="font-size:14px;font-weight:var(--wb)">Aperture Ally</span>
+      </div>
+      <div style="width:1px;height:20px;background:var(--line2)"></div>
+      <span style="font-size:14px;font-weight:var(--wm)">Pegasus 42</span>
+      <nav style="display:flex">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7"><span style="padding:6px 7px;border-radius:6px;background:{{ n.bg }};color:{{ n.fg }};font-size:13px;font-weight:{{ n.w }}">{{ n.label }}</span></sc-for>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:4px">
+          <sc-for list="{{ devs }}" as="d" hint-placeholder-count="3">
+            <span title="{{ d.title }}" aria-label="{{ d.title }}" style="display:flex;align-items:center;gap:5px;height:26px;padding:0 {{ d.px }}px;border-radius:6px;border:1px solid {{ d.bd }};background:{{ d.bg }};color:{{ d.c }};font-size:12px;font-weight:{{ d.w }}"><span style="font-family:var(--mono);font-size:12px">{{ d.g }}</span>{{ d.label }}</span>
+          </sc-for>
+        </div>
+        <button onClick="{{ toggleTheme }}" aria-label="Daylight mode" style="height:28px;width:30px;border-radius:6px;border:1px solid var(--line2);background:{{ sunBg }};color:{{ sunFg }};cursor:pointer;font-family:var(--mono);font-size:14px">☀</button>
+        <button onClick="{{ togglePop }}" aria-expanded="{{ popOpen }}" style="display:flex;align-items:center;gap:8px;padding:4px 8px 4px 4px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:var(--t1);cursor:pointer">
+          <span style="border-radius:5px;padding:4px 10px;font-size:12px;font-weight:var(--wb);background:var(--raised)">● Coaching on</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t2)">14 / 40 · ≈ $0.41</span>
+          <span style="font-size:10px;color:var(--t3)">▾</span>
+        </button>
+      </div>
+
+      <sc-if value="{{ popOpen }}" hint-placeholder-val="{{ false }}">
+        <div role="dialog" aria-label="Coaching and audio" style="position:absolute;right:16px;top:52px;width:392px;background:var(--panel);border:1px solid var(--line3);border-radius:12px;box-shadow:var(--pop-shadow);padding:16px;display:flex;flex-direction:column;gap:14px;white-space:normal">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:var(--wb)">Coaching</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:7px;padding:2px;gap:2px"><span style="height:26px;padding:0 12px;border-radius:5px;background:var(--pri);color:var(--pri-ink);font-size:12px;font-weight:var(--wm);display:flex;align-items:center">On</span><span style="height:26px;padding:0 12px;border-radius:5px;color:var(--t2);font-size:12px;display:flex;align-items:center">Off</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--t2)"><span>Caps: 40 calls · $2.00</span><button style="border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0">Edit caps</button></div>
+          <div style="height:1px;background:var(--line)"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">AUDIO · SAVED FOR DREW</span><span style="font-size:11px;color:var(--ok)"><span style="font-family:var(--mono)">✓</span> applies instantly</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:14px;font-weight:var(--wm)">Speech speed</span><span style="font-family:var(--mono);font-size:15px;font-weight:600">{{ wpm }} wpm <span style="color:var(--t2)">≈ {{ speedX }}×</span></span></div>
+            <input type="range" min="150" max="360" step="10" value="{{ wpm }}" onChange="{{ onWpm }}" aria-label="Speech speed, words per minute" aria-valuetext="{{ wpmText }}" style="width:100%">
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3)"><span>150</span><span>1× 180</span><span>1.5× 270</span><span>2× 360</span></div>
+            <button onClick="{{ playSpeed }}" style="align-self:flex-start;height:32px;padding:0 12px;border-radius:7px;border:1px solid {{ spBd }};background:{{ spBg }};color:var(--t1);font-size:13px;cursor:pointer">{{ spLabel }}</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:14px;font-weight:var(--wm)">“Photo received” sound</span>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <sc-for list="{{ sounds }}" as="s" hint-placeholder-count="6"><button onClick="{{ s.pick }}" aria-pressed="{{ s.on }}" style="height:30px;padding:0 10px;border-radius:15px;border:1px solid {{ s.bd }};background:{{ s.bg }};color:{{ s.fg }};font-size:12px;font-weight:var(--wm);cursor:pointer">{{ s.label }}</button></sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:60px minmax(0,1fr) 40px;align-items:center;gap:10px;font-size:13px"><span style="color:var(--t2)">Volume</span><input type="range" min="0" max="100" value="{{ vol }}" onChange="{{ onVol }}" aria-label="Sound volume" style="width:100%"><span style="font-family:var(--mono);font-size:12px;text-align:right">{{ vol }}%</span></div>
+            <button onClick="{{ playOver }}" style="align-self:flex-start;height:32px;padding:0 12px;border-radius:7px;border:1px solid {{ ovBd }};background:{{ ovBg }};color:var(--t1);font-size:13px;cursor:pointer">{{ ovLabel }}</button>
+            <span style="font-size:11px;color:var(--t3);line-height:1.4">The sample plays the sound while a sentence is being spoken, which is how you'll hear it during a shoot. The sound ducks speech by 30% for 0.2 s.</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:248px minmax(0,1fr) 432px">
+
+      <!-- Shot list rail -->
+      <aside style="background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+        <div style="padding:14px 14px 8px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">SHOT LIST</span><span style="font-size:12px;color:var(--acc)">Edit</span></div>
+          <span title="This shoot's shot list was copied from this template" style="font-size:12px;color:var(--t3)">from Running blog › Shoe review v3</span>
+          <sc-if value="{{ diff }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openSave }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--unc);background:var(--unc-t);color:var(--t1);font-size:12px;font-weight:var(--wm);cursor:pointer"><span style="font-family:var(--mono);color:var(--unc)">◆</span>2 shots changed · Save…</button>
+          </sc-if>
+        </div>
+        <div style="flex:1;overflow:auto;padding:0 8px;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ shots }}" as="s" hint-placeholder-count="6">
+            <div style="border-radius:8px;padding:9px 10px;background:{{ s.bg }};display:flex;align-items:center;gap:10px">
+              <span style="font-family:var(--mono);font-size:11px;color:var(--t3);width:14px">{{ s.n }}</span>
+              <span style="flex:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:14px;font-weight:{{ s.w }}">{{ s.name }}</span><sc-if value="{{ s.hasMark }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:var(--unc);font-weight:var(--wm)">{{ s.mark }}</span></sc-if></span>
+              <span style="font-family:var(--mono);font-size:12px;color:{{ s.c }}">{{ s.g }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin:0 10px 8px;padding:10px 12px;border:1px solid var(--line2);border-radius:8px;display:flex;flex-direction:column;gap:4px;position:relative">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">TODAY</span><button onClick="{{ openNotes }}" style="border:0;background:transparent;color:var(--acc);font-size:12px;cursor:pointer;padding:0">Edit <span style="font-family:var(--mono);color:var(--t3)">N</span></button></div>
+          <span style="font-size:13px;line-height:1.4">{{ notesText }}</span>
+        </div>
+        <div style="margin:0 10px 10px;padding:10px 12px;border:1px solid var(--line2);border-radius:8px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>Coverage</span><span style="color:var(--t2)">3 / {{ shotCount }} keepers</span></div>
+          <div style="height:4px;background:var(--line2);border-radius:2px"><div style="height:4px;border-radius:2px;background:var(--t1);width:45%"></div></div>
+        </div>
+      </aside>
+
+      <!-- Stage -->
+      <section style="background:var(--stage);display:flex;flex-direction:column;min-width:0;min-height:0;position:relative">
+        <div style="flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:16px 20px">
+          <sc-if value="{{ camOffline }}" hint-placeholder-val="{{ false }}">
+            <div style="width:100%;height:100%;border:1px dashed var(--line3);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px">
+              <span style="font-family:var(--mono);font-size:30px;color:var(--unc)">◎</span>
+              <span style="font-size:40px;font-weight:var(--wm);letter-spacing:-.01em">{{ camOff.title }}</span>
+              <span style="font-size:18px;color:var(--t2);max-width:560px;line-height:1.45">{{ camOff.sub }}</span>
+              <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">{{ camOff.meta }}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showFrame }}" hint-placeholder-val="{{ true }}">
+            <div style="height:100%;aspect-ratio:4/3;max-width:100%;position:relative;background:repeating-linear-gradient(135deg,var(--ph1) 0 14px,var(--ph2) 14px 28px);box-shadow:0 0 0 1px var(--line)">
+              <sc-if value="{{ hideReadout }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;color:var(--t3);text-align:center;line-height:1.6;white-space:pre-line">{{ frameLabel }}</div></sc-if>
+              <span style="position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:11px;color:var(--ovl-ink);background:var(--ovl);padding:3px 7px;border-radius:4px;display:flex;gap:6px;align-items:center"><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><span style="width:8px;height:8px;border-radius:50%;background:var(--ret)"></span></sc-if>{{ frameTag }}</span>
+              <sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:22px;padding:8px;background:var(--ovl);color:var(--ovl-ink);font-family:var(--mono);font-size:14px">
+                  <sc-for list="{{ camVals }}" as="c" hint-placeholder-count="5"><span style="color:{{ c.c }};font-weight:{{ c.w }}">{{ c.v }}</span></sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ showReadout }}" hint-placeholder-val="{{ false }}">
+                <div aria-live="off" style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--ovl);color:var(--ovl-ink);padding:22px 36px 20px;border-radius:16px;min-width:460px">
+                  <span style="font-family:var(--mono);font-size:13px;letter-spacing:.08em">{{ ro.label }}</span>
+                  <span style="font-family:var(--mono);font-size:132px;font-weight:600;line-height:1;letter-spacing:-.03em">{{ ro.value }}</span>
+                  <div style="display:flex;align-items:flex-end;gap:5px;height:26px">
+                    <sc-for list="{{ ro.ticks }}" as="t" hint-placeholder-count="23"><span style="width:{{ t.wd }}px;height:{{ t.h }}px;border-radius:2px;background:{{ t.c }}"></span></sc-for>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;width:100%;font-family:var(--mono);font-size:11px"><span>{{ ro.min }}</span><span style="font-weight:600">{{ ro.status }}</span><span>{{ ro.max }}</span></div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+        <div aria-live="polite" style="position:absolute;left:50%;top:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:3">
+          <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+            <div style="display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid {{ t.bd }};border-radius:10px;padding:10px 16px;box-shadow:var(--pop-shadow);max-width:640px">
+              <span style="font-family:var(--mono);font-size:16px;color:{{ t.c }};font-weight:600">{{ t.g }}</span>
+              <span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:var(--wm)">{{ t.text }}</span><span style="font-size:13px;color:var(--t2)">{{ t.sub }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <!-- Coach / camera panel -->
+      <aside style="background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+        <div style="flex:1;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+
+          <sc-if value="{{ isVerdict }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ isCorrection }}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="border:2px solid var(--unc);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:var(--unc-t)">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t1);font-weight:600">! CORRECTION · SPOKEN 14:37:06</span>
+                <span style="font-size:28px;font-weight:var(--wb);line-height:1.2;letter-spacing:-.01em">Keep f/4. At f/2.8 the heel counter goes soft.</span>
+                <span style="font-size:13px;color:var(--t2);line-height:1.4">Earlier I said <span style="text-decoration:line-through">“open to f/2.8”</span>. The full check found the heel is only just inside the depth of field.</span>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div style="width:48px;height:48px;border-radius:10px;background:{{ hd.t }};display:grid;place-items:center;font-family:var(--mono);font-size:24px;font-weight:600;color:{{ hd.c }}">{{ hd.g }}</div>
+              <div style="display:flex;flex-direction:column;flex:1"><span style="font-size:34px;font-weight:var(--wb);letter-spacing:-.01em;color:{{ hd.c }}">{{ hd.word }}</span><span style="font-size:13px;color:var(--t2)">{{ hd.sub }}</span></div>
+            </div>
+            <sc-if value="{{ hasAction }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:8px;opacity:{{ act.op }}">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">{{ act.label }}</span>
+                <span style="font-size:30px;font-weight:var(--wm);line-height:1.2;letter-spacing:-.01em;text-wrap:pretty;text-decoration:{{ act.strike }}">{{ act.text }}</span>
+                <span style="display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--t2)"><span style="font-family:var(--mono);color:var(--acc)">●</span><span>{{ act.pref }} <span style="color:var(--t3)">· {{ act.src }}</span></span></span>
+                <sc-if value="{{ act.canApply }}" hint-placeholder-val="{{ false }}">
+                  <button style="align-self:flex-start;height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer;margin-top:2px">Apply f/2.8 on the camera <span style="font-family:var(--mono);color:var(--t3)">Y</span></button>
+                </sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noChange }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">NOTHING TO CHANGE</span>
+                <span style="font-size:30px;font-weight:var(--wm);line-height:1.2;letter-spacing:-.01em">Keep it. Next: Upper mesh close-up.</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ streaming }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">CRITERIA</span><span style="font-size:12px;color:var(--acc)">● Checking 4 criteria · 2.1 s</span></div>
+                <sc-for list="{{ skel }}" as="k" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)"><span style="width:26px;height:26px;border-radius:6px;background:var(--raised)"></span><span style="flex:1;font-size:14px;color:var(--t3)">{{ k }}</span><span style="width:40px;height:10px;border-radius:3px;background:var(--raised)"></span></div>
+                </sc-for>
+                <div style="height:14px;width:55%;background:var(--raised);border-radius:4px;margin-top:6px"></div>
+                <span style="font-size:12px;color:var(--t3);line-height:1.4">The spoken sentence arrived first and is already playing. Criteria, observations and fixable-in-post fill in here without moving it.</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ notStreaming }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">CRITERIA</span><span style="font-size:12px;color:var(--t3)">{{ critSummary }}</span></div>
+                <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)">
+                    <span style="width:26px;height:26px;border-radius:6px;background:{{ c.bg }};color:{{ c.c }};display:grid;place-items:center;font-family:var(--mono);font-size:14px;font-weight:600;flex:none">{{ c.g }}</span>
+                    <span style="flex:1;font-size:14px;line-height:1.35">{{ c.text }}</span>
+                    <span style="font-size:12px;font-weight:var(--wb);color:{{ c.c }}">{{ c.word }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">PROBABLY FIXABLE IN POST · NO NEED TO RESHOOT</span>
+                <sc-for list="{{ post }}" as="p" hint-placeholder-count="2"><span style="font-size:14px;color:var(--t2);display:flex;gap:8px"><span style="font-family:var(--mono);color:var(--t3)">~</span>{{ p }}</span></sc-for>
+                <span style="font-size:12px;color:var(--t3)">You edit in Lightroom (Your defaults)</span>
+              </div>
+            </sc-if>
+            <a href="Aperture%20Ally%20Library.dc.html#saw" style="font-size:13px;color:var(--t2);display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px"><span>Disagree? See what the coach saw</span><span style="font-family:var(--mono);color:var(--t3)">⌘I</span></a>
+          </sc-if>
+
+          <sc-if value="{{ isCamPanel }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid {{ conn.bd }};border-radius:10px">
+              <span style="font-family:var(--mono);font-size:18px;color:{{ conn.c }}">◎</span>
+              <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:var(--wb);color:{{ conn.c }}">{{ conn.state }}</span><span style="font-size:12px;color:var(--t2)">{{ conn.sub }}</span></span>
+              <button onClick="{{ askRelease }}" style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">{{ conn.btn }} <span style="font-family:var(--mono);color:var(--t3)">⌘K</span></button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;opacity:{{ camOp }}">
+              <sc-for list="{{ camGrid }}" as="c" hint-placeholder-count="6">
+                <div style="background:{{ c.bg }};padding:10px 14px;display:flex;flex-direction:column;gap:2px"><span style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3)"><span>{{ c.k }}</span><span style="font-family:var(--mono)">{{ c.key }}</span></span><span style="font-family:var(--mono);font-size:24px;font-weight:600">{{ c.v }}</span></div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ showSuggest }}" hint-placeholder-val="{{ true }}">
+              <div style="border:1px solid {{ sug.bd }};border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">{{ sug.label }}</span>
+                <span style="font-size:20px;font-weight:var(--wm);line-height:1.3">{{ sug.text }}</span>
+                <sc-if value="{{ sug.pending }}" hint-placeholder-val="{{ true }}"><button style="align-self:flex-start;height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:14px;font-weight:var(--wb);cursor:pointer">Apply f/2.8 <span style="font-family:var(--mono);font-weight:400;opacity:.7">Y · or say “apply it”</span></button></sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{ showTiming }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--card);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">RAPID PRESSES · WHAT YOU HEAR</span>
+                <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px">
+                  <sc-for list="{{ presses }}" as="p" hint-placeholder-count="5"><span style="display:flex;flex-direction:column;align-items:center;gap:3px"><span style="width:10px;height:{{ p.h }}px;border-radius:2px;background:{{ p.c }}"></span><span style="font-size:10px;color:var(--t3)">{{ p.l }}</span></span></sc-for>
+                  <span style="color:var(--t3);margin:0 6px">— 0.3 s —</span>
+                  <span style="display:flex;align-items:center;gap:6px;color:var(--acc);font-weight:600">◀ {{ spokenOnce }}</span>
+                </div>
+                <span style="font-size:12px;color:var(--t2);line-height:1.4">{{ timingNote }}</span>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:4px;margin-top:auto">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">REMOTE</span>
+              <div style="display:grid;grid-template-columns:48px minmax(0,1fr) 48px minmax(0,1fr);row-gap:5px;font-size:13px;color:var(--t2)">
+                <sc-for list="{{ remote }}" as="r" hint-placeholder-count="8"><span style="font-family:var(--mono);color:var(--t1)">{{ r.k }}</span><span>{{ r.d }}</span></sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="flex:none;border-top:1px solid var(--line);padding:14px 22px;display:flex;gap:8px">
+          <button style="flex:1;height:48px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:16px;font-weight:var(--wb);cursor:pointer">★ Accept #14 as keeper…</button>
+          <button style="height:48px;padding:0 16px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Take another</button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Voice bar -->
+    <div style="height:60px;flex:none;border-top:1px solid var(--line);background:var(--bar);display:grid;grid-template-columns:240px minmax(0,1fr) auto;align-items:center;gap:20px;padding:0 16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;border-radius:50%;background:{{ voice.bg }};display:grid;place-items:center;color:{{ voice.c }};font-family:var(--mono);font-size:14px;font-weight:600">{{ voice.g }}</div>
+        <div style="display:flex;flex-direction:column"><span style="font-size:16px;font-weight:var(--wb);color:{{ voice.c }}">{{ voice.mode }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3)">{{ voice.sub }}</span></div>
+      </div>
+      <div style="display:flex;gap:10px;font-size:14px;min-width:0;align-items:baseline"><span style="font-family:var(--mono);font-size:11px;color:var(--t3)">COACH</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ voice.line }}</span></div>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--t3)">{{ voice.hint }}</span>
+    </div>
+
+    <!-- Popover: today's notes -->
+    <sc-if value="{{ notesOpen }}" hint-placeholder-val="{{ false }}">
+      <div role="dialog" aria-label="Today's notes" style="position:absolute;left:258px;bottom:170px;width:400px;background:var(--panel);border:1px solid var(--line3);border-radius:12px;box-shadow:var(--pop-shadow);padding:16px;display:flex;flex-direction:column;gap:10px;z-index:8">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:var(--wb)">Today's notes</span><span style="font-size:12px;color:var(--t3)">This shoot only · most specific</span></div>
+        <textarea autoFocus="{{ true }}" aria-label="Today's notes" value="Driveway outside the garage, no backdrop; overcast. Sun breaking through now, harder shadows." style="height:88px;resize:none;background:var(--inset);border:2px solid var(--acc);border-radius:8px;color:var(--t1);font-size:15px;line-height:1.45;padding:10px 12px"></textarea>
+        <span style="font-size:12px;color:var(--t3);line-height:1.4">Used from the next photo (#15). #14 keeps the advice it got. Shortcut keys are off while you type.</span>
+        <div style="display:flex;gap:8px"><button onClick="{{ closeNotes }}" style="height:36px;padding:0 14px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">Done <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘↵</span></button><button onClick="{{ closeNotes }}" style="height:36px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Cancel <span style="font-family:var(--mono);color:var(--t3)">Esc</span></button></div>
+      </div>
+    </sc-if>
+
+    <!-- Dialogs -->
+    <sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:var(--scrim);display:grid;place-items:center;z-index:9">
+        <div role="dialog" aria-modal="true" style="width:560px;background:var(--panel);border:1px solid var(--line3);border-radius:14px;box-shadow:var(--pop-shadow);padding:24px;display:flex;flex-direction:column;gap:16px">
+          <sc-if value="{{ dlgSave }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:22px;font-weight:var(--wb)">Save changes to Shoe review?</span><span style="font-size:14px;color:var(--t2);line-height:1.45">The template goes from <b style="font-family:var(--mono);color:var(--t1)">v3</b> to <b style="font-family:var(--mono);color:var(--t1)">v4</b>. Future shoots start with these changes. Past shoots, like Pegasus 41, keep their own copies.</span></div>
+            <div style="display:flex;flex-direction:column;border-top:1px solid var(--line)">
+              <sc-for list="{{ changes }}" as="c" hint-placeholder-count="2">
+                <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)"><span style="font-family:var(--mono);font-size:14px;font-weight:600;color:var(--unc);width:14px">{{ c.g }}</span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:var(--wm)">{{ c.title }}</span><span style="font-size:13px;color:var(--t2)">{{ c.detail }}</span></span></div>
+              </sc-for>
+            </div>
+            <span style="font-size:13px;color:var(--t3)">Not saved: today's notes (“Driveway, overcast…”) stay with this shoot.</span>
+            <div style="display:flex;gap:8px;align-items:center"><button style="height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">Save as v4</button><button onClick="{{ closeDlg }}" style="height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Cancel</button><button onClick="{{ toNew }}" style="margin-left:auto;border:0;background:transparent;color:var(--acc);font-size:14px;cursor:pointer">Save as new template instead</button></div>
+          </sc-if>
+          <sc-if value="{{ dlgNew }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:22px;font-weight:var(--wb)">Save as a new template</span><span style="font-size:14px;color:var(--t2);line-height:1.45">Shoe review v3 stays as it is. From now on this shoot is linked to the new template.</span></div>
+            <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Name</span><input value="Trail shoe review" style="height:44px;background:var(--inset);border:2px solid var(--acc);border-radius:8px;color:var(--t1);font-size:16px;padding:0 12px"></label>
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Project</span><div style="display:flex;gap:6px"><span style="padding:8px 12px;border-radius:8px;border:2px solid var(--acc);background:var(--raised);font-size:14px;font-weight:var(--wm)">Running blog</span><span style="padding:8px 12px;border-radius:8px;border:1px solid var(--line2);font-size:14px;color:var(--t2)">Gear for sale</span></div></div>
+            <div style="display:grid;grid-template-columns:90px minmax(0,1fr);row-gap:6px;font-size:13px;background:var(--card);border-radius:8px;padding:12px 14px">
+              <span style="color:var(--t3)">Shots</span><span>7: six from Shoe review v3 (one edited), plus Laces detail</span>
+              <span style="color:var(--t3)">Preferences</span><span>“Laces tidy, show the heel counter.” Edit later in Library.</span>
+              <span style="color:var(--t3)">Starts at</span><span style="font-family:var(--mono)">v1</span>
+            </div>
+            <div style="display:flex;gap:8px"><button style="height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">Create “Trail shoe review”</button><button onClick="{{ closeDlg }}" style="height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Cancel</button></div>
+          </sc-if>
+          <sc-if value="{{ dlgRelease }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:22px;font-weight:var(--wb)">Release the camera to OM Capture?</span><span style="font-size:14px;color:var(--t2);line-height:1.45">Only one app can control the E-M1 at a time.</span></div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.4">
+              <span style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--t3)">·</span>Live view stops here.</span>
+              <span style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--t3)">·</span>D-pad, A, X and Y stop controlling the camera. L, R and B keep working.</span>
+              <span style="display:flex;gap:10px"><span style="font-family:var(--mono);color:var(--t3)">·</span>Photos you take in OM Capture still arrive through the watch folder and get coached.</span>
+            </div>
+            <div style="display:flex;gap:8px"><button style="height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">Release camera</button><button onClick="{{ closeDlg }}" style="height:44px;padding:0 14px;border-radius:9px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Keep control <span style="font-family:var(--mono);color:var(--t3)">Esc</span></button><span style="font-size:12px;color:var(--t3);align-self:center;margin-left:6px">Take it back any time with ⌘K</span></div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </div>
+
+  <div style="max-width:1100px;width:100%;display:flex;flex-direction:column;gap:6px;padding:4px 4px 0">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">DESIGN NOTE</span>
+    <span style="font-size:14px;color:#b8b8b8;line-height:1.55;text-wrap:pretty">{{ note }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;group&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1c&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;,&quot;6&quot;],&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;daylight&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  static GROUPS = [
+    ['1c', '1c From template', ['In sync', '2 shots changed', 'Save to template', 'Save as new', 'Edit today’s notes']],
+    ['3', '3 Coach panel', ['Usable', 'Usable, but…', 'Needs retake', 'Speaking · details loading', 'Correction']],
+    ['4', '4 Audio settings', ['Popover', 'Hearing the speed', 'Sound over speech']],
+    ['5', '5 Mic & remote', ['All quiet', 'AirPods → Mac mic', 'Mic unavailable', 'Remote asleep']],
+    ['6', '6 Camera control', ['Live view', 'Changing aperture', 'End of range', 'Applied suggestion', 'Waiting for camera', 'Camera asleep', 'Release camera']]
+  ];
+  state = { g: null, v: 0, theme: null, wpm: 270, sound: 'Tink', vol: 45, pop: null, notes: null, dlg: null };
+  componentDidMount() {
+    this.fit = () => { const s = Math.min((window.innerWidth - 32) / 1440, (window.innerHeight - 110) / 900); this.setState({ scale: Math.max(0.3, Math.min(s, 1.2)) }); };
+    this.fit(); window.addEventListener('resize', this.fit);
+    this.onHash = () => { const h = location.hash.slice(1); if (Component.GROUPS.some(s => s[0] === h)) this.setState({ g: h, v: 0 }); };
+    this.onHash(); window.addEventListener('hashchange', this.onHash);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.fit); window.removeEventListener('hashchange', this.onHash); }
+  go(g, v = 0) { this.setState({ g, v, pop: null, notes: null, dlg: null }); history.replaceState(null, '', '#' + g); }
+  renderVals() {
+    const S = this.state, g = S.g ?? this.props.group ?? '3', v = S.v;
+    const def = Component.GROUPS.find(x => x[0] === g);
+    const theme = S.theme ?? this.props.theme ?? 'dark';
+    const ok = 'var(--ok)', ret = 'var(--ret)', unc = 'var(--unc)';
+
+    // verdict kind
+    const kind = g === '3' ? ['usable', 'but', 'retake', 'stream', 'correct'][v] : 'but';
+    const HD = {
+      usable: { g: '✓', word: 'Usable', c: ok, t: 'var(--ok-t)', sub: 'Photo #14 · no change needed · spoken' },
+      but: { g: '✓', word: 'Usable, but…', c: ok, t: 'var(--ok-t)', sub: 'Photo #14 · fine to keep · one change would help' },
+      retake: { g: '↺', word: 'Needs retake', c: ret, t: 'var(--ret-t)', sub: 'Photo #14 · verdict in 4.1 s · spoken' },
+      stream: { g: '✓', word: 'Usable, but…', c: ok, t: 'var(--ok-t)', sub: 'Photo #14 · speaking now · details arriving' },
+      correct: { g: '✓', word: 'Usable', c: ok, t: 'var(--ok-t)', sub: 'Photo #14 · keep settings as they are' }
+    };
+    const actBut = { label: 'ONE CHANGE AT THE CAMERA · OPTIONAL', text: 'Open to f/2.8. The hedge behind the heel is busy.', pref: 'Soft background, as you prefer', src: 'Project: Running blog', canApply: true, op: 1, strike: 'none' };
+    const ACT = {
+      but: actBut, stream: actBut,
+      retake: { label: 'DO THIS', text: 'Turn the shoe a quarter-turn so the pull tab faces the camera.', pref: 'Show the heel counter', src: 'Template: Shoe review', canApply: false, op: 1, strike: 'none' },
+      correct: { ...actBut, label: 'EARLIER ADVICE · WITHDRAWN', op: 0.5, strike: 'line-through', canApply: false }
+    };
+    const act = ACT[kind] || actBut;
+    const CR = (g2, text) => ({ text, g: g2, c: g2 === '✓' ? ok : g2 === '✕' ? ret : unc, bg: g2 === '✓' ? 'var(--ok-t)' : g2 === '✕' ? 'var(--ret-t)' : 'var(--unc-t)', word: g2 === '✓' ? 'Pass' : g2 === '✕' ? 'Fail' : 'Unsure' });
+    const crit = {
+      usable: [CR('✓', 'Heel counter edge sharp'), CR('✓', 'Pull tab fully visible'), CR('✓', 'Collar padding shows texture'), CR('✓', 'Background soft enough to separate')],
+      but: [CR('✓', 'Heel counter edge sharp'), CR('✓', 'Pull tab fully visible'), CR('✓', 'Collar padding shows texture'), CR('?', 'Background soft enough to separate')],
+      retake: [CR('✓', 'Heel counter edge sharp'), CR('✕', 'Pull tab fully visible'), CR('✓', 'Collar padding shows texture'), CR('?', 'Background soft enough to separate')],
+      correct: [CR('✓', 'Heel counter edge sharp'), CR('✓', 'Pull tab fully visible'), CR('✓', 'Collar padding shows texture'), CR('?', 'Background soft enough to separate')]
+    }[kind] || [];
+    const post = kind === 'retake' ? ['Warm the colour slightly (overcast is cool)'] : ['Slight cool cast from the overcast sky', '1° tilt'];
+    const critSummary = { usable: '4 pass', but: '3 pass · 1 unsure', retake: '2 pass · 1 unsure · 1 fail', correct: '3 pass · 1 unsure' }[kind] || '';
+
+    // shots rail
+    const diffOn = g === '1c' && v >= 1 && v <= 3;
+    const base = [['Hero · ¾ lateral', '★'], ['Medial side', '★'], ['Outsole & tread', '★'], ['Heel counter', '✓'], ['Upper mesh close-up', '○'], ['Profile · stack height', '○']];
+    const rows = diffOn ? [...base.slice(0, 6), ['Laces detail', '○']] : base;
+    const shots = rows.map(([name, st], i) => ({ n: i + 1, name, g: st, c: st === '✓' ? ok : st === '★' ? 'var(--t1)' : 'var(--t3)', bg: i === 3 ? 'var(--raised)' : 'transparent', w: i === 3 ? 'var(--wb)' : 'var(--wbody)', hasMark: diffOn && (i === 3 || i === 6), mark: i === 3 ? '◆ edited: +1 criterion' : '◆ added in this shoot' }));
+
+    // devices
+    const quiet = (gl, label, title) => ({ g: gl, label, title, c: 'var(--t3)', bd: 'transparent', bg: 'transparent', px: 6, w: 'var(--wbody)' });
+    const loud = (gl, label, title, col, tint) => ({ g: gl, label, title, c: 'var(--t1)', bd: col, bg: tint, px: 9, w: 'var(--wm)' });
+    let mic = quiet('◉', '', 'Mic: AirPods, held open'), rem = quiet('▣', '', 'Remote: connected'), cam = quiet('◎', '', 'Camera: connected');
+    if (g === '5' && v === 1) mic = loud('◉', 'Mac mic', 'AirPods are in the case. Using the Mac mic.', unc, 'var(--unc-t)');
+    if (g === '5' && v === 2) mic = loud('✕', 'No mic', 'No microphone available. Voice is off.', ret, 'var(--ret-t)');
+    if (g === '5' && v === 3) rem = loud('▣', 'Remote asleep', 'Remote asleep. Press any button to wake it.', unc, 'var(--unc-t)');
+    if (g === '6') {
+      if (v === 4) cam = loud('◎', 'Waiting for camera', 'No camera on USB', unc, 'var(--unc-t)');
+      else if (v === 5) cam = loud('◎', 'Camera asleep', 'Camera asleep', unc, 'var(--unc-t)');
+      else cam = { ...quiet('◎', 'You control', 'Aperture Ally controls the camera'), c: 'var(--t2)' };
+    }
+    const devs = [mic, rem, cam];
+
+    // toasts
+    let toasts = [];
+    const T = (gl, c, text, sub) => ({ g: gl, c, bd: c, text, sub });
+    if (g === '5' && v === 1) toasts = [T('◉', unc, 'Mic moved to the Mac', 'AirPods went in the case. Hold L to talk as before. It switches back when you wear them.')];
+    if (g === '5' && v === 2) toasts = [T('✕', ret, 'No microphone', 'Voice is off. Coaching and speech still work. Type changes in the panel.')];
+    if (g === '5' && v === 3) toasts = [T('▣', unc, 'Remote is asleep', 'Press any button to wake it. Space still works as talk.')];
+    if (g === '6' && v === 3) toasts = [T('✓', ok, 'Applied the coach’s suggestion: f/4 → f/2.8', 'Shutter moved 1/250 → 1/500 s (aperture priority). Spoken: “f two point eight, applied.”')];
+
+    // camera
+    const STOPS = ['1.8', '2', '2.2', '2.5', '2.8', '3.2', '3.5', '4', '4.5', '5', '5.6', '6.3', '7.1', '8', '9', '10', '11', '13', '14', '16', '18', '20', '22'];
+    const camG = g === '6';
+    const ap = camG && v === 2 ? '1.8' : camG && (v === 1 || v === 3 || v === 6) ? '2.8' : '4';
+    const ai = STOPS.indexOf(ap);
+    const ticks = STOPS.map((s, i) => { const full = ['2', '2.8', '4', '5.6', '8', '11', '16', '22'].includes(s); const end = i === 0 || i === STOPS.length - 1; return { wd: i === ai ? 8 : 4, h: i === ai ? 26 : full ? 16 : 9, c: i === ai ? 'var(--acc)' : end ? 'var(--ovl-ink)' : 'color-mix(in oklch,var(--ovl-ink) 45%,transparent)' }; });
+    const showReadout = camG && (v === 1 || v === 2 || v === 3);
+    const ro = { label: v === 3 ? 'APERTURE · COACH’S SUGGESTION' : 'APERTURE', value: 'f/' + ap, ticks, min: 'f/1.8', max: 'f/22', status: v === 2 ? '▕ widest · end of range' : v === 3 ? '✓ applied' : '⅓ stop per press' };
+    const camOffline = camG && (v === 4 || v === 5);
+    const camOff = v === 4 ? { title: 'Waiting for the camera', sub: 'Plug in USB and switch the E-M1 on. Photos from OM Capture still arrive through the watch folder.', meta: 'Looking for a camera on USB · every 2 s' } : { title: 'Camera asleep', sub: 'Half-press the shutter to wake it. Remote camera buttons pause until then; L, R and B still work.', meta: 'Went to sleep 14:41 · camera auto power-off 5 min' };
+    const isLive = camG && !camOffline;
+    const shut = v === 3 ? '1/500' : ap === '2.8' ? '1/500' : ap === '1.8' ? '1/1250' : '1/250';
+    const camVals = [['f/' + ap, true], [shut, false], ['ISO 200', false], ['±0.0', false], ['S-AF', false]].map(([vv, hl]) => ({ v: vv, c: hl && showReadout ? 'var(--acc)' : 'var(--ovl-ink)', w: hl && showReadout ? 700 : 400 }));
+    const camGrid = [['Aperture', 'f/' + ap, '↑ ↓'], ['Exposure comp.', '±0.0', '← →'], ['Shutter', shut, 'auto'], ['ISO', '200', 'voice'], ['Focus', 'S-AF', 'voice'], ['Mode', 'A', '—']].map(([k, vv, key], i) => ({ k, v: vv, key, bg: i === 0 && showReadout ? 'var(--acc-t)' : 'var(--panel)' }));
+    const conn = camOffline ? { state: v === 4 ? 'Waiting for camera' : 'Camera asleep', sub: v === 4 ? 'No E-M1 found on USB' : 'Half-press the shutter to wake', c: unc, bd: unc, btn: 'Use OM Capture' }
+      : { state: 'Connected · you control it', sub: 'E-M1 II · USB · 15 fps', c: ok, bd: 'var(--line2)', btn: 'Release camera' };
+    const sug = v === 3 ? { label: 'COACH’S SUGGESTION · APPLIED', text: 'f/2.8 is set. Take the shot with A.', bd: 'var(--line2)', pending: false } : { label: 'COACH’S SUGGESTION FOR #14', text: 'Open to f/2.8 for a softer background.', bd: 'var(--acc)', pending: true };
+    const presses = v === 2 ? [['·', 14, 'var(--t2)'], ['·', 14, 'var(--t2)'], ['·', 14, 'var(--t2)'], ['▕', 22, 'var(--ret)'], ['–', 6, 'var(--line3)']].map(([l, h, c]) => ({ l: l === '▕' ? 'end' : l === '–' ? 'no-op' : 'tick', h, c }))
+      : [14, 14, 14, 14].map(h => ({ l: 'tick', h, c: 'var(--t2)' }));
+    const remote = [['L', 'Hold to talk'], ['A', 'Shutter'], ['R', 'Pause coaching'], ['X', 'Read settings'], ['B', 'Cancel'], ['Y', 'Apply suggestion'], ['↑ ↓', 'Aperture ⅓'], ['← →', 'Exp. comp. ⅓']].map(([k, d]) => ({ k, d }));
+
+    // voice
+    const VO = {
+      usable: ['Speaking', '◀', 'var(--acc)', 'var(--acc-t)', 'S stops · R repeats', '“Usable. Nothing to change — on to the mesh close-up.”'],
+      but: ['Ready', '●', 'var(--t2)', 'var(--raised)', 'hold L to talk', '“Usable, but the background is busy: open to f/2.8 for the soft background you prefer.”'],
+      retake: ['Ready', '●', 'var(--t2)', 'var(--raised)', 'hold L to talk', '“Needs retake. Turn the shoe so the pull tab faces the camera.”'],
+      stream: ['Speaking', '◀', 'var(--acc)', 'var(--acc-t)', 'started at 1.3 s', '“Usable, but the background is busy: open to f/2.8 for the soft background you prefer.”'],
+      correct: ['Speaking', '◀', 'var(--acc)', 'var(--acc-t)', 'correction · interrupts nothing', '“Correction: keep f/4. At f/2.8 the heel goes soft.”']
+    };
+    let vo = VO[kind];
+    if (g === '5' && v === 2) vo = ['No mic', '✕', ret, 'var(--ret-t)', 'voice off · type instead', vo[5]];
+    if (g === '5' && v === 1) vo = ['Ready', '●', 'var(--t2)', 'var(--raised)', 'Mac mic · hold L', vo[5]];
+    if (camG && (v === 1 || v === 2)) vo = ['Speaking', '◀', 'var(--acc)', 'var(--acc-t)', 'once, 0.3 s after last press', v === 2 ? '“f one point eight — widest.”' : '“f two point eight.”'];
+    if (camG && v === 3) vo = ['Speaking', '◀', 'var(--acc)', 'var(--acc-t)', 'after Y', '“f two point eight, applied.”'];
+    if (g === '4' && v > 0) vo = ['Sample', '◀', 'var(--acc)', 'var(--acc-t)', v === 1 ? 'at ' + S.wpm + ' wpm' : 'sound over speech', '“Usable, but the background is busy: open to f/2.8.”'];
+    const voice = { mode: vo[0], g: vo[1], c: vo[2], bg: vo[3], sub: vo[4], line: vo[5], hint: g === '5' && v === 3 ? 'Space = talk while remote sleeps' : 'L talk · R pause · B cancel' };
+
+    const popOpen = S.pop ?? (g === '4');
+    const notesOpen = S.notes ?? (g === '1c' && v === 4);
+    const dlg = S.dlg ?? (g === '1c' && v === 2 ? 'save' : g === '1c' && v === 3 ? 'new' : camG && v === 6 ? 'release' : null);
+    const speedX = (Math.round(S.wpm / 180 * 20) / 20).toFixed(2).replace(/0$/, '');
+    const sounds = ['None', 'Tink', 'Pop', 'Glass', 'Morse', 'Purr'].map(label => { const on = S.sound === label; return { label, on, bd: on ? 'var(--acc)' : 'var(--line2)', bg: on ? 'var(--acc-t)' : 'transparent', fg: on ? 'var(--t1)' : 'var(--t2)', pick: () => this.setState({ sound: label }) }; });
+    const playingSp = g === '4' && v === 1, playingOv = g === '4' && v === 2;
+
+    const NOTES = {
+      '1c': ['The origin is shown quietly under the shot list header: “from Running blog › Shoe review v3”. Today’s notes sit above Coverage, visible but out of the way. Edit them with N or the Edit link.', 'Once the shoot’s list differs from its template, a single amber chip appears: “2 shots changed · Save…”. Changed shots are marked in the list. Nothing is saved automatically, and the chip never interrupts.', 'Save to template spells out the version bump (v3 → v4), each change, what is not saved (today’s notes) and that past shoots are unaffected. Confirming is an explicit button.', 'Save as new template: name it, pick the project, and see what it includes. The original stays untouched, and the shoot re-links to the new template (for example, tights → “Hat”).', 'Today’s notes are editable mid-shoot from a small popover. Focus goes to the field only when opened deliberately (N or click); shortcut keys are off while typing. Changes apply from the next photo.'][v],
+      '3': ['“Usable” with no change needed has no action block. It just says “Keep it” and names the next shot, so Drew can move on without reading.', '“Usable, but…” uses the same green ✓ as Usable, because the photo is fine to keep. The one camera-side change sits in an optional block, credits the preference it follows, and can be applied with Y. Fixable-in-post notes are a separate low-emphasis list and never compete with the action.', 'Needs retake keeps its orange ↺ and a “DO THIS” action. The difference from “Usable, but…” is colour, glyph, the word, and whether the action is labelled optional.', 'Streaming: the verdict and spoken sentence render as soon as they arrive (about 1.3 s) and are never moved again. Criteria and post notes fill in below from skeletons, so the glance text stays in place.', 'Correction (rare): when the validated result differs from what was already said, an amber box appears above the verdict and is spoken, starting with “Correction:”. The old advice stays visible but struck through, so Drew knows what changed.'][v],
+      '4': ['Audio lives in the Coaching popover (⌘,). Speed shows words per minute and a podcast-style multiplier (180 wpm = 1×, so Drew’s 270 = 1.5×). Sound choice and volume sit under it. Everything saves per person and applies immediately.', '“Hear the speed” speaks a real verdict at the chosen rate. Dragging the slider while it plays changes it live.', '“Hear it over speech” plays the received sound on top of a spoken sentence, which is how it overlaps in a real shoot.'][v],
+      '5': ['When everything is fine, the mic, remote and camera are three small grey glyphs with tooltips. No words, no colour.', 'On a change, the affected glyph grows into a labelled chip in amber and a toast explains it once. The AirPods→Mac fallback is automatic; when they come back the chip shrinks back to a glyph after 5 s.', 'When something is wrong (no mic at all), the chip turns orange with ✕, and the voice bar says “No mic”. Coaching continues.', 'Remote asleep: amber chip plus a toast that says what wakes it, and a reminder that Space still works. Details live in Diagnostics.'][v],
+      '6': ['Live view (~15 fps) fills the stage with the current settings along its bottom edge. The panel switches to camera controls, each labelled with its remote button. Connection state and Release camera (⌘K) sit at the top.', 'Rapid presses: each press gives a short tick and moves the value ⅓ stop. The large readout updates instantly and fades 1.5 s after the last press. The value is spoken once, 0.3 s after the last press. A new press cancels pending speech, so it never queues up or arrives late.', 'End of range: a lower “tock” plays instead of a tick, the end bar is marked, and further presses do nothing and aren’t spoken.', 'Apply the coach’s suggestion with one press (Y) or by saying “apply it”. The readout shows the change and a toast states any side effects, like the shutter moving in aperture priority.', 'Waiting: the stage says what to do. Tethered photos still flow through the watch folder, so coaching isn’t blocked.', 'Camera asleep: amber state. Remote camera buttons pause; talk, pause and cancel still work.', 'Releasing the camera asks first and lists exactly what stops and what keeps working.'][v]
+    };
+
+    const nav = ['Shoot', 'Coverage', 'Shot list', 'Setup', 'Sessions', 'Library', 'Diagnostics'].map((label, i) => ({ label, bg: i === 0 ? 'var(--raised)' : 'transparent', fg: i === 0 ? 'var(--t1)' : 'var(--t2)', w: i === 0 ? 'var(--wm)' : 'var(--wbody)' }));
+    const sc = S.scale ?? 1;
+    return {
+      scale: sc, boxW: Math.round(1440 * sc), boxH: Math.round(900 * sc), theme, themeLabel: theme === 'dark' ? 'Studio' : 'Daylight',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'daylight' : 'dark' }),
+      sunBg: theme === 'daylight' ? 'var(--pri)' : 'transparent', sunFg: theme === 'daylight' ? 'var(--pri-ink)' : 'var(--t2)',
+      groupTabs: Component.GROUPS.map(([id, label]) => ({ label, go: () => this.go(id), bg: id === g ? '#ececec' : '#1c1c1c', fg: id === g ? '#141414' : '#b8b8b8' })),
+      varTabs: def[2].map((label, i) => ({ label, go: () => this.go(g, i), bg: i === v ? '#ececec' : '#1c1c1c', fg: i === v ? '#141414' : '#b8b8b8' })),
+      note: NOTES[g], nav, devs, toasts,
+      popOpen, togglePop: () => this.setState({ pop: !popOpen }),
+      wpm: S.wpm, speedX, wpmText: S.wpm + ' words per minute, about ' + speedX + ' times', onWpm: e => this.setState({ wpm: +e.target.value }),
+      vol: S.vol, onVol: e => this.setState({ vol: +e.target.value }), sounds,
+      spLabel: playingSp ? '■ Stop · speaking at ' + speedX + '×' : '▶ Hear the speed', spBd: playingSp ? 'var(--acc)' : 'var(--line3)', spBg: playingSp ? 'var(--acc-t)' : 'transparent', playSpeed: () => this.go('4', playingSp ? 0 : 1),
+      ovLabel: playingOv ? '■ Stop · ' + S.sound + ' over speech' : '▶ Hear it over speech', ovBd: playingOv ? 'var(--acc)' : 'var(--line3)', ovBg: playingOv ? 'var(--acc-t)' : 'transparent', playOver: () => this.go('4', playingOv ? 0 : 2),
+      diff: diffOn, openSave: () => this.setState({ dlg: 'save' }), shots, shotCount: rows.length,
+      notesText: notesOpen || g === '1c' && v === 4 ? 'Driveway outside the garage, no backdrop; overcast.' : 'Driveway outside the garage, no backdrop; overcast.',
+      notesOpen, openNotes: () => this.setState({ notes: true }), closeNotes: () => this.setState({ notes: false }),
+      dialogOpen: !!dlg, dlgSave: dlg === 'save', dlgNew: dlg === 'new', dlgRelease: dlg === 'release',
+      closeDlg: () => this.setState({ dlg: false }), toNew: () => this.setState({ dlg: 'new' }), askRelease: () => this.setState({ dlg: 'release' }),
+      changes: [{ g: '~', title: '4 · Heel counter', detail: 'Criterion added: “Pull tab straight, not folded”' }, { g: '+', title: '7 · Laces detail', detail: 'New shot · 3 criteria · top-down, laces fill the frame' }],
+      isVerdict: !camG, isCamPanel: camG, hd: HD[kind], isCorrection: kind === 'correct',
+      hasAction: kind !== 'usable', noChange: kind === 'usable', act, streaming: kind === 'stream', notStreaming: kind !== 'stream',
+      skel: ['Heel counter edge sharp', 'Pull tab fully visible', 'Collar padding shows texture', 'Background soft enough to separate'],
+      criteria: crit, critSummary, post,
+      showFrame: !camOffline, camOffline, camOff, isLive, camVals, showReadout, hideReadout: !showReadout, ro,
+      frameLabel: isLive ? 'LIVE VIEW · heel counter · 15 fps' : 'tethered frame #14\nPegasus 42 · heel counter · 4:3',
+      frameTag: isLive ? 'LIVE · 15 fps' : '#14 · P9280014.JPG · 14:36:12',
+      camGrid, camOp: camOffline ? 0.45 : 1, conn, sug, showSuggest: !camOffline, showTiming: camG && (v === 1 || v === 2), presses,
+      spokenOnce: v === 2 ? '“f one point eight — widest”' : '“f two point eight”',
+      timingNote: v === 2 ? 'Three ticks, then a lower “tock” at f/1.8. The extra press does nothing and isn’t spoken.' : 'Four ticks in 0.6 s, then one spoken value. A new press cancels speech that hasn’t started yet.',
+      remote, voice
+    };
+  }
+}
+</script>
+</body>
+</html>

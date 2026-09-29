@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#0c0c0c;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button,input,textarea{font-family:inherit}
+textarea::placeholder,input::placeholder{color:var(--t3)}
+:focus-visible{outline:2px solid var(--acc,oklch(0.80 0.10 230));outline-offset:2px}
+:root{--mono:'IBM Plex Mono',monospace;--mock:oklch(0.72 0.17 330)}
+[data-theme="dark"]{--stage:#101010;--app:#161616;--panel:#1a1a1a;--bar:#121212;--raised:#262626;--card:#222;--line:#262626;--line2:#333;--line3:#3a3a3a;--t1:#ececec;--t2:#b8b8b8;--t3:#8c8c8c;--inset:#141414;--ph1:#262626;--ph2:#2b2b2b;--acc:oklch(0.80 0.10 230);--acc-ink:#0f1a20;--ret:oklch(0.76 0.13 35);--ok:oklch(0.79 0.13 150);--unc:oklch(0.84 0.12 90);--acc-t:oklch(0.30 0.05 230);--ret-t:oklch(0.30 0.06 35);--ok-t:oklch(0.30 0.06 150);--unc-t:oklch(0.30 0.05 90);--pri:#e8e8e8;--pri-ink:#141414;--chip:#0e0e0e;--wm:500;--wb:600;--wbody:400;--pop-shadow:0 20px 50px rgba(0,0,0,.5);color:var(--t1)}
+[data-theme="daylight"]{--stage:#d4d4d4;--app:#f2f2f2;--panel:#ffffff;--bar:#ffffff;--raised:#e2e2e2;--card:#eeeeee;--line:#cfcfcf;--line2:#b0b0b0;--line3:#808080;--t1:#0a0a0a;--t2:#242424;--t3:#3d3d3d;--inset:#ffffff;--ph1:#b6b6b6;--ph2:#c0c0c0;--acc:oklch(0.47 0.16 245);--acc-ink:#ffffff;--ret:oklch(0.50 0.18 30);--ok:oklch(0.46 0.14 150);--unc:oklch(0.50 0.12 70);--acc-t:oklch(0.93 0.04 245);--ret-t:oklch(0.93 0.05 30);--ok-t:oklch(0.93 0.05 150);--unc-t:oklch(0.93 0.06 85);--pri:#0a0a0a;--pri-ink:#ffffff;--chip:#ffffff;--wm:600;--wb:700;--wbody:500;--pop-shadow:0 12px 40px rgba(0,0,0,.25);color:var(--t1)}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 16px 40px;gap:10px">
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;font-size:12px;max-width:1440px">
+    <span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;letter-spacing:.06em;margin-right:6px">LIBRARY &amp; DESK SCREENS</span>
+    <sc-for list="{{ screenTabs }}" as="t" hint-placeholder-count="7">
+      <button onClick="{{ t.go }}" style="border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+    <a href="Aperture%20Ally%20Shoot%20v2.dc.html" style="font-size:12px;margin-left:8px">At-camera screens →</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;font-size:12px">
+    <span style="font-family:'IBM Plex Mono',monospace;color:#8c8c8c;letter-spacing:.06em;margin-right:6px">STATE</span>
+    <sc-for list="{{ varTabs }}" as="t" hint-placeholder-count="3">
+      <button onClick="{{ t.go }}" style="border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+    <span style="width:1px;height:16px;background:#333;margin:0 6px"></span>
+    <button onClick="{{ toggleTheme }}" style="border:1px solid #333;background:#1c1c1c;color:#ececec;padding:4px 9px;border-radius:6px;font-size:12px;cursor:pointer">☀ Theme: {{ themeLabel }}</button>
+  </div>
+
+  <div style="width:{{ boxW }}px;height:{{ boxH }}px;position:relative;flex:none">
+  <div data-theme="{{ theme }}" style="width:1440px;height:900px;transform:scale({{ scale }});transform-origin:0 0;position:absolute;left:0;top:0;background:var(--app);font-weight:var(--wbody);display:flex;flex-direction:column;overflow:hidden;border-radius:10px;box-shadow:0 0 0 1px #2a2a2a,0 30px 80px rgba(0,0,0,.5)">
+
+    <div style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bar);white-space:nowrap;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--t1);display:grid;place-items:center"><div style="width:6px;height:6px;border-radius:50%;background:var(--t1)"></div></div>
+        <span style="font-size:14px;font-weight:var(--wb)">Aperture Ally</span>
+      </div>
+      <div style="width:1px;height:20px;background:var(--line2)"></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:14px;font-weight:var(--wm)">Pegasus 42</span><span style="font-size:12px;color:var(--t3)">Running blog › Shoe review · v3</span></div>
+      <nav style="display:flex;gap:0">
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+          <span title="{{ n.key }}" style="padding:6px 8px;border-radius:6px;background:{{ n.bg }};color:{{ n.fg }};font-size:13px;font-weight:{{ n.w }};display:flex;gap:6px;align-items:baseline">{{ n.label }}<sc-if value="{{ n.isNew }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--acc)">NEW</span></sc-if></span>
+        </sc-for>
+      </nav>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <span style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--t3)" title="Mic: AirPods · Remote connected · Camera connected"><span>◉ mic</span><span>▣ remote</span><span>◎ camera</span></span>
+        <span style="font-size:12px;padding:4px 10px;border-radius:6px;background:var(--raised);font-weight:var(--wb)">● Coaching on <span style="font-family:var(--mono);font-weight:400;color:var(--t2);margin-left:6px">14 / 40 · ≈ $0.41</span></span>
+      </div>
+    </div>
+
+    <!-- LIBRARY -->
+    <sc-if value="{{ isLib }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:272px minmax(0,1fr)">
+      <aside style="background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0">
+        <div style="padding:18px 16px 10px;display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:20px;font-weight:var(--wb)">Library</span><span style="font-family:var(--mono);font-size:11px;color:var(--t3)">⌘6</span></div>
+        <div style="flex:1;overflow:auto;padding:0 8px;display:flex;flex-direction:column;gap:2px">
+          <button onClick="{{ goDefaults }}" style="display:flex;flex-direction:column;gap:2px;padding:9px 10px;border:0;border-radius:8px;background:{{ railDefaultsBg }};color:var(--t1);text-align:left;cursor:pointer">
+            <span style="font-size:14px;font-weight:var(--wm)">Your defaults</span>
+            <span style="font-size:12px;color:var(--t3)">{{ defaultsSub }}</span>
+          </button>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 10px 6px"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">PROJECTS</span><button style="border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0">+ New project</button></div>
+          <sc-if value="{{ noProjects }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--t3);padding:4px 10px">No projects yet</span></sc-if>
+          <sc-for list="{{ railProjects }}" as="p" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <button onClick="{{ p.go }}" style="display:flex;align-items:center;gap:8px;padding:9px 10px;border:0;border-radius:8px;background:{{ p.bg }};color:var(--t1);text-align:left;cursor:pointer">
+                <span style="font-family:var(--mono);font-size:10px;color:var(--t3);width:10px">{{ p.caret }}</span>
+                <span style="flex:1;font-size:14px;font-weight:var(--wm)">{{ p.name }}</span>
+                <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">{{ p.count }}</span>
+              </button>
+              <sc-for list="{{ p.templates }}" as="t" hint-placeholder-count="0">
+                <button onClick="{{ t.go }}" style="display:flex;align-items:center;gap:8px;padding:7px 10px 7px 28px;border:0;border-radius:8px;background:{{ t.bg }};color:var(--t1);text-align:left;cursor:pointer">
+                  <span style="flex:1;font-size:13px">{{ t.name }}</span>
+                  <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">{{ t.shots }} shots</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{ hasProjects }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:var(--t3);padding:10px 10px">Archived (1) · Race photos 2025</span></sc-if>
+        </div>
+        <div style="padding:12px;border-top:1px solid var(--line)"><button style="width:100%;height:40px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">New shoot… <span style="font-family:var(--mono);color:var(--t3)">⌘N</span></button></div>
+      </aside>
+
+      <main style="min-width:0;overflow:auto;background:var(--app)">
+
+        <!-- defaults -->
+        <sc-if value="{{ isDefaults }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:760px;padding:36px 48px;display:flex;flex-direction:column;gap:22px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">APPLIES TO EVERYTHING YOU SHOOT</span>
+              <span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Your defaults</span>
+              <span style="font-size:15px;color:var(--t2);line-height:1.5;text-wrap:pretty">Your taste across all your work. The coach reads it on every photo, but project, template and today's notes win when they disagree.</span>
+            </div>
+            <sc-if value="{{ defaultsFilled }}" hint-placeholder-val="{{ true }}">
+              <textarea aria-label="Your defaults" style="height:132px;resize:none;background:var(--inset);border:1px solid var(--line2);border-radius:10px;color:var(--t1);font-size:17px;line-height:1.5;padding:14px 16px">I edit in Lightroom, so small colour casts and a slight tilt are fine. Keep spoken advice short.</textarea>
+            </sc-if>
+            <sc-if value="{{ defaultsEmpty }}" hint-placeholder-val="{{ false }}">
+              <textarea aria-label="Your defaults" placeholder="Write anything that's true of how you like to work…" style="height:132px;resize:none;background:var(--inset);border:1px dashed var(--line3);border-radius:10px;color:var(--t1);font-size:17px;line-height:1.5;padding:14px 16px"></textarea>
+              <div style="display:flex;flex-direction:column;gap:12px;padding:4px 2px">
+                <span style="font-size:15px;font-weight:var(--wm)">Empty is fine. Most people leave this blank for weeks.</span>
+                <span style="font-size:14px;color:var(--t2);line-height:1.5">Add a line when you notice yourself telling the coach the same thing on every shoot, for example:</span>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--t2)">
+                  <span>· “I edit in Lightroom.”</span><span>· “I usually shoot handheld.”</span><span>· “Skip the theory, just tell me what to move.”</span>
+                </div>
+              </div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:auto 1fr;column-gap:14px;row-gap:8px;font-size:13px;color:var(--t2);border-top:1px solid var(--line);padding-top:18px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);grid-column:1 / -1;margin-bottom:2px">WHAT GOES WHERE · MOST SPECIFIC WINS</span>
+              <span style="font-family:var(--mono);color:var(--t1)">Today</span><span>Light and place for one shoot. Set in New shoot: “Overcast, no backdrop.”</span>
+              <span style="font-family:var(--mono);color:var(--t1)">Template</span><span>One product type: “Laces tidy, show the heel counter.”</span>
+              <span style="font-family:var(--mono);color:var(--t1)">Project</span><span>The look of a body of work: “Soft, blurred backgrounds; warm light.”</span>
+              <span style="font-family:var(--mono);color:var(--t1)">Defaults</span><span>You, everywhere. This page.</span>
+            </div>
+            <sc-if value="{{ defaultsSaved }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;color:var(--t3)"><span style="font-family:var(--mono);color:var(--ok)">✓</span> Saved · used from the next photo</span></sc-if>
+            <sc-if value="{{ defaultsError }}" hint-placeholder-val="{{ false }}">
+              <div role="alert" style="display:flex;gap:12px;align-items:center;border:1px solid var(--ret);border-radius:10px;padding:12px 14px">
+                <span style="font-family:var(--mono);color:var(--ret);font-weight:600">✕</span>
+                <span style="flex:1;font-size:14px;line-height:1.4">Couldn't save. The library file is locked by another copy of the app. Your text stays here, and it will retry in 10 s.</span>
+                <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Retry now</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- no projects -->
+        <sc-if value="{{ isLibEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%;display:grid;place-items:center;padding:40px">
+            <div style="max-width:560px;display:flex;flex-direction:column;gap:18px">
+              <span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em;line-height:1.2">Define a look once, reuse it every shoot</span>
+              <span style="font-size:16px;color:var(--t2);line-height:1.5">A <b style="color:var(--t1);font-weight:var(--wm)">project</b> is a body of work with one look, like your running blog. Inside it, a <b style="color:var(--t1);font-weight:var(--wm)">template</b> holds the shot list for one kind of product, like shoes. Each new shoot starts from a template.</span>
+              <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Project name</span><input placeholder="Running blog" style="height:44px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:16px;padding:0 12px"></label>
+              <div style="display:flex;gap:8px;align-items:center"><button style="height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">Create project</button><span style="font-size:13px;color:var(--t3)">Your 6 past shoots stay in Sessions under “Before projects”.</span></div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- project -->
+        <sc-if value="{{ isProject }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1040px;padding:32px 44px;display:flex;flex-direction:column;gap:26px">
+            <div style="display:flex;align-items:flex-end;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">PROJECT</span>
+                <span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">Running blog</span>
+                <span style="font-size:13px;color:var(--t3)">4 templates · 16 shoots · last shoot today</span>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:8px">
+                <button style="height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Rename</button>
+                <button onClick="{{ askArchive }}" style="height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Archive…</button>
+                <button style="height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:14px;font-weight:var(--wb);cursor:pointer">New shoot <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘N</span></button>
+              </div>
+            </div>
+            <sc-if value="{{ archiveAsk }}" hint-placeholder-val="{{ false }}">
+              <div role="alertdialog" style="border:1px solid var(--unc);border-radius:10px;padding:14px 16px;display:flex;gap:14px;align-items:center">
+                <span style="font-family:var(--mono);color:var(--unc);font-weight:600">!</span>
+                <span style="flex:1;font-size:14px;line-height:1.45">Archive <b style="font-weight:var(--wb)">Running blog</b>? Its 4 templates stop appearing in New shoot. The 16 past shoots stay in Sessions, and you can restore it from Archived.</span>
+                <button style="height:36px;padding:0 14px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">Archive project</button>
+                <button onClick="{{ cancelArchive }}" style="height:36px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Cancel</button>
+              </div>
+            </sc-if>
+            <label style="display:flex;flex-direction:column;gap:8px">
+              <span style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:var(--wm)">The look</span><span style="font-size:12px;color:var(--t3)">Used for every template in this project</span></span>
+              <textarea style="height:84px;resize:none;background:var(--inset);border:1px solid var(--line2);border-radius:10px;color:var(--t1);font-size:16px;line-height:1.5;padding:12px 14px">Soft, blurred backgrounds that separate the product; warm light.</textarea>
+            </label>
+            <div style="display:flex;flex-direction:column;gap:10px;position:relative">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:15px;font-weight:var(--wm)">Templates</span>
+                <button onClick="{{ toggleMenu }}" aria-expanded="{{ menuOpen }}" style="height:36px;padding:0 12px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">New template <span style="font-size:10px;color:var(--t3)">▾</span></button>
+              </div>
+              <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;right:0;top:44px;width:380px;background:var(--panel);border:1px solid var(--line3);border-radius:12px;box-shadow:var(--pop-shadow);padding:8px;z-index:3;display:flex;flex-direction:column;gap:2px">
+                  <button style="display:flex;flex-direction:column;gap:2px;padding:10px;border:0;border-radius:8px;background:transparent;color:var(--t1);text-align:left;cursor:pointer"><span style="font-size:14px;font-weight:var(--wm)">Blank template</span><span style="font-size:12px;color:var(--t3)">Start with no shots</span></button>
+                  <div style="height:1px;background:var(--line);margin:4px 0"></div>
+                  <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);padding:6px 10px">DUPLICATE · THE USUAL WAY</span>
+                  <sc-for list="{{ dupList }}" as="d" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:{{ d.bg }}"><span style="flex:1;font-size:14px">{{ d.name }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--t3)">{{ d.shots }} shots · {{ d.ver }}</span></div>
+                  </sc-for>
+                  <div style="border-top:1px solid var(--line);margin-top:4px;padding:10px;display:flex;flex-direction:column;gap:8px">
+                    <span style="font-size:13px;color:var(--t2)">Copy <b style="color:var(--t1);font-weight:var(--wm)">Apparel</b> (8 shots and its preferences) as:</span>
+                    <input value="Shorts" aria-label="New template name" style="height:38px;background:var(--inset);border:2px solid var(--acc);border-radius:8px;color:var(--t1);font-size:15px;padding:0 10px">
+                    <div style="display:flex;gap:6px"><button style="height:34px;padding:0 14px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">Create Shorts <span style="font-family:var(--mono);font-weight:400;opacity:.7">↵</span></button><span style="font-size:12px;color:var(--t3);align-self:center">Starts at v1. Apparel is unchanged.</span></div>
+                  </div>
+                </div>
+              </sc-if>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px 70px 110px 80px 100px;column-gap:14px;padding:0 12px 6px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)"><span>TEMPLATE</span><span>SHOTS</span><span>VERSION</span><span>LAST USED</span><span>SHOOTS</span><span></span></div>
+              <sc-for list="{{ tplRows }}" as="t" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 80px 70px 110px 80px 100px;column-gap:14px;align-items:center;padding:11px 12px;border-radius:8px;border-bottom:1px solid var(--line)">
+                  <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:var(--wm)">{{ t.name }}</span><span style="font-size:12px;color:var(--t3)">{{ t.note }}</span></span>
+                  <span style="font-family:var(--mono);font-size:13px">{{ t.shots }}</span>
+                  <span style="font-family:var(--mono);font-size:13px">{{ t.ver }}</span>
+                  <span style="font-size:13px;color:var(--t2)">{{ t.last }}</span>
+                  <span style="font-family:var(--mono);font-size:13px">{{ t.count }}</span>
+                  <span style="display:flex;gap:10px;justify-content:flex-end;font-size:13px"><button onClick="{{ t.open }}" style="border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0">Edit</button><button style="border:0;background:transparent;color:var(--t2);font-size:13px;cursor:pointer;padding:0">Duplicate</button></span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- template -->
+        <sc-if value="{{ isTemplate }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:28px 40px 32px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;align-items:flex-end;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <span style="font-size:13px;color:var(--t3)"><button onClick="{{ goProject }}" style="border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0">Running blog</button> › template</span>
+                <div style="display:flex;align-items:baseline;gap:12px"><span style="font-size:32px;font-weight:var(--wb);letter-spacing:-.01em">{{ tplName }}</span><span style="font-family:var(--mono);font-size:13px;padding:2px 8px;border:1px solid var(--line3);border-radius:4px">{{ tplVer }}</span></div>
+                <span style="font-size:13px;color:var(--t3)">{{ tplSub }}</span>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:8px">
+                <button style="height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:14px;cursor:pointer">Duplicate</button>
+                <button style="height:40px;padding:0 16px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:14px;font-weight:var(--wb);cursor:pointer">New shoot from this <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘N</span></button>
+              </div>
+            </div>
+            <sc-if value="{{ tplLoading }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:360px minmax(0,1fr);gap:28px">
+                <div style="display:flex;flex-direction:column;gap:8px"><div style="height:70px;background:var(--raised);border-radius:8px"></div><div style="height:40px;background:var(--raised);border-radius:8px"></div><div style="height:40px;background:var(--raised);border-radius:8px;opacity:.7"></div><div style="height:40px;background:var(--raised);border-radius:8px;opacity:.5"></div></div>
+                <div style="display:flex;flex-direction:column;gap:10px"><div style="height:46px;width:60%;background:var(--raised);border-radius:8px"></div><div style="height:72px;background:var(--raised);border-radius:8px"></div><span style="font-size:13px;color:var(--t3)">Loading Shoe review…</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tplReady }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:380px minmax(0,1fr);gap:28px;align-items:start">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Preferences for this product type</span>
+                  <textarea placeholder="e.g. Laces tidy. Lateral side faces the camera." style="height:72px;resize:none;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;line-height:1.45;padding:10px 12px" value="{{ tplPrefs }}"></textarea></label>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span style="font-size:15px;font-weight:var(--wm)">Shot list</span><span style="font-size:12px;color:var(--t3)">Drag or ⌥↑ ⌥↓ to reorder</span></div>
+                <sc-if value="{{ tplEmpty }}" hint-placeholder-val="{{ false }}">
+                  <div style="border:1px dashed var(--line3);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:10px">
+                    <span style="font-size:15px;font-weight:var(--wm)">No shots yet</span>
+                    <span style="font-size:13px;color:var(--t2);line-height:1.5">List the photos you'd want every time you review this kind of product. Start with the hero; 4–8 shots is typical.</span>
+                    <div style="display:flex;gap:8px"><button style="height:36px;padding:0 14px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">+ Add first shot</button><button style="height:36px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Copy shots from…</button></div>
+                  </div>
+                </sc-if>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <sc-for list="{{ tplShots }}" as="s" hint-placeholder-count="6">
+                    <button onClick="{{ s.pick }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:0;border-radius:8px;background:{{ s.bg }};color:var(--t1);text-align:left;cursor:pointer">
+                      <span style="font-family:var(--mono);color:var(--t3);font-size:13px">⋮⋮</span>
+                      <span style="font-family:var(--mono);font-size:11px;color:var(--t3);width:14px">{{ s.n }}</span>
+                      <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:var(--wm)">{{ s.name }}</span><span style="font-size:12px;color:var(--t3)">{{ s.crit }} criteria · {{ s.framing }}</span></span>
+                    </button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ tplHasShots }}" hint-placeholder-val="{{ true }}"><button style="height:38px;border-radius:8px;border:1px dashed var(--line3);background:transparent;color:var(--t2);font-size:13px;cursor:pointer">+ Add shot</button></sc-if>
+              </div>
+              <sc-if value="{{ tplHasShots }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">
+                  <label style="display:flex;flex-direction:column;gap:6px;grid-column:1 / -1"><span style="font-size:13px;color:var(--t2)">Title</span><input value="{{ selShot.name }}" style="height:44px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:19px;font-weight:var(--wm);padding:0 12px"></label>
+                  <label style="display:flex;flex-direction:column;gap:6px;grid-column:1 / -1"><span style="font-size:13px;color:var(--t2)">Purpose — why the reader needs it</span><input value="{{ selShot.purpose }}" style="height:42px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;padding:0 12px"></label>
+                  <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Framing</span><input value="{{ selShot.framing }}" style="height:42px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;padding:0 12px"></label>
+                  <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--t2)">Must show</span>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;min-height:42px;align-items:center">
+                      <sc-for list="{{ selShot.must }}" as="m" hint-placeholder-count="3"><span style="font-size:13px;padding:4px 8px 4px 11px;border:1px solid var(--line3);border-radius:14px;display:flex;gap:6px">{{ m }} <span style="color:var(--t3)">×</span></span></sc-for>
+                      <span style="font-size:13px;padding:4px 10px;border:1px dashed var(--line3);border-radius:14px;color:var(--t3)">+ Add</span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:var(--t2)">Acceptance criteria</span><span style="font-size:12px;color:var(--t3)">{{ selShot.critCount }} of 2–6 · the coach checks each</span></div>
+                  <sc-for list="{{ selShot.criteria }}" as="c" hint-placeholder-count="4">
+                    <div style="display:flex;gap:10px;align-items:center"><span style="font-family:var(--mono);color:var(--t3);width:14px">{{ c.n }}</span><input value="{{ c.text }}" style="flex:1;height:40px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:14px;padding:0 12px"><sc-if value="{{ c.isNew }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--t3)">ADDED IN v3</span></sc-if></div>
+                  </sc-for>
+                  <button style="align-self:flex-start;border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:4px 0">+ Add criterion</button>
+                </div>
+                <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px">
+                  <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">VERSIONS</span>
+                  <sc-for list="{{ versions }}" as="v" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:34px 170px minmax(0,1fr);gap:10px;font-size:13px;align-items:baseline"><span style="font-family:var(--mono);font-weight:{{ v.w }}">{{ v.v }}</span><span style="color:var(--t2)">{{ v.when }}</span><span style="color:var(--t3)">{{ v.what }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </main>
+    </div>
+    </sc-if>
+
+    <!-- NEW SHOOT -->
+    <sc-if value="{{ isNew }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 440px">
+      <div style="overflow:auto;padding:26px 44px 28px;display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:28px;font-weight:var(--wb);letter-spacing:-.01em">New shoot</span><span style="font-size:13px;color:var(--t3)">⌘N from anywhere · Tab moves between steps · ⌘↵ starts</span></div>
+        <div style="display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:14px;row-gap:22px">
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t3);padding-top:2px">1</span>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:15px;font-weight:var(--wm)">Project</span>
+            <div style="display:flex;gap:8px">
+              <sc-for list="{{ nsProjects }}" as="p" hint-placeholder-count="2">
+                <button onClick="{{ p.pick }}" style="padding:10px 14px;border-radius:9px;border:{{ p.bw }}px solid {{ p.bd }};background:{{ p.bg }};color:var(--t1);text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:200px"><span style="font-size:15px;font-weight:var(--wm)">{{ p.name }}</span><span style="font-size:12px;color:var(--t3)">{{ p.sub }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t3);padding-top:2px">2</span>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:15px;font-weight:var(--wm)">Template</span>
+            <sc-if value="{{ nsNoTpl }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px dashed var(--line3);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px">
+                <span style="font-size:15px;font-weight:var(--wm)">Gear for sale has no templates yet</span>
+                <span style="font-size:13px;color:var(--t2);line-height:1.45">Start with a blank shot list and save it as a template at the end, or set one up in Library first.</span>
+                <div style="display:flex;gap:8px"><button style="height:36px;padding:0 14px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Blank shot list</button><button style="height:36px;padding:0 12px;border-radius:7px;border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer">Open Library ⌘6</button></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ nsHasTpl }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+              <sc-for list="{{ nsTemplates }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.pick }}" style="padding:10px 12px;border-radius:9px;border:{{ t.bw }}px solid {{ t.bd }};background:{{ t.bg }};color:var(--t1);text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px"><span style="font-size:14px;font-weight:var(--wm)">{{ t.name }}</span><span style="font-family:var(--mono);font-size:11px;color:var(--t3)">{{ t.shots }} shots · {{ t.ver }}</span></button>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3);margin-right:4px">SHOTS</span>
+              <sc-for list="{{ nsShots }}" as="s" hint-placeholder-count="6"><span style="font-size:12px;padding:3px 9px;border-radius:4px;background:var(--raised);color:var(--t2)"><span style="font-family:var(--mono);color:var(--t3)">{{ s.n }}</span> {{ s.name }}</span></sc-for>
+            </div>
+            </sc-if>
+          </div>
+
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t3);padding-top:2px">3</span>
+          <label style="display:flex;flex-direction:column;gap:8px;max-width:520px"><span style="font-size:15px;font-weight:var(--wm)">Product</span>
+            <input value="Pegasus 42" style="height:44px;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:16px;padding:0 12px">
+            <span style="font-size:12px;color:var(--t3)">Shoot name: <span style="color:var(--t2)">Pegasus 42 · 28 Sep</span> · folder <span style="font-family:var(--mono)">~/Pictures/Tether/pegasus-42</span></span>
+          </label>
+
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t3);padding-top:2px">4</span>
+          <div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:15px;font-weight:var(--wm)">Where</span>
+            <div style="display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:9px;padding:3px;gap:3px;max-width:520px">
+              <sc-for list="{{ nsWhere }}" as="o" hint-placeholder-count="2">
+                <button onClick="{{ o.pick }}" style="flex:1;height:48px;border:0;border-radius:7px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px"><span style="font-size:14px;font-weight:var(--wm)">{{ o.label }}</span><span style="font-size:11px;opacity:.8">{{ o.sub }}</span></button>
+              </sc-for>
+            </div>
+          </div>
+
+          <span style="font-family:var(--mono);font-size:13px;color:var(--t3);padding-top:2px">5</span>
+          <label style="display:flex;flex-direction:column;gap:8px;max-width:640px"><span style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:var(--wm)">Today's notes <span style="font-weight:var(--wbody);color:var(--t3);font-size:13px">optional</span></span><span style="font-size:12px;color:var(--t3)">Only this shoot · overrides everything above</span></span>
+            <textarea placeholder="Light, place, anything different today" style="height:64px;resize:none;background:var(--inset);border:1px solid var(--line2);border-radius:8px;color:var(--t1);font-size:15px;line-height:1.45;padding:10px 12px" value="{{ nsNotes }}"></textarea>
+          </label>
+        </div>
+        <sc-if value="{{ nsError }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="display:flex;gap:12px;align-items:center;border:1px solid var(--ret);border-radius:10px;padding:12px 14px;margin-left:42px">
+            <span style="font-family:var(--mono);color:var(--ret);font-weight:600">✕</span>
+            <span style="flex:1;font-size:14px;line-height:1.4">Couldn't create <span style="font-family:var(--mono)">~/Pictures/Tether/pegasus-42</span>. The Pictures folder isn't writable. Nothing was started.</span>
+            <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Choose folder…</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:14px;margin-left:42px;padding-top:6px;border-top:1px solid var(--line)">
+          <span style="font-size:13px;color:var(--t2);padding-top:12px">Coach: Claude · Teaching on · 40-call cap <button style="border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0;margin-left:6px">Change…</button></span>
+          <button style="margin-left:auto;margin-top:12px;height:48px;padding:0 22px;border-radius:9px;border:0;background:var(--pri);color:var(--pri-ink);font-size:15px;font-weight:var(--wb);cursor:pointer">{{ nsStart }} <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘↵</span></button>
+        </div>
+      </div>
+      <aside style="background:var(--panel);border-left:1px solid var(--line);padding:26px 26px;overflow:auto;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">WHAT THE COACH WILL FOLLOW</span><span style="font-size:13px;color:var(--t2)">Most specific first. When two disagree, the higher one wins.</span></div>
+        <sc-for list="{{ nsLevels }}" as="l" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:4px;padding:12px 0;border-top:1px solid var(--line)">
+            <span style="display:flex;justify-content:space-between"><span style="font-size:12px;font-weight:var(--wb)">{{ l.label }}</span><span style="font-size:12px;color:var(--t3)">{{ l.src }}</span></span>
+            <span style="font-size:15px;line-height:1.45">{{ l.text }}</span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ nsHidden }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--t3);border-top:1px solid var(--line);padding-top:10px">{{ nsHidden }}</span></sc-if>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:14px">
+          <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">SHOT LIST</span>
+          <span style="font-size:14px">{{ nsListLine }}</span>
+          <span style="font-size:12px;color:var(--t3);line-height:1.4">The shoot gets its own copy. Changes stay in the shoot until you save them back to the template.</span>
+        </div>
+      </aside>
+    </div>
+    </sc-if>
+
+    <!-- SESSIONS -->
+    <sc-if value="{{ isSessions }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:26px 36px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:28px;font-weight:var(--wb)">Sessions</span><span style="font-size:13px;color:var(--t3)">{{ sessCount }}</span>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="font-size:13px;color:var(--t2)">Group by</span>
+          <div style="display:flex;background:var(--inset);border:1px solid var(--line2);border-radius:7px;padding:2px;gap:2px"><span style="height:28px;padding:0 10px;border-radius:5px;background:var(--pri);color:var(--pri-ink);font-size:12px;font-weight:var(--wm);display:flex;align-items:center">Project › Template</span><span style="height:28px;padding:0 10px;border-radius:5px;color:var(--t2);font-size:12px;display:flex;align-items:center">Date</span></div>
+          <button style="height:34px;padding:0 14px;border-radius:8px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer;margin-left:6px">New shoot <span style="font-family:var(--mono);font-weight:400;opacity:.7">⌘N</span></button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <sc-for list="{{ sessFilters }}" as="f" hint-placeholder-count="5">
+          <button onClick="{{ f.pick }}" style="height:32px;padding:0 12px;border-radius:16px;border:1px solid {{ f.bd }};background:{{ f.bg }};color:{{ f.fg }};font-size:13px;cursor:pointer">{{ f.label }}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ sessLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px"><div style="height:18px;width:260px;background:var(--raised);border-radius:4px"></div><div style="height:56px;background:var(--raised);border-radius:8px"></div><div style="height:56px;background:var(--raised);border-radius:8px;opacity:.7"></div><div style="height:56px;background:var(--raised);border-radius:8px;opacity:.5"></div><span style="font-size:13px;color:var(--t3)">Reading 18 shoots from this Mac…</span></div>
+      </sc-if>
+      <sc-if value="{{ sessEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="border:1px dashed var(--line3);border-radius:10px;padding:28px;display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+          <span style="font-size:17px;font-weight:var(--wm)">No shoots from Hat yet</span>
+          <span style="font-size:14px;color:var(--t2)">It was saved from the Half tights shoot on 18 Sep and hasn't been used since.</span>
+          <div style="display:flex;gap:8px;margin-top:6px"><button style="height:36px;padding:0 14px;border-radius:7px;border:0;background:var(--pri);color:var(--pri-ink);font-size:13px;font-weight:var(--wb);cursor:pointer">New shoot from Hat</button><button onClick="{{ clearFilter }}" style="height:36px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Show all</button></div>
+        </div>
+      </sc-if>
+      <sc-for list="{{ sessGroups }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column">
+          <div style="display:flex;align-items:baseline;gap:10px;padding:14px 12px 8px;border-bottom:1px solid var(--line)">
+            <span style="font-size:15px;font-weight:var(--wb)">{{ g.title }}</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3)">{{ g.meta }}</span>
+            <button style="margin-left:auto;border:0;background:transparent;color:var(--acc);font-size:13px;cursor:pointer;padding:0">{{ g.action }}</button>
+          </div>
+          <sc-for list="{{ g.rows }}" as="s" hint-placeholder-count="2">
+            <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 90px 70px 70px 260px;align-items:center;column-gap:14px;padding:8px 12px;border-radius:8px;background:{{ s.bg }}">
+              <div style="width:64px;aspect-ratio:4/3;background:repeating-linear-gradient(135deg,var(--ph1) 0 6px,var(--ph2) 6px 12px)"></div>
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:15px;font-weight:var(--wm)">{{ s.name }}</span><span style="font-size:12px;color:var(--t3)">{{ s.notes }}</span></span>
+              <span style="font-size:13px;color:var(--t2)">{{ s.date }}</span>
+              <span style="font-family:var(--mono);font-size:13px">{{ s.photos }}</span>
+              <span style="font-family:var(--mono);font-size:13px">{{ s.keepers }}</span>
+              <span style="justify-self:start;font-size:12px;padding:3px 8px;border-radius:4px;background:{{ s.tagBg }};color:{{ s.tagFg }};font-weight:var(--wm)"><span style="font-family:var(--mono)">{{ s.tagG }}</span> {{ s.tag }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+
+    <!-- WHAT THE COACH SAW -->
+    <sc-if value="{{ isSaw }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="flex:none;display:flex;align-items:center;gap:16px;padding:16px 32px;border-bottom:1px solid var(--line);background:var(--panel)">
+        <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">← Back to shoot <span style="font-family:var(--mono);color:var(--t3)">Esc</span></button>
+        <div style="display:flex;flex-direction:column"><span style="font-size:20px;font-weight:var(--wb)">What the coach saw · #14</span><span style="font-size:12px;color:var(--t3)">Pegasus 42 · Heel counter · 14:36:12 · read-only</span></div>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--t2)">← → other photos</span>
+          <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Copy as text</button>
+          <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Export .json</button>
+        </div>
+      </div>
+      <sc-if value="{{ sawLoading }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:grid;grid-template-columns:480px minmax(0,1fr);gap:32px;padding:26px 32px">
+          <div style="display:flex;flex-direction:column;gap:10px"><div style="aspect-ratio:4/3;background:var(--raised);border-radius:4px"></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="aspect-ratio:1;background:var(--raised)"></div><div style="aspect-ratio:1;background:var(--raised)"></div><div style="aspect-ratio:1;background:var(--raised)"></div></div></div>
+          <div style="display:flex;flex-direction:column;gap:10px"><div style="height:20px;width:40%;background:var(--raised);border-radius:4px"></div><div style="height:90px;background:var(--raised);border-radius:8px"></div><div style="height:90px;background:var(--raised);border-radius:8px;opacity:.6"></div><span style="font-size:13px;color:var(--t3)">Opening the record for #14…</span></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ sawReady }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:480px minmax(0,1fr)">
+        <div style="overflow:auto;padding:22px 26px 26px 32px;display:flex;flex-direction:column;gap:18px;border-right:1px solid var(--line)">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">IMAGES SENT · 1 OVERVIEW + 3 CROPS</span>
+            <div style="aspect-ratio:4/3;position:relative;background:repeating-linear-gradient(135deg,var(--ph1) 0 10px,var(--ph2) 10px 20px);box-shadow:0 0 0 1px var(--line)"><span style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--t3)">overview · 1568 × 1176 JPEG · 214 KB</span></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+              <sc-for list="{{ crops }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:4px"><div style="aspect-ratio:1;background:repeating-linear-gradient(135deg,var(--ph1) 0 6px,var(--ph2) 6px 12px);box-shadow:0 0 0 1px var(--line)"></div><span style="font-size:12px;font-weight:var(--wm)">{{ c.name }}</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3)">{{ c.meta }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">CAMERA METADATA SENT</span>
+            <div style="display:grid;grid-template-columns:130px minmax(0,1fr);row-gap:5px;font-size:13px">
+              <sc-for list="{{ meta }}" as="m" hint-placeholder-count="10"><span style="color:var(--t3)">{{ m.k }}</span><span style="font-family:var(--mono);color:{{ m.c }}">{{ m.v }}</span></sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;background:var(--card);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.45"><span style="font-family:var(--mono);color:var(--ok);font-weight:600">✓</span><span><b style="font-weight:var(--wb)">RAW was being kept</b> (P9280014.ORF, 22 MB). The coach was told, so it treated highlight and colour issues as recoverable. It only saw the JPEG.</span></div>
+        </div>
+        <div style="overflow:auto;padding:22px 32px 26px 28px;display:flex;flex-direction:column;gap:18px">
+          <sc-if value="{{ sawError }}" hint-placeholder-val="{{ false }}">
+            <div role="alert" style="display:flex;gap:12px;align-items:flex-start;border:1px solid var(--ret);border-radius:10px;padding:14px 16px">
+              <span style="font-family:var(--mono);color:var(--ret);font-weight:600">✕</span>
+              <span style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="font-size:15px;font-weight:var(--wb)">Nothing came back for #14</span><span style="font-size:14px;color:var(--t2);line-height:1.45">The call timed out after 30 s (HTTP 529, overloaded). Everything that was sent is still shown here. No advice was given for this photo.</span></span>
+              <button style="height:34px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:13px;cursor:pointer">Retry <span style="font-family:var(--mono);color:var(--t3)">⌘R</span></button>
+            </div>
+          </sc-if>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">PREFERENCES AS APPLIED · MOST SPECIFIC FIRST</span>
+            <sc-for list="{{ levels }}" as="l" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:12px;padding:8px 0;border-top:1px solid var(--line);align-items:baseline">
+                <span style="font-size:12px;font-weight:var(--wb)">{{ l.label }}</span><span style="font-size:14px;line-height:1.4">{{ l.text }}</span>
+                <span style="font-size:11px;font-weight:var(--wm);color:{{ l.uc }}">{{ l.used }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ sawHasResp }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">WHAT CAME BACK</span>
+              <div style="display:grid;grid-template-columns:110px minmax(0,1fr);row-gap:8px;column-gap:12px;font-size:14px;line-height:1.4">
+                <span style="color:var(--t3);font-size:12px">Verdict</span><span style="color:var(--ok);font-weight:var(--wb)"><span style="font-family:var(--mono)">✓</span> Usable, but…</span>
+                <span style="color:var(--t3);font-size:12px">Spoken first</span><span>“Usable, but the background is busy: open to f/2.8 for the soft background you prefer.” <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">at 1.3 s</span></span>
+                <span style="color:var(--t3);font-size:12px">Final advice</span><span>Same as spoken, validated at 4.6 s. No correction.</span>
+                <span style="color:var(--t3);font-size:12px">Fixable in post</span><span style="color:var(--t2)">Slight cool cast from overcast sky · 1° tilt</span>
+              </div>
+            </div>
+          </sc-if>
+          <div style="border:1px solid var(--line2);border-radius:10px;overflow:hidden">
+            <button onClick="{{ toggleInstr }}" aria-expanded="{{ instrOpen }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:0;background:var(--panel);color:var(--t1);cursor:pointer;text-align:left"><span style="font-family:var(--mono);font-size:11px;color:var(--t3);width:10px">{{ instrCaret }}</span><span style="font-size:14px;font-weight:var(--wm)">Instructions sent</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3);margin-left:auto">coach-prompt v14 · 1,940 words</span></button>
+            <sc-if value="{{ instrOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:12px 16px;border-top:1px solid var(--line);max-height:200px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--t2);white-space:pre-wrap;background:var(--inset)">{{ instrText }}</div>
+            </sc-if>
+          </div>
+          <div style="border:1px solid var(--line2);border-radius:10px;overflow:hidden">
+            <button onClick="{{ toggleJson }}" aria-expanded="{{ jsonOpen }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border:0;background:var(--panel);color:var(--t1);cursor:pointer;text-align:left"><span style="font-family:var(--mono);font-size:11px;color:var(--t3);width:10px">{{ jsonCaret }}</span><span style="font-size:14px;font-weight:var(--wm)">Raw response</span><span style="font-family:var(--mono);font-size:12px;color:var(--t3);margin-left:auto">{{ jsonMeta }}</span></button>
+            <sc-if value="{{ jsonOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:12px 16px;border-top:1px solid var(--line);max-height:220px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--t2);white-space:pre;background:var(--inset)">{{ jsonText }}</div>
+            </sc-if>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:auto">
+            <sc-for list="{{ sawStats }}" as="s" hint-placeholder-count="4"><div style="background:var(--panel);padding:10px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;color:var(--t3)">{{ s.k }}</span><span style="font-family:var(--mono);font-size:14px">{{ s.v }}</span></div></sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- DIAGNOSTICS -->
+    <sc-if value="{{ isDiag }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;min-height:0;overflow:auto;padding:26px 36px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><span style="font-size:28px;font-weight:var(--wb)">Diagnostics · devices</span><span style="font-size:13px;color:var(--t3)">The top bar only shows these when something changes or is wrong</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="3">
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:30px;height:30px;border-radius:7px;background:{{ d.tint }};color:{{ d.c }};display:grid;place-items:center;font-family:var(--mono);font-size:14px;font-weight:600">{{ d.g }}</span>
+              <span style="display:flex;flex-direction:column"><span style="font-size:17px;font-weight:var(--wb)">{{ d.name }}</span><span style="font-size:13px;color:{{ d.c }};font-weight:var(--wm)">{{ d.state }}</span></span>
+            </div>
+            <div style="display:grid;grid-template-columns:120px minmax(0,1fr);row-gap:7px;font-size:13px">
+              <sc-for list="{{ d.rows }}" as="r" hint-placeholder-count="5"><span style="color:var(--t3)">{{ r.k }}</span><span style="font-family:var(--mono);font-size:12px;color:var(--t1)">{{ r.v }}</span></sc-for>
+            </div>
+            <sc-if value="{{ d.hasMeter }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:var(--t3)">Input level · speak to test</span><div style="height:8px;background:var(--inset);border:1px solid var(--line2);border-radius:4px;overflow:hidden"><div style="height:100%;width:{{ d.level }}%;background:var(--ok)"></div></div></div>
+            </sc-if>
+            <div style="border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:5px">
+              <span style="font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--t3)">RECENT</span>
+              <sc-for list="{{ d.log }}" as="l" hint-placeholder-count="2"><span style="font-size:12px;color:var(--t2);line-height:1.4"><span style="font-family:var(--mono);color:var(--t3)">{{ l.t }}</span> {{ l.m }}</span></sc-for>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:auto"><sc-for list="{{ d.acts }}" as="a" hint-placeholder-count="1"><button style="height:32px;padding:0 12px;border-radius:7px;border:1px solid var(--line3);background:transparent;color:var(--t1);font-size:12px;cursor:pointer">{{ a }}</button></sc-for></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:15px;font-weight:var(--wb)">Remote buttons · press one to test</span>
+        <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px">
+          <sc-for list="{{ buttonMap }}" as="b" hint-placeholder-count="8">
+            <div style="border:1px solid {{ b.bd }};border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:3px;background:{{ b.bg }}"><span style="font-family:var(--mono);font-size:16px;font-weight:600">{{ b.k }}</span><span style="font-size:12px;color:var(--t2)">{{ b.d }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+  </div>
+
+  <div style="max-width:1100px;width:100%;display:flex;flex-direction:column;gap:6px;padding:4px 4px 0">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">DESIGN NOTE</span>
+    <span style="font-size:14px;color:#b8b8b8;line-height:1.55;text-wrap:pretty">{{ note }}</span>
+  </div>
+
+  <div style="max-width:1100px;width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;margin-top:22px;padding-top:22px;border-top:1px solid #262626">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">WHERE LIBRARY LIVES</span>
+      <span style="font-size:14px;color:#b8b8b8;line-height:1.6"><b style="color:#ececec;font-weight:600">A new top-level tab, not part of Sessions.</b> Sessions is history: what you shot. Library is the set of reusable definitions you edit between shoots. Mixing them means scrolling past 18 shoots to fix a template. They link both ways: every session row names its template, and every template shows how many shoots used it.</span>
+      <span style="font-size:14px;color:#b8b8b8;line-height:1.6">Tab order: Shoot · Coverage · Shot list · Setup · Sessions · <b style="color:#ececec;font-weight:600">Library</b> · Diagnostics. ⌘1–5 stay the same. Library takes ⌘6 and Diagnostics moves to ⌘7, since it's rarely used and is where muscle memory costs least.</span>
+      <span style="font-size:14px;color:#b8b8b8;line-height:1.6">“Shot list” (⌘3) now edits <i>this shoot's copy</i>. Its header reads “from Shoe review v3” and links to the template in Library.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;color:#8c8c8c">NEW SHORTCUTS</span>
+      <div style="display:grid;grid-template-columns:110px 1fr;row-gap:6px;font-size:14px;color:#b8b8b8">
+        <sc-for list="{{ keys }}" as="k" hint-placeholder-count="10"><span style="font-family:'IBM Plex Mono',monospace;color:#ececec">{{ k.k }}</span><span>{{ k.d }}</span></sc-for>
+      </div>
+      <span style="font-size:13px;color:#8c8c8c;line-height:1.5">Single-letter keys never fire while focus is in a text field. Opening a popover or dialog doesn't move focus out of the field you were typing in unless you opened it from the keyboard.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;defaults&quot;,&quot;project&quot;,&quot;template&quot;,&quot;newshoot&quot;,&quot;sessions&quot;,&quot;saw&quot;,&quot;diag&quot;],&quot;default&quot;:&quot;project&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;daylight&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  static SCREENS = [
+    ['defaults', '1a Your defaults', ['Filled', 'Empty', 'Save error']],
+    ['project', '1a Project', ['Detail', 'New template ▾', 'Archive confirm', 'No projects yet']],
+    ['template', '1a Template editor', ['Shoe review v3', 'New blank template', 'Loading']],
+    ['newshoot', '1b New shoot', ['Indoor', 'Outdoor → Daylight', 'No templates', 'Start error']],
+    ['sessions', '1d Sessions', ['Grouped', 'Filtered: Apparel', 'No matches', 'Loading']],
+    ['saw', '2 What the coach saw', ['Collapsed', 'Expanded', 'Loading', 'Call failed']],
+    ['diag', '5 Diagnostics · devices', ['All good', 'Fallback + asleep']]
+  ];
+  state = { screen: null, v: 0, theme: null, shot: 3, proj: 'run', tpl: 'shoe', where: null, instr: null, json: null, menu: null, archive: null, filter: null };
+  componentDidMount() {
+    this.fit = () => { const s = Math.min((window.innerWidth - 32) / 1440, (window.innerHeight - 110) / 900); this.setState({ scale: Math.max(0.3, Math.min(s, 1.2)) }); };
+    this.fit(); window.addEventListener('resize', this.fit);
+    this.onHash = () => { const h = location.hash.slice(1); if (Component.SCREENS.some(s => s[0] === h)) this.setState({ screen: h, v: 0 }); };
+    this.onHash(); window.addEventListener('hashchange', this.onHash);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.fit); window.removeEventListener('hashchange', this.onHash); }
+  go(screen, v = 0) { this.setState({ screen, v, theme: null, where: null, instr: null, json: null, menu: null, archive: null, filter: null, proj: 'run', tpl: 'shoe' }); history.replaceState(null, '', '#' + screen); }
+  renderVals() {
+    const S = this.state, scr = S.screen ?? this.props.screen ?? 'project', v = S.v;
+    const def = Component.SCREENS.find(s => s[0] === scr);
+    const where = S.where ?? (scr === 'newshoot' && v === 1 ? 'out' : 'in');
+    const theme = S.theme ?? (scr === 'newshoot' && where === 'out' ? 'daylight' : (this.props.theme ?? 'dark'));
+    const sel = (on) => on ? 'var(--raised)' : 'transparent';
+    const isLib = ['defaults', 'project', 'template'].includes(scr);
+    const libEmpty = scr === 'project' && v === 3;
+
+    const TPL = [
+      { id: 'shoe', name: 'Shoe review', shots: 6, ver: 'v3', last: 'Today', count: 5, note: 'Updated from Pegasus 41 · 12 Sep' },
+      { id: 'app', name: 'Apparel', shots: 8, ver: 'v2', last: '27 Sep', count: 7, note: 'Updated from Trail Jacket S2 · 24 Sep' },
+      { id: 'tights', name: 'Half tights', shots: 8, ver: 'v1', last: '18 Sep', count: 1, note: 'Duplicated from Apparel' },
+      { id: 'hat', name: 'Hat', shots: 5, ver: 'v1', last: 'Never', count: 0, note: 'Saved as new from the Half tights shoot' }
+    ];
+    const railProjects = libEmpty ? [] : [
+      { id: 'run', name: 'Running blog', count: 4, tpls: TPL },
+      { id: 'sale', name: 'Gear for sale', count: 1, tpls: [{ id: 'listing', name: 'Listing', shots: 4 }] }
+    ].map(p => {
+      const open = p.id === 'run';
+      return { name: p.name, count: p.count, caret: open ? '▾' : '▸', bg: sel(scr === 'project' && p.id === 'run'), go: () => this.go('project'),
+        templates: open ? p.tpls.map(t => ({ name: t.name, shots: t.shots, bg: sel(scr === 'template' && t.id === 'shoe'), go: () => this.go('template', t.id === 'shoe' ? 0 : 0) })) : [] };
+    });
+
+    const SHOTS = [
+      { name: 'Hero · ¾ lateral', framing: 'Low ¾, toe to camera-left', crit: ['Whole shoe sharp toe to heel', 'Lateral logo readable', 'Laces tidy and symmetrical', 'Background soft and separate'], purpose: 'The first image: what the shoe looks like.', must: ['Logo', 'Laces', 'Midsole'] },
+      { name: 'Medial side', framing: 'Flat side-on, eye level', crit: ['Arch shape visible', 'Midsole foam texture shows', 'No reflection on the upper'], purpose: 'Show arch support and the medial midsole.', must: ['Arch', 'Midsole'] },
+      { name: 'Outsole & tread', framing: 'Top-down, fills the frame', crit: ['Lugs sharp edge to edge', 'Rubber zones distinguishable', 'Even light, no hot spot'], purpose: 'Readers judge grip and wear from this.', must: ['Tread', 'Rubber zones'] },
+      { name: 'Heel counter', framing: 'Rear ¾, at heel height', crit: ['Heel counter edge sharp', 'Pull tab fully visible', 'Collar padding shows texture', 'Background soft enough to separate'], purpose: 'Show how the heel is built so readers can judge lockdown.', must: ['Heel counter', 'Pull tab', 'Collar'], newIdx: 1 },
+      { name: 'Upper mesh close-up', framing: 'Macro, 1:2', crit: ['Mesh weave sharp', 'True colour of the upper', 'No clipped highlights'], purpose: 'Let readers judge breathability.', must: ['Mesh'] },
+      { name: 'Profile · stack height', framing: 'Side-on, lens at midsole', crit: ['Level horizon', 'Heel and forefoot stack readable'], purpose: 'Show drop and stack at a glance.', must: ['Midsole'] }
+    ];
+    const blank = scr === 'template' && v === 1;
+    const shotsSrc = blank ? [] : SHOTS;
+    const si = Math.min(S.shot, SHOTS.length - 1), cur = SHOTS[si];
+    const selShot = { name: cur.name, purpose: cur.purpose, framing: cur.framing, must: cur.must, critCount: cur.crit.length, criteria: cur.crit.map((t, i) => ({ n: i + 1, text: t, isNew: cur.newIdx === i })) };
+
+    // new shoot
+    const proj = S.proj ?? 'run';
+    const noTpl = scr === 'newshoot' && (v === 2 || proj === 'sale');
+    const projSel = v === 2 && S.proj === 'run' ? 'sale' : (v === 2 ? 'sale' : proj);
+    const nsProjects = [['run', 'Running blog', '4 templates · soft backgrounds'], ['sale', 'Gear for sale', v === 2 ? 'No templates yet' : '1 template · plain white']].map(([id, name, sub]) => { const on = projSel === id; return { name, sub, bw: on ? 2 : 1, bd: on ? 'var(--acc)' : 'var(--line2)', bg: on ? 'var(--raised)' : 'transparent', pick: () => this.setState({ proj: id }) }; });
+    const nsTemplates = TPL.map(t => { const on = S.tpl === t.id; return { name: t.name, shots: t.shots, ver: t.ver, bw: on ? 2 : 1, bd: on ? 'var(--acc)' : 'var(--line2)', bg: on ? 'var(--raised)' : 'transparent', pick: () => this.setState({ tpl: t.id }) }; });
+    const tplPick = TPL.find(t => t.id === S.tpl) || TPL[0];
+    const shotNames = { shoe: SHOTS.map(s => s.name), app: ['Hero · on hanger', 'Fabric close-up', 'Zip & pulls', 'Reflective trim', 'Pockets', 'Fit · front', 'Fit · back', 'Packed size'], tights: ['Hero · flat lay', 'Waistband', 'Pocket', 'Fabric', 'Seams', 'Fit · side', 'Fit · back', 'Reflectives'], hat: ['Hero ¾', 'Brim', 'Sweatband', 'Logo', 'Fit'] }[tplPick.id];
+    const nsShots = shotNames.map((n, i) => ({ n: i + 1, name: n }));
+    const nsNotes = where === 'out' ? 'Driveway outside the garage, no backdrop; overcast.' : 'Garage, LED panel camera-left. Grey card backdrop.';
+    const tplPrefText = { shoe: 'Laces tidy, show the heel counter.', app: 'Zipped, no creases across the chest.', tights: 'Flat lay first; show the waistband stitching.', hat: 'Shape the crown; no creases on the brim.' }[tplPick.id];
+    const nsLevels = [
+      { label: 'Today', src: 'this shoot', text: nsNotes },
+      { label: 'Template', src: tplPick.name + ' ' + tplPick.ver, text: tplPrefText },
+      { label: 'Project', src: 'Running blog', text: 'Soft, blurred backgrounds that separate the product; warm light.' }
+    ];
+    const nsWhere = [['in', 'Indoor', 'Studio theme'], ['out', 'Outdoor', 'Starts in Daylight theme ☀']].map(([id, label, sub]) => { const on = where === id; return { label, sub, bg: on ? 'var(--pri)' : 'transparent', fg: on ? 'var(--pri-ink)' : 'var(--t2)', pick: () => this.setState({ where: id, theme: null }) }; });
+
+    // sessions
+    const filter = S.filter ?? (scr === 'sessions' ? ['all', 'app', 'hat', 'all'][v] : 'all');
+    const R = (name, notes, date, photos, keepers, kind, extra) => ({ name, notes, date, photos, keepers, kind, extra });
+    const GROUPS = [
+      { id: 'shoe', title: 'Running blog › Shoe review', meta: 'v3 · 5 shoots', action: 'Open template', rows: [R('Pegasus 42', 'Driveway, overcast · in progress', 'Today', 14, '4 / 6', 'diff', '2 shots changed · not saved'), R('Pegasus 41', 'Garage, LED camera-left', '12 Sep', 31, '6 / 6', 'saved', 'Saved to template → v3'), R('Vaporfly 3', 'Garage', '30 Aug', 26, '6 / 6', 'saved', 'Saved to template → v2')] },
+      { id: 'app', title: 'Running blog › Apparel', meta: 'v2 · 7 shoots', action: 'Open template', rows: [R('Trail Jacket Review — Session 3', 'Garage, foam-board form', '27 Sep', 15, '3 / 8', 'diff', '1 shot changed · not saved'), R('Trail Jacket Review — Session 2', 'Garage', '24 Sep', 38, '4 / 8', 'saved', 'Saved to template → v2'), R('Tempo shorts', 'Park, midday', '18 Sep', 22, '8 / 8', 'same', 'Same as template')] },
+      { id: 'tights', title: 'Running blog › Half tights', meta: 'v1 · 1 shoot', action: 'Open template', rows: [R('Winter half tights', 'Indoors', '18 Sep', 22, '8 / 8', 'new', 'Saved as new template: Hat')] },
+      { id: 'sale', title: 'Gear for sale › Listing', meta: 'v1 · 1 shoot', action: 'Open template', rows: [R('Old Ghost 15', 'White sweep', '02 Sep', 9, '4 / 4', 'same', 'Same as template')] },
+      { id: 'none', title: 'Before projects', meta: '2 shoots', action: 'Assign to a project…', rows: [R('UI walkthrough', 'Sample jacket', '09 Sep', 12, '2 / 7', 'mock', 'MOCK PROVIDER'), R('Tether dry run', '—', '08 Sep', 30, '0 / 3', 'mock', 'SIMULATED')] }
+    ];
+    const TAG = { diff: ['◆', 'var(--unc-t)', 'var(--t1)'], saved: ['↑', 'var(--raised)', 'var(--t2)'], same: ['=', 'transparent', 'var(--t3)'], new: ['+', 'var(--raised)', 'var(--t2)'], mock: ['▦', 'var(--mock)', '#1a0716'] };
+    const sessLoading = scr === 'sessions' && v === 3;
+    const sessGroups = sessLoading ? [] : GROUPS.filter(g => filter === 'all' || g.id === filter).map(g => ({ title: g.title, meta: g.meta, action: g.action, rows: g.rows.map((r, i) => ({ ...r, tag: r.extra, tagG: TAG[r.kind][0], tagBg: TAG[r.kind][1], tagFg: TAG[r.kind][2], bg: g.id === 'shoe' && i === 0 ? 'var(--card)' : 'transparent' })) }));
+    const sessFilters = [['all', 'All · 18'], ['shoe', 'Shoe review · 5'], ['app', 'Apparel · 7'], ['tights', 'Half tights · 1'], ['hat', 'Hat · 0'], ['sale', 'Gear for sale · 1'], ['none', 'Before projects · 2']].map(([id, label]) => { const on = filter === id; return { label, bd: on ? 'var(--t2)' : 'var(--line2)', bg: on ? 'var(--raised)' : 'transparent', fg: on ? 'var(--t1)' : 'var(--t2)', pick: () => this.setState({ filter: id }) }; });
+
+    // saw
+    const expanded = scr === 'saw' && v === 1;
+    const instrOpen = S.instr ?? expanded, jsonOpen = S.json ?? expanded;
+    const sawErr = scr === 'saw' && v === 3;
+    const levels = [
+      { label: 'Today', text: 'Driveway outside the garage, no backdrop; overcast.', used: 'applied', uc: 'var(--t2)' },
+      { label: 'Template', text: 'Shoe review v3 — Laces tidy, show the heel counter.', used: 'applied', uc: 'var(--t2)' },
+      { label: 'Project', text: 'Running blog — Soft, blurred backgrounds that separate the product; warm light.', used: sawErr ? '' : '● cited in advice', uc: 'var(--acc)' },
+      { label: 'Your defaults', text: 'I edit in Lightroom.', used: sawErr ? '' : '● cited (fixable in post)', uc: 'var(--acc)' }
+    ];
+    const meta = [['Camera', 'OM E-M1 Mark II'], ['Lens', 'M.Zuiko 25mm F1.8 · 25 mm'], ['Mode', 'A (aperture priority)'], ['Aperture', 'f/5.6'], ['Shutter', '1/125 s'], ['ISO', '200'], ['Exposure comp.', '+0.3 EV'], ['Focus', 'S-AF · single point, centre'], ['White balance', 'Auto · 5400 K'], ['Stabilisation', 'On'], ['Measured', 'pure white 0.4% · heel sharp 0.82 rel.'], ['Shot', '4 · Heel counter (4 criteria)']].map(([k, vv]) => ({ k, v: vv, c: 'var(--t1)' }));
+    const instrText = 'You are a patient photography coach for a beginner shooting product photos for a running blog.\nThe photographer is 1–3 m from the screen and hears your first sentence through AirPods.\n\nRULES\n1. Start with ONE spoken sentence: the verdict, then the single most useful camera-side change.\n2. Verdicts: usable | usable_but | retake. Use usable_but only when the photo is fine to keep\n   AND one change at the camera would clearly improve it.\n3. Put anything that editing can fix into fixable_in_post, not the main action.\n4. When advice follows a preference, say so briefly ("as you prefer").\n5. Only suggest changes the setup allows (tripod: yes · light: movable · flash: none).\n\nPREFERENCES — most specific wins\n[today] Driveway outside the garage, no backdrop; overcast.\n[template] Laces tidy, show the heel counter.\n[project] Soft, blurred backgrounds that separate the product; warm light.\n[defaults] I edit in Lightroom.\n\nRAW is being kept. Treat highlight recovery and colour as partly recoverable.\n…';
+    const jsonText = '{\n  "spoken": "Usable, but the background is busy: open to f/2.8 for the soft background you prefer.",\n  "verdict": "usable_but",\n  "action": { "kind": "aperture", "to": "f/2.8", "why": "separate heel from hedge" },\n  "preference_cited": "project",\n  "criteria": [\n    { "id": 1, "result": "pass" },\n    { "id": 2, "result": "pass" },\n    { "id": 3, "result": "pass" },\n    { "id": 4, "result": "fail", "note": "hedge leaves compete with the heel" }\n  ],\n  "fixable_in_post": ["slight cool cast", "1° tilt"],\n  "regions": [{ "name": "Background", "box": [0.58, 0.05, 0.40, 0.45] }]\n}';
+    const sawStats = [['Model', 'claude-sonnet-4.5'], ['Latency', sawErr ? '30.0 s · timeout' : '1.3 s first · 4.6 s all'], ['Tokens', sawErr ? '2,480 in · 0 out' : '2,480 in · 412 out'], ['Cost', sawErr ? '$0.000' : '$0.031']].map(([k, vv]) => ({ k, v: vv }));
+
+    // diag
+    const fb = scr === 'diag' && v === 1;
+    const devices = [
+      fb ? { name: 'Microphone', g: '◉', state: 'Using Mac mic (fallback)', c: 'var(--unc)', tint: 'var(--unc-t)', hasMeter: true, level: 34,
+        rows: [{ k: 'Device', v: 'MacBook Air Microphone' }, { k: 'Preferred', v: 'Drew’s AirPods Pro · in case' }, { k: 'Held open', v: 'since 14:31 (5 min)' }, { k: 'Reason', v: 'AirPods disconnected' }, { k: 'Switch back', v: 'automatic when worn' }],
+        log: [{ t: '14:31:04', m: 'AirPods went in the case → Mac mic' }, { t: '13:58:20', m: 'Opened AirPods for the shoot' }], acts: ['Use Mac mic for this shoot'] }
+      : { name: 'Microphone', g: '◉', state: 'On AirPods', c: 'var(--ok)', tint: 'var(--ok-t)', hasMeter: true, level: 62,
+        rows: [{ k: 'Device', v: 'Drew’s AirPods Pro' }, { k: 'Held open', v: 'since 13:58 (38 min)' }, { k: 'Sample rate', v: '24 kHz (Bluetooth)' }, { k: 'Fallback', v: 'MacBook Air Microphone' }, { k: 'Last reconnect', v: '14:33:40 · out of case' }],
+        log: [{ t: '14:33:40', m: 'Back on AirPods' }, { t: '14:31:04', m: 'AirPods in case → Mac mic' }], acts: ['Test mic'] },
+      fb ? { name: 'Remote', g: '▣', state: 'Asleep · press any button', c: 'var(--unc)', tint: 'var(--unc-t)', hasMeter: false,
+        rows: [{ k: 'Device', v: '8BitDo Micro · gamepad mode' }, { k: 'Last input', v: '6 min ago (B)' }, { k: 'Battery', v: 'not reported' }, { k: 'Reason', v: 'idle sleep after 5 min' }, { k: 'While asleep', v: 'Space still = talk' }],
+        log: [{ t: '14:40:10', m: 'Disconnected (idle sleep)' }, { t: '14:12:02', m: 'Connected' }], acts: ['Pair again…'] }
+      : { name: 'Remote', g: '▣', state: 'Connected', c: 'var(--ok)', tint: 'var(--ok-t)', hasMeter: false,
+        rows: [{ k: 'Device', v: '8BitDo Micro · gamepad mode' }, { k: 'Last input', v: '3 s ago (D-pad ↑)' }, { k: 'Battery', v: 'not reported' }, { k: 'Last reconnect', v: '14:12:02 · woke from sleep' }, { k: 'Sleeps after', v: '5 min idle (remote’s own)' }],
+        log: [{ t: '14:12:02', m: 'Woke and reconnected' }, { t: '14:04:51', m: 'Idle sleep' }], acts: ['Test buttons'] },
+      { name: 'Camera', g: '◎', state: fb ? 'Asleep · half-press to wake' : 'Connected · Aperture Ally in control', c: fb ? 'var(--unc)' : 'var(--ok)', tint: fb ? 'var(--unc-t)' : 'var(--ok-t)', hasMeter: false,
+        rows: [{ k: 'Body', v: 'OM E-M1 Mark II · USB-C' }, { k: 'Controlled by', v: fb ? 'nobody (camera asleep)' : 'Aperture Ally' }, { k: 'Live view', v: fb ? 'off' : '15 fps · 1024 × 768' }, { k: 'Last command', v: 'aperture f/2.8 · 14:37:02' }, { k: 'Auto power off', v: 'camera setting · 5 min' }],
+        log: [{ t: '14:37:02', m: 'Aperture f/4 → f/2.8 (remote)' }, { t: '14:20:11', m: 'Took control from OM Capture' }], acts: ['Release camera'] }
+    ];
+    const buttonMap = [['L', 'Hold to talk'], ['R', 'Pause coaching'], ['B', 'Cancel'], ['A', 'Shutter'], ['X', 'Read settings'], ['Y', 'Apply coach’s suggestion'], ['↑ ↓', 'Aperture ⅓ stop'], ['← →', 'Exposure comp.']].map(([k, d], i) => ({ k, d, bd: i === 6 ? 'var(--acc)' : 'var(--line2)', bg: i === 6 ? 'var(--acc-t)' : 'transparent' }));
+
+    const NOTES = {
+      defaults: ['Filled: one short textarea, like a note to self. Saved on blur, with no Save button. The hierarchy key under it teaches where other kinds of preference go.', 'Empty is the normal state for weeks, so it reads as calm, not as a to-do. It explains what belongs here with three examples and never nags from other screens.', 'Save errors keep the text in place and say why and what happens next. The same pattern is used for every Library save.'][v],
+      project: ['Project detail: the look is one textarea. The templates table shows shots, version, last used and shoot count. Edit opens the template, and Duplicate is right there because it is the most common way a new template gets made.', 'New template ▾: Blank is available, but Duplicate is the main path. Pick a source, name it, press ↵. The copy starts at v1 and the source is untouched.', 'Archive always asks first and says what happens to templates and past shoots. Nothing is deleted from the Library UI; Archived sits at the bottom of the rail.', 'First run with no projects: one field to name it. Shoots from before projects existed are kept, not lost.'][v],
+      template: ['Template editor reuses the Shot list editor (reorder, criteria, must-show). New here: a per-template preferences box, a Framing field per shot, a 2–6 criteria counter, and version history that says which shoot each version came from.', 'A new blank template teaches what a template is for, and offers to copy shots from another one.', 'Loading uses skeletons in the real layout, so nothing jumps when the content arrives.'][v],
+      newshoot: ['One page with five numbered steps instead of a wizard, so Tab works through it and ⌘↵ starts from anywhere. The right side previews exactly what the coach will follow, labelled by level. Empty levels (Your defaults here) are hidden, with a one-line note.', 'Choosing Outdoor switches the whole app to Daylight immediately, before the shoot starts, so Drew can judge the screen in the sun right away.', 'A project with no templates offers a blank shot list, which can be saved as a template at the end of the shoot.', 'Start errors appear inline above the Start button. They say nothing was started and offer the fix.'][v],
+      sessions: ['Sessions are grouped by Project › Template, with filter chips. Each row says how its shot list relates to the template: changed and not saved, saved back (and to which version), same, or saved as a new template. Old shoots go under “Before projects”.', 'Filtering to one template, e.g. to compare every Apparel shoot.', 'An empty filter explains why and offers the obvious next step.', 'Loading.'][v],
+      saw: ['Desk-only and read-only. On the left, what went in: images, camera metadata, RAW status. On the right: the preference levels, marked with which ones the advice cited, then what came back. The long instructions and raw JSON are collapsed by default. Model, latency, tokens and cost sit at the bottom. Opened with ⌘I from the coach panel, or with “What the coach saw” under any verdict.', 'Expanded: instructions and raw response open inline and scroll inside their own boxes, so the page itself doesn’t become enormous.', 'Loading.', 'When a call fails, everything that was sent is still shown and the failure is stated plainly. Drew can still check whether the input was right.'][v],
+      diag: ['Device detail: which mic is held open and since when, the fallback, the last reconnect and why. The remote doesn’t report its battery, so it says “not reported”, following the honesty rule. The button test covers the new camera-control buttons.', 'Fallback plus asleep: the mic is on the Mac because the AirPods are in the case. The remote and camera are asleep. Each says what wakes it.'][v]
+    };
+    const keys = [['⌘6', 'Library'], ['⌘7', 'Diagnostics (was ⌘6)'], ['⌘N', 'New shoot, from anywhere'], ['⌘↵', 'Start shoot (in New shoot)'], ['⌘I', 'What the coach saw, for the current photo'], ['⌘⇧S', 'Save shoot’s shot list to template…'], ['N', 'Edit today’s notes (at camera)'], ['⌘K', 'Take / release camera control'], ['L', 'Live view on or off'], ['⌘,', 'Coaching & audio settings']].map(([k, d]) => ({ k, d }));
+
+    const navActive = isLib ? 'Library' : scr === 'saw' ? 'Shoot' : scr === 'diag' ? 'Diagnostics' : 'Sessions';
+    const nav = [['Shoot', '⌘1'], ['Coverage', '⌘2'], ['Shot list', '⌘3'], ['Setup', '⌘4'], ['Sessions', '⌘5'], ['Library', '⌘6'], ['Diagnostics', '⌘7']].map(([label, key]) => ({ label, key, isNew: label === 'Library', bg: label === navActive ? 'var(--raised)' : 'transparent', fg: label === navActive ? 'var(--t1)' : 'var(--t2)', w: label === navActive ? 'var(--wm)' : 'var(--wbody)' }));
+
+    const sc = S.scale ?? 1;
+    const menuOpen = S.menu ?? (scr === 'project' && v === 1);
+    const archiveAsk = S.archive ?? (scr === 'project' && v === 2);
+    return {
+      scale: sc, boxW: Math.round(1440 * sc), boxH: Math.round(900 * sc), theme, themeLabel: theme === 'dark' ? 'Studio' : 'Daylight',
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'daylight' : 'dark' }),
+      screenTabs: Component.SCREENS.map(([id, label]) => ({ label, go: () => this.go(id), bg: id === scr ? '#ececec' : '#1c1c1c', fg: id === scr ? '#141414' : '#b8b8b8' })),
+      varTabs: def[2].map((label, i) => ({ label, go: () => this.go(scr, i), bg: i === v ? '#ececec' : '#1c1c1c', fg: i === v ? '#141414' : '#b8b8b8' })),
+      nav, note: NOTES[scr], keys,
+      isLib, isDefaults: scr === 'defaults', isProject: scr === 'project' && !libEmpty, isLibEmpty: libEmpty, isTemplate: scr === 'template',
+      noProjects: libEmpty, hasProjects: !libEmpty, railProjects, railDefaultsBg: sel(scr === 'defaults'),
+      defaultsSub: scr === 'defaults' && v === 1 ? 'Empty · that’s fine' : 'I edit in Lightroom, so small…',
+      goDefaults: () => this.go('defaults'), goProject: () => this.go('project'),
+      defaultsFilled: !(scr === 'defaults' && v === 1), defaultsEmpty: scr === 'defaults' && v === 1, defaultsSaved: !(scr === 'defaults' && v === 2), defaultsError: scr === 'defaults' && v === 2,
+      archiveAsk, askArchive: () => this.setState({ archive: true }), cancelArchive: () => this.setState({ archive: false }),
+      menuOpen, toggleMenu: () => this.setState({ menu: !menuOpen }),
+      dupList: TPL.map(t => ({ name: t.name, shots: t.shots, ver: t.ver, bg: t.id === 'app' ? 'var(--raised)' : 'transparent' })),
+      tplRows: TPL.map(t => ({ ...t, open: () => this.go('template') })),
+      tplName: blank ? 'Untitled template' : 'Shoe review', tplVer: blank ? 'v1' : 'v3',
+      tplSub: blank ? 'New · not used yet' : 'Last updated from the Pegasus 41 shoot on 12 Sep · 6 shots · used in 5 shoots',
+      tplLoading: scr === 'template' && v === 2, tplReady: !(scr === 'template' && v === 2),
+      tplPrefs: blank ? '' : 'Laces tidy, show the heel counter. Lateral side faces the camera for the hero.',
+      tplEmpty: blank, tplHasShots: !blank,
+      tplShots: shotsSrc.map((s, i) => ({ n: i + 1, name: s.name, crit: s.crit.length, framing: s.framing, bg: sel(i === si), pick: () => this.setState({ shot: i }) })),
+      selShot,
+      versions: [{ v: 'v3', when: '12 Sep · from Pegasus 41', what: 'Added “Pull tab fully visible” to Heel counter', w: 600 }, { v: 'v2', when: '30 Aug · from Vaporfly 3', what: 'Added Profile · stack height', w: 400 }, { v: 'v1', when: '21 Aug · created', what: 'Duplicated from a blank list', w: 400 }],
+      isNew: scr === 'newshoot', nsProjects, nsNoTpl: noTpl, nsHasTpl: !noTpl, nsTemplates, nsShots, nsNotes, nsWhere,
+      nsLevels: noTpl ? [nsLevels[0], { label: 'Project', src: 'Gear for sale', text: 'Plain white background, true colour, no props.' }] : nsLevels,
+      nsHidden: noTpl ? 'Template: none chosen · Your defaults: empty. Neither is sent.' : 'Your defaults: empty, so it isn’t sent.',
+      nsListLine: noTpl ? 'Blank · add shots as you go' : tplPick.shots + ' shots from ' + tplPick.name + ' ' + tplPick.ver,
+      nsError: scr === 'newshoot' && v === 3, nsStart: where === 'out' ? 'Start outdoor shoot' : 'Start shoot',
+      isSessions: scr === 'sessions', sessGroups, sessFilters, sessLoading, sessEmpty: scr === 'sessions' && filter === 'hat' && !sessLoading,
+      sessCount: '18 shoots · 2 projects · stored on this Mac', clearFilter: () => this.setState({ filter: 'all' }),
+      isSaw: scr === 'saw', sawLoading: scr === 'saw' && v === 2, sawReady: !(scr === 'saw' && v === 2), sawError: sawErr, sawHasResp: !sawErr,
+      crops: [{ name: 'Heel counter', meta: '2× · 512 px' }, { name: 'Pull tab', meta: '3× · 512 px' }, { name: 'Background', meta: '1× · 512 px' }],
+      meta, levels, instrOpen, jsonOpen, instrCaret: instrOpen ? '▾' : '▸', jsonCaret: jsonOpen ? '▾' : '▸', instrText, jsonText: sawErr ? '// no response body\n// error: 529 overloaded after 30.0 s' : jsonText,
+      jsonMeta: sawErr ? 'empty · timeout' : 'JSON · 412 tokens · validated ✓',
+      toggleInstr: () => this.setState({ instr: !instrOpen }), toggleJson: () => this.setState({ json: !jsonOpen }), sawStats,
+      isDiag: scr === 'diag', devices, buttonMap
+    };
+  }
+}
+</script>
+</body>
+</html>
