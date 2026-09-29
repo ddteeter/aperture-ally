@@ -217,6 +217,9 @@ class CameraService:
                 self._driver.close()
             except Exception:
                 pass
+            handback = getattr(self._driver, "handback", None)
+            if handback:
+                self._emit("camera.handback", result=handback, state=state)  # verify at the camera (plan, task 3)
             self._driver = None
         self.frame = None
         self._set_state(state, detail)

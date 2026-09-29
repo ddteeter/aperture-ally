@@ -69,6 +69,27 @@ def _mac_permission(fn: str) -> bool | None:
         return None
 
 
+def om_capture_running() -> bool:
+    try:
+        r = subprocess.run(["pgrep", "-x", "OM Capture"], capture_output=True, text=True, timeout=3)
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def camera_checks(s: Settings) -> list[dict[str, Any]]:
+    """Direct camera control (docs/plans/camera-control.md): library present, and nothing else holding the camera."""
+    if s.camera != "direct":
+        return [_check("camera control", True, f"{s.camera} (photos arrive through the watch folder)")]
+    ok, ver = _import("gphoto2")
+    out = [_check("import gphoto2", ok, ver, "" if ok else "uv sync (python-gphoto2 bundles libgphoto2)")]
+    busy = om_capture_running()
+    out.append(_check("OM Capture closed", None if busy else True,
+                      "OM Capture is running: it holds the camera" if busy else "not running",
+                      "Quit OM Capture to control the camera from the app (its watch folder keeps working)" if busy else ""))
+    return out
+
+
 def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     mac = sys.platform == "darwin"
@@ -89,6 +110,7 @@ def run_checks(s: Settings, quick: bool = False) -> list[dict[str, Any]]:
             pass
     out.append(_check("exiftool", bool(et) or None, ver or "not found (Pillow EXIF fallback; ORF metadata unavailable)",
                       "brew install exiftool"))
+    out.extend(camera_checks(s))
     # providers (presence only)
     out.append(_check("assessment provider", True, s.assess_provider))
     out.append(_check("OpenAI configured", (s.openai_api_key is not None and bool(s.openai_model)) or None,

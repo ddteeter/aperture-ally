@@ -79,6 +79,7 @@ class GPhotoDriver:
         self.gp = gp
         self.camera = None
         self.model = "camera"
+        self.handback: str | None = None
 
     def connect(self) -> None:
         gp = self.gp
@@ -97,13 +98,34 @@ class GPhotoDriver:
         except Exception:
             self.model = "camera"
 
+    # The spike left the body locked (its own buttons dead) until the cable was pulled, because libgphoto2 puts
+    # the camera in PC mode (prop 0xD052) on connect and exit() doesn't switch it back. Setting d052 to 0 is the
+    # likely hand-back; unverified until the owner session (docs/plans/camera-control.md, task 3).
+    HANDBACK_PROP = "d052"
+
     def close(self) -> None:
         if self.camera is not None:
+            self.handback = self._hand_back()
             try:
                 self.camera.exit()
             except Exception:
                 pass
             self.camera = None
+
+    def _hand_back(self) -> str:
+        try:
+            w = self.camera.get_single_config(self.HANDBACK_PROP)
+            before = w.get_value()
+            for v in (0, "0"):
+                try:
+                    w.set_value(v)
+                    self.camera.set_single_config(self.HANDBACK_PROP, w)
+                    return f"{self.HANDBACK_PROP}: {before} → {v}"
+                except Exception:
+                    continue
+            return f"{self.HANDBACK_PROP}: {before} (couldn't set 0)"
+        except Exception as exc:
+            return f"{self.HANDBACK_PROP} not available ({exc})"
 
     def _call(self, fn, *args):
         if self.camera is None:
