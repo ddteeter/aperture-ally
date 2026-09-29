@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { api } from "../../api/client";
-import type { Assessment, AssessmentResult, Capture, CriterionResult, SessionState, Shot } from "../../api/types";
+import type { Assessment, Capture, CriterionResult, SessionState, Shot } from "../../api/types";
 import { useApp } from "../../AppContext";
 import { useShortcuts } from "../../lib/keys";
 import { criterionMeta, verdictMeta } from "../../ui/status";
-import { criteriaSummary, modelLine, pickShowZone, seconds, startingPoint } from "./model";
+import { criteriaSummary, modelLine, pickShowZone, seconds, startingPoint, verdictKind } from "./model";
 import { CoachSaw } from "./CoachSaw";
 import { GlanceHead, Label } from "./parts";
 
@@ -17,12 +17,6 @@ export function honestyTag(a: Assessment, simulated: boolean | undefined): strin
 export function speechWord(s: string | null | undefined): string | null {
   if (!s) return null;
   return { spoken: "spoken", pending: "speaking soon", suppressed: "not spoken", cancelled: "speech stopped", failed: "speech failed" }[s] ?? null;
-}
-
-/** "Usable" with nothing to change, "Usable, but…" (fine to keep, one optional change), or the verdict's own word. */
-export function verdictKind(r: AssessmentResult): "usable" | "usable_but" | "retake" | "uncertain" {
-  if (r.verdict === "usable_candidate") return r.primary_action ? "usable_but" : "usable";
-  return r.verdict === "needs_retake" ? "retake" : "uncertain";
 }
 
 /** The next shot to work on after this one: the first unresolved shot after it, wrapping round. */
@@ -190,7 +184,7 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
       <p className="cp-model" data-testid="coach-meta">
         {modelLine(a)}
       </p>
-      {saw && <CoachSaw assessmentId={a.id} captureId={a.capture_id} onClose={() => setSaw(false)} />}
+      {saw && <CoachSaw a={a} capture={capture} shot={shot} onClose={() => setSaw(false)} />}
     </>
   );
 }

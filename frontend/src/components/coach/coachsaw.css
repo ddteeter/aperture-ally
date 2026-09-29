@@ -1,0 +1,78 @@
+/* What the coach saw (Library design · screen 2): a full desk page over the app, below the top bar. */
+.saw {
+  position: fixed; inset: 48px 0 0 0; z-index: 55; background: var(--app); color: var(--t1); display: flex; flex-direction: column;
+  font-weight: var(--wbody); line-height: 1.4; text-align: left;
+}
+.saw:focus { outline: none; }
+.saw-bar { flex: none; display: flex; align-items: center; gap: 16px; padding: 16px 32px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.saw-bar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.saw-title { font-size: 20px; font-weight: var(--wb); margin: 0; }
+.saw-btn {
+  height: 34px; min-height: 0; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line3); background: transparent; color: var(--t1);
+  font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.saw-btn:hover:not(:disabled) { background: var(--raised); }
+.saw-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 480px minmax(0, 1fr); }
+.saw-left { overflow: auto; padding: 22px 26px 26px 32px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid var(--line); }
+.saw-right { overflow: auto; padding: 22px 32px 26px 28px; display: flex; flex-direction: column; gap: 18px; }
+.saw-overview { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: var(--stage); box-shadow: 0 0 0 1px var(--line); display: block; }
+.saw-crops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.saw-crop { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.saw-crop img, .saw-crop-ph { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; box-shadow: 0 0 0 1px var(--line); }
+.saw-crop-ph { display: grid; place-items: center; font-size: 11px; color: var(--t3); background: repeating-linear-gradient(135deg, var(--ph1) 0 6px, var(--ph2) 6px 12px); }
+.saw-meta { display: grid; grid-template-columns: 130px minmax(0, 1fr); row-gap: 5px; font-size: 13px; margin: 0; }
+.saw-meta-row { display: contents; }
+.saw-meta-row dt { color: var(--t3); }
+.saw-meta-row dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+.saw-card { display: flex; gap: 10px; align-items: flex-start; background: var(--card); border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.45; }
+.saw-alert { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--ret); border-radius: 10px; padding: 14px 16px; }
+.saw-level { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.saw-back { display: grid; grid-template-columns: 110px minmax(0, 1fr); row-gap: 8px; column-gap: 12px; font-size: 14px; line-height: 1.4; margin: 0; }
+.saw-back dt { color: var(--t3); font-size: 12px; }
+.saw-back dd { margin: 0; }
+.saw-fold { border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
+.saw-fold-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 0; border-radius: 0; background: var(--panel);
+  color: var(--t1); cursor: pointer; text-align: left; font: inherit; font-size: 14px; min-height: 0; height: auto;
+}
+.saw-fold-btn:hover { background: var(--raised); }
+.saw-pre {
+  margin: 0; padding: 12px 16px; border-top: 1px solid var(--line); max-height: 220px; overflow: auto; font-family: var(--mono); font-size: 12px;
+  line-height: 1.55; color: var(--t2); white-space: pre-wrap; background: var(--inset);
+}
+.saw-earlier { padding: 0 14px 10px; font-size: 13px; color: var(--t2); }
+.saw-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line);
+  border-radius: 8px; overflow: hidden; margin-top: auto;
+}
+.saw-stat { background: var(--panel); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.saw-note { font-size: 13px; color: var(--t3); margin: 0; }
+.saw-skel { background: var(--raised); border-radius: 8px; }
+.saw-skel-43 { aspect-ratio: 4 / 3; border-radius: 4px; }
+.saw-sq { aspect-ratio: 1; border-radius: 0; }
+.saw-skel-20 { height: 20px; border-radius: 4px; }
+.saw-skel-90 { height: 90px; }
+.saw-w40 { width: 40%; }
+.saw-o6 { opacity: .6; }
+
+.saw-eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--t3); }
+.saw-stack-0, .saw-stack-4, .saw-stack-6, .saw-stack-8 { display: flex; flex-direction: column; }
+.saw-stack-4 { gap: 4px; } .saw-stack-6 { gap: 6px; } .saw-stack-8 { gap: 8px; }
+.saw-grow { flex: 1; min-width: 0; }
+.saw-push { margin-left: auto; }
+.saw-mono { font-family: var(--mono); }
+.saw-strong { font-weight: var(--wm); }
+.saw-bold { font-weight: var(--wb); }
+.saw-body-l { font-size: 15px; }
+.saw-body-s { font-size: 14px; line-height: 1.4; }
+.saw-small { font-size: 13px; }
+.saw-xs { font-size: 12px; }
+.saw-xxs { font-size: 11px; }
+.saw-t2 { color: var(--t2); } .saw-t3 { color: var(--t3); }
+.saw-ok { color: var(--ok); } .saw-ret { color: var(--ret); }
+
+@media (max-width: 1100px) {
+  .saw-body { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .saw-left { border-right: 0; overflow: visible; }
+  .saw-right { overflow: visible; }
+}

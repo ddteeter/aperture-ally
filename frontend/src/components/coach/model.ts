@@ -108,6 +108,12 @@ export function tokensLabel(usage: Assessment["usage"]): string | null {
 }
 
 /** Muted model line: provider · served model · tokens · cost. */
+/** "Usable" with nothing to change, "Usable, but…" (fine to keep, one optional change), or the verdict's own word. */
+export function verdictKind(r: AssessmentResult): "usable" | "usable_but" | "retake" | "uncertain" {
+  if (r.verdict === "usable_candidate") return r.primary_action ? "usable_but" : "usable";
+  return r.verdict === "needs_retake" ? "retake" : "uncertain";
+}
+
 export function modelLine(a: Assessment): string {
   const cost =
     a.cost_estimate_usd != null ? `$${a.cost_estimate_usd.toFixed(3)}` : a.provider === "mock" ? "$0 (mock)" : "cost n/a";
