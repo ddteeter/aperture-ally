@@ -2,6 +2,7 @@ import type { ProviderName, Session, SessionState } from "../api/types";
 import { useApp } from "../AppContext";
 import type { ConnectionStatus } from "../hooks/useEventStream";
 import { HIDDEN_TABS, TABS, type Tab } from "../tabs";
+import { Mark } from "../ui/Mark";
 import { DeviceChips } from "./DeviceChips";
 import { CoachingPill } from "./ShootStatus";
 
@@ -63,7 +64,7 @@ export function Header(props: {
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark" aria-hidden="true" />
+        <Mark size={18} />
         <span>Aperture Ally</span>
       </div>
       <span className="topbar-sep" aria-hidden="true" />

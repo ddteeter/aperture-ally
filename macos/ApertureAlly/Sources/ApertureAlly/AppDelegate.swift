@@ -81,10 +81,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         web?.load(URLRequest(url: server.url))
     }
 
+    /// The mark (docs/design/icons/mark-on-dark.svg, mark 2a) for the page shown while the server starts.
+    static let markSVG = ##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100" width="56" height="56"><defs><mask id="g" maskUnits="userSpaceOnUse" x="-50" y="-50" width="100" height="100"><rect x="-50" y="-50" width="100" height="100" fill="#fff"></rect><g fill="none" stroke="#000" stroke-width="3.5" stroke-linejoin="round"><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -18.78 35.32 L-45 46 L-33.16 22.37 A40 40 0 0 1 -38.12 12.12 Z"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(60)"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(120)"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(180)"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(240)"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(300)"></path></g></mask></defs><g mask="url(#g)"><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -18.78 35.32 L-45 46 L-33.16 22.37 A40 40 0 0 1 -38.12 12.12 Z" fill="#79c0e8"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(60)" fill="#ececec"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(120)" fill="#ececec"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(180)" fill="#ececec"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(240)" fill="#ececec"></path><path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(300)" fill="#ececec"></path></g></svg>"##
+
     static func waitingPage(_ msg: String) -> String {
         """
-        <html><body style="margin:0;height:100vh;display:grid;place-items:center;background:#111;color:#bbb;
-        font:16px -apple-system,sans-serif"><div>\(msg)</div></body></html>
+        <html><body style="margin:0;height:100vh;display:grid;place-items:center;background:#161616;color:#b8b8b8;
+        font:15px -apple-system,sans-serif"><div style="display:flex;flex-direction:column;align-items:center;gap:18px">
+        \(markSVG)<div>\(msg)</div></div></body></html>
         """
     }
 
@@ -95,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     // MARK: server state
 
     private func serverChanged(_ st: ServerSupervisor.State) {
-        statusItem.button?.title = Self.statusGlyph(st)
+        styleStatusButton(st)
         rebuildStatusMenu()
         switch st {
         case .running, .attached:
@@ -108,12 +112,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
         }
     }
 
-    static func statusGlyph(_ st: ServerSupervisor.State) -> String {
-        switch st {
-        case .running, .attached: return "◉"
-        case .starting, .restarting: return "◌"
-        case .stopped: return "⊘"
+    /// The mark as a template image (macOS tints it for light/dark menu bars). Dimmed while the server starts
+    /// or restarts; a "!" beside it when the server has stopped.
+    private func styleStatusButton(_ st: ServerSupervisor.State) {
+        guard let button = statusItem?.button else { return }
+        if button.image == nil, let img = Bundle.main.image(forResource: "StatusIcon") {
+            img.isTemplate = true
+            img.size = NSSize(width: 18, height: 18)
+            button.image = img
+            button.imagePosition = .imageLeft
         }
+        switch st {
+        case .running, .attached:
+            button.appearsDisabled = false
+            button.title = button.image == nil ? "◉" : ""
+        case .starting, .restarting:
+            button.appearsDisabled = true
+            button.title = button.image == nil ? "◌" : ""
+        case .stopped:
+            button.appearsDisabled = false
+            button.title = button.image == nil ? "⊘" : "!"
+        }
+        button.toolTip = "Aperture Ally · \(Self.describe(st))"
     }
 
     static func describe(_ st: ServerSupervisor.State) -> String {
@@ -130,8 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
 
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "◌"
-        statusItem.button?.toolTip = "Aperture Ally"
+        styleStatusButton(server?.state ?? .starting)
         rebuildStatusMenu()
     }
 

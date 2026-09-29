@@ -10,6 +10,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$PKG/.build/release/ApertureAlly" "$APP/Contents/MacOS/ApertureAlly"
 sed "s#__REPO__#$ROOT#" "$PKG/Resources/Info.plist" > "$APP/Contents/Info.plist"
+cp "$PKG/Resources/AppIcon.icns" "$PKG/Resources/StatusIcon.png" "$PKG/Resources/StatusIcon@2x.png" "$APP/Contents/Resources/"
 [[ -f "$ROOT/frontend/dist/index.html" ]] || (cd "$ROOT/frontend" && npm ci && npm run build)
 codesign --force --sign - "$APP"   # ad-hoc: fine for this Mac; notarize only to distribute
 echo "built $APP"

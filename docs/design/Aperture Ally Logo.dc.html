@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:#101010;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="m-iris" viewBox="-50 -50 100 100">
+      <g style="stroke:var(--bg);stroke-width:3.5;stroke-linejoin:round">
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" style="fill:var(--acc)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(60)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(120)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(180)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(240)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(300)" fill="currentColor"></path>
+      </g>
+    </symbol>
+    <symbol id="m-bubble" viewBox="-50 -50 100 100">
+      <path d="M-24 22 L-38 42 L-8 33 Z" fill="currentColor"></path>
+      <circle cx="2" cy="-2" r="33" fill="none" stroke="currentColor" stroke-width="11"></circle>
+      <circle cx="2" cy="-2" r="11" style="fill:var(--acc)"></circle>
+    </symbol>
+    <symbol id="m-aa" viewBox="-50 -50 100 100">
+      <polyline points="-42,38 -12,-38 18,38" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="miter"></polyline>
+      <polyline points="-18,38 12,-38 42,38" fill="none" stroke="currentColor" stroke-width="10" stroke-linejoin="miter"></polyline>
+      <circle cx="0" cy="20" r="7" style="fill:var(--acc)"></circle>
+    </symbol>
+    <symbol id="m-focus" viewBox="-50 -50 100 100">
+      <g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="square">
+        <path d="M-36 -18 V-36 H-18"></path>
+        <path d="M-36 18 V36 H-18"></path>
+        <path d="M36 18 V36 H18"></path>
+      </g>
+      <path d="M18 -36 H36 V-18" fill="none" stroke-width="7" stroke-linecap="square" style="stroke:var(--acc)"></path>
+      <circle cx="0" cy="0" r="9" fill="currentColor"></circle>
+    </symbol>
+    <symbol id="m-needle" viewBox="-50 -50 100 100">
+      <g stroke="currentColor" stroke-width="4" stroke-linecap="round">
+        <line x1="-25.98" y1="-15" x2="-32.91" y2="-19"></line>
+        <line x1="-21.21" y1="-21.21" x2="-26.87" y2="-26.87"></line>
+        <line x1="-15" y1="-25.98" x2="-19" y2="-32.91"></line>
+        <line x1="-7.76" y1="-28.98" x2="-9.83" y2="-36.71"></line>
+        <line x1="7.76" y1="-28.98" x2="9.83" y2="-36.71"></line>
+        <line x1="15" y1="-25.98" x2="19" y2="-32.91"></line>
+        <line x1="21.21" y1="-21.21" x2="26.87" y2="-26.87"></line>
+        <line x1="25.98" y1="-15" x2="32.91" y2="-19"></line>
+      </g>
+      <line x1="0" y1="14" x2="0" y2="-40" stroke-width="6" stroke-linecap="round" style="stroke:var(--acc)"></line>
+      <circle cx="0" cy="14" r="9" fill="currentColor"></circle>
+      <path d="M-38 34 H38" stroke="currentColor" stroke-width="6" stroke-linecap="round"></path>
+    </symbol>
+    <symbol id="m-iristalk" viewBox="-50 -50 100 100">
+      <g style="stroke:var(--bg);stroke-width:3.5;stroke-linejoin:round">
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -18.78 35.32 L-45 46 L-33.16 22.37 A40 40 0 0 1 -38.12 12.12 Z" style="fill:var(--acc)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(60)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(120)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(180)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(240)" fill="currentColor"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(300)" fill="currentColor"></path>
+      </g>
+    </symbol>
+    <symbol id="m-bubbleiris" viewBox="-50 -50 100 100">
+      <path d="M-24 24 L-40 44 L-8 35 Z" fill="currentColor"></path>
+      <circle cx="2" cy="-2" r="36" fill="none" stroke="currentColor" stroke-width="8"></circle>
+      <g transform="translate(2 -2) scale(0.66)" style="stroke:var(--bg);stroke-width:4.5;stroke-linejoin:round" fill="currentColor">
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(60)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(120)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(180)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(240)"></path>
+        <path d="M7 12.12 L-8.56 39.07 A40 40 0 0 1 -38.12 12.12 Z" transform="rotate(300)"></path>
+        <polygon points="14,0 7,12.12 -7,12.12 -14,0 -7,-12.12 7,-12.12" style="fill:var(--acc);stroke:none"></polygon>
+      </g>
+    </symbol>
+    <symbol id="m-hexbubble" viewBox="-50 -50 100 100">
+      <path fill-rule="evenodd" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" d="M38 -2 L19 30.9 L-3 30.9 L-28 46 L-19 30.9 L-38 -2 L-19 -34.9 L19 -34.9 Z M24 -2 L12 18.8 L-12 18.8 L-24 -2 L-12 -22.8 L12 -22.8 Z"></path>
+      <polygon points="0,-12 8.66,-7 8.66,3 0,8 -8.66,3 -8.66,-7" style="fill:var(--acc)"></polygon>
+    </symbol>
+  </defs>
+</svg>
+
+<section style="padding:56px 56px 0;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">TURN 2 · APERTURE × CHAT BUBBLE</span>
+    <h1 style="margin:0;font-size:36px;font-weight:600;letter-spacing:-.015em">Combining <a href="#1a">1a</a> and <a href="#1b">1b</a></h1>
+    <span style="font-size:15px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">Three ways to make the iris unmistakable while still reading as a speech bubble.</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+    <div id="2a" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#161616">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">2a</span>
+        <svg width="180" height="180"><use href="#m-iristalk"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#0a0a0a;display:grid;place-items:center;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#0a0a0a;box-shadow:inset 0 0 0 1px #2a2a2a"><svg width="52" height="52"><use href="#m-iristalk"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#1c1c1c;display:flex"><svg width="20" height="20"><use href="#m-iristalk"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230);--bg:#f2f2f2"><svg width="32" height="32"><use href="#m-iristalk"></use></svg><span style="font-size:18px;font-weight:600;letter-spacing:-.01em">Aperture Ally</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">The blade that speaks</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">1a’s iris, but the lit blade grows a speech tail. The coach is one part of the camera — and it’s the part that talks. Strongest aperture read.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="2b" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#161616">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">2b</span>
+        <svg width="180" height="180"><use href="#m-bubbleiris"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#0a0a0a;display:grid;place-items:center;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#0a0a0a;box-shadow:inset 0 0 0 1px #2a2a2a"><svg width="52" height="52"><use href="#m-bubbleiris"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#1c1c1c;display:flex"><svg width="20" height="20"><use href="#m-bubbleiris"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230);--bg:#f2f2f2"><svg width="32" height="32"><use href="#m-bubbleiris"></use></svg><span style="font-size:19px;font-weight:600;letter-spacing:-.02em">aperture ally</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">Iris in a bubble</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">1b’s bubble outline with a full iris inside and light coming through the opening. Most literal blend; the iris detail softens below ~24px.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="2c" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230)">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">2c</span>
+        <svg width="180" height="180"><use href="#m-hexbubble"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:oklch(0.80 0.10 230);display:grid;place-items:center;color:#0a0a0a;--acc:#0a0a0a"><svg width="52" height="52"><use href="#m-hexbubble"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);display:flex"><svg width="20" height="20"><use href="#m-hexbubble"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="32" height="32"><use href="#m-hexbubble"></use></svg><span style="font-size:18px;font-weight:600;letter-spacing:-.01em">Aperture Ally</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">Hexagon bubble</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">The iris opening itself — a hexagon — becomes the bubble, with a small lit hexagon inside. Simplest geometry, survives favicon size best.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding:56px;display:flex;flex-direction:column;gap:28px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;color:#8c8c8c">TURN 1 · LOGO EXPLORATIONS</span>
+    <h1 style="margin:0;font-size:36px;font-weight:600;letter-spacing:-.015em">Aperture Ally — five marks</h1>
+    <span style="font-size:15px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">Each mark is one neutral plus a single accent, matching the app’s rule that only one thing gets colour. Shown large, as an app icon, at favicon size, and on light.</span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start">
+
+    <div id="1a" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#161616">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">1a</span>
+        <svg width="180" height="180"><use href="#m-iris"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#0a0a0a;display:grid;place-items:center;color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#0a0a0a;box-shadow:inset 0 0 0 1px #2a2a2a"><svg width="50" height="50"><use href="#m-iris"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);--bg:#1c1c1c;display:flex"><svg width="20" height="20"><use href="#m-iris"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230);--bg:#f2f2f2"><svg width="30" height="30"><use href="#m-iris"></use></svg><span style="font-size:18px;font-weight:600;letter-spacing:-.01em">Aperture Ally</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">One blade lit</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">A six-blade iris. Five blades are the camera; the lit one is the coach working alongside them. Reads as “aperture” instantly, even at 16px.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1b" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230)">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">1b</span>
+        <svg width="180" height="180"><use href="#m-bubble"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:oklch(0.80 0.10 230);display:grid;place-items:center;color:#0a0a0a;--acc:#0a0a0a"><svg width="52" height="52"><use href="#m-bubble"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);display:flex"><svg width="20" height="20"><use href="#m-bubble"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="30" height="30"><use href="#m-bubble"></use></svg><span style="font-size:19px;font-weight:600;letter-spacing:-.02em">aperture ally</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">The lens that talks</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">A lens barrel with a speech tail — the coach’s voice in your ear at the camera. Friendliest of the five; lowercase wordmark leans into that.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230)">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">1c</span>
+        <svg width="180" height="180"><use href="#m-aa"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#0a0a0a;display:grid;place-items:center;color:#ececec;--acc:oklch(0.80 0.10 230);box-shadow:inset 0 0 0 1px #2a2a2a"><svg width="50" height="50"><use href="#m-aa"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);display:flex"><svg width="20" height="20"><use href="#m-aa"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:12px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="30" height="30"><use href="#m-aa"></use></svg><span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;letter-spacing:.14em">APERTURE ALLY</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">Two A’s, one focus</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">Interlocked A’s — photographer and coach sharing a stance. Where they cross, the accent dot sits like a focus point. Most monogram-like; pairs with a technical mono wordmark.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1d" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230)">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">1d</span>
+        <svg width="180" height="180"><use href="#m-focus"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#0a0a0a;display:grid;place-items:center;color:#ececec;--acc:oklch(0.80 0.10 230);box-shadow:inset 0 0 0 1px #2a2a2a"><svg width="48" height="48"><use href="#m-focus"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);display:flex"><svg width="20" height="20"><use href="#m-focus"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="30" height="30"><use href="#m-focus"></use></svg><span style="font-size:18px;font-weight:500;letter-spacing:-.01em">Aperture <b style="font-weight:700;color:oklch(0.50 0.13 230)">Ally</b></span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">The nudge</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">A viewfinder focus box with one corner lit — the coach pointing at what to fix. Directly echoes the at-camera Shoot UI, so the brand and the product feel like one thing.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1e" style="width:520px;background:#1c1c1c;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="height:300px;background:#161616;display:grid;place-items:center;position:relative;color:#ececec;--acc:oklch(0.80 0.10 230)">
+        <span style="position:absolute;top:14px;left:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;background:#ececec;color:#161616;padding:3px 8px;border-radius:5px">1e</span>
+        <svg width="180" height="180"><use href="#m-needle"></use></svg>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="width:72px;height:72px;border-radius:18px;background:#ececec;display:grid;place-items:center;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="52" height="52"><use href="#m-needle"></use></svg></div>
+          <div style="color:#ececec;--acc:oklch(0.80 0.10 230);display:flex"><svg width="20" height="20"><use href="#m-needle"></use></svg></div>
+          <div style="flex:1;height:72px;border-radius:10px;background:#f2f2f2;display:flex;align-items:center;gap:10px;padding:0 16px;color:#0a0a0a;--acc:oklch(0.55 0.13 230)"><svg width="30" height="30"><use href="#m-needle"></use></svg><span style="display:flex;flex-direction:column;line-height:1"><span style="font-size:17px;font-weight:600">Aperture Ally</span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#3d3d3d;margin-top:4px">PHOTO COACH</span></span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:16px;font-weight:600">Needle at zero</span>
+          <span style="font-size:14px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">An exposure meter with the needle dead centre — the moment the shot is right. Speaks to the “glance first” verdict; the most instrument-like, least literal.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

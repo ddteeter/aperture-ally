@@ -3,6 +3,7 @@ import { api } from "./api/client";
 import type { CoachEvent, Session, SessionState, UiTheme } from "./api/types";
 import { AppContext, useApp, type AppCtx, type ReceivedInfo, type Toast, type ToastInput } from "./AppContext";
 import { Header, HonestyBand } from "./components/Header";
+import { Mark } from "./ui/Mark";
 import { Toasts } from "./components/Toasts";
 import { SessionsTab } from "./components/SessionsTab";
 import { ShootTab } from "./components/ShootTab";
@@ -367,6 +368,10 @@ export function FirstRun({ onTab }: { onTab: (t: Tab) => void }) {
   return (
     <section className="first-run" aria-labelledby="first-run-h">
       <div className="first-run-inner">
+        <div className="first-run-lockup">
+          <Mark size={44} />
+          <span>Aperture Ally</span>
+        </div>
         <h1 id="first-run-h">Start a shoot to begin coaching</h1>
         <ol>
           <li>

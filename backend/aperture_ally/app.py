@@ -43,7 +43,13 @@ def create_app(settings: Settings | None = None, coach: ApertureAllyApp | None =
         @app.get("/{path:path}", include_in_schema=False)
         async def spa(path: str):
             # Client-side routing only: never answer API paths or file-like requests with the SPA shell.
-            if path.startswith("api") or ".." in path or Path(path).suffix:
+            if path.startswith("api") or ".." in path:
+                raise HTTPException(404)
+            if Path(path).suffix:
+                # Files at the top of dist/ (favicon, touch icon) are served; nothing in subfolders.
+                f = dist / path
+                if "/" not in path and f.is_file():
+                    return FileResponse(f)
                 raise HTTPException(404)
             return FileResponse(dist / "index.html")
 

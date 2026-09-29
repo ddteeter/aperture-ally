@@ -142,3 +142,25 @@ def test_device_summary_names_the_fallback_mic_and_a_sleeping_remote():
     assert d["mic"] == {"state": "fallback", "device": "MacBook Air Microphone", "preferred": "AirPods Pro",
                         "detail": "AirPods Pro unavailable. Using MacBook Air Microphone."}
     assert d["remote"]["state"] == "asleep" and "Space still works" in d["remote"]["detail"]
+
+
+async def test_the_ui_shell_favicon_and_nothing_else_is_served_from_dist(tmp_path):
+    import httpx
+
+    from aperture_ally.app import create_app
+    from aperture_ally.config import Settings
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<html>shell</html>")
+    (dist / "favicon.svg").write_text("<svg/>")
+    (dist / "assets" / "app.js").write_text("js")
+    (tmp_path / "secret.txt").write_text("no")
+    app = create_app(Settings(data_dir=tmp_path / "data", frontend_dist=dist, _env_file=None))
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
+        assert (await c.get("/favicon.svg")).text == "<svg/>"
+        assert (await c.get("/library")).text == "<html>shell</html>"
+        assert (await c.get("/assets/app.js")).text == "js"
+        assert (await c.get("/nope.png")).status_code == 404
+        assert (await c.get("/assets/../../secret.txt")).status_code == 404
+        assert (await c.get("/api/nope.json")).status_code == 404
