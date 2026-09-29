@@ -117,7 +117,10 @@ class Settings(BaseSettings):
     log_to_file: bool = True
 
     # --- speech / voice --------------------------------------------------------------------
-    speech_provider: Literal["say", "mock", "none"] = "mock"
+    speech_provider: Literal["say", "companion", "mock", "none"] = Field(
+        "mock", description="companion = speak through Aperture Ally.app (in-process, ~0.1 s to sound vs ~1 s for "
+                            "say); falls back to say when the app isn't running. The app sets this itself.")
+    companion_port: int = 8767
     say_voice: str | None = None
     say_rate_wpm: int | None = 190
     say_tail_silence_ms: int = Field(400, ge=0, le=2000, description="Silence after each utterance so Bluetooth "

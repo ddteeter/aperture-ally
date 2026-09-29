@@ -19,6 +19,7 @@ from .audio.recording import (
 )
 from .audio.speech import (
     AudioController,
+    CompanionSpeech,
     CuePlayer,
     MockCuePlayer,
     MockSpeech,
@@ -67,7 +68,7 @@ class NotFound(Exception):
 
 
 def build_cues(settings: Settings):
-    if settings.speech_provider == "say":
+    if settings.speech_provider in ("say", "companion"):
         return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound},
                          settings.cue_volume)
     return MockCuePlayer()
@@ -77,6 +78,10 @@ def build_speech(settings: Settings) -> SpeechBackend:
     if settings.speech_provider == "say":
         return SaySpeech(settings.say_voice, settings.say_rate_wpm, settings.say_audio_device,
                          settings.say_tail_silence_ms)
+    if settings.speech_provider == "companion":
+        fallback = SaySpeech(settings.say_voice, settings.say_rate_wpm, settings.say_audio_device,
+                             settings.say_tail_silence_ms)
+        return CompanionSpeech(settings.companion_port, settings.say_rate_wpm, settings.say_voice, fallback)
     if settings.speech_provider == "mock":
         return MockSpeech()
     return NullSpeech()
@@ -178,7 +183,7 @@ class ApertureAllyApp:
     def apply_prefs(self) -> None:
         """Push the owner's audio preferences into the live speech and cue players."""
         p = self.prefs.current
-        if isinstance(self.speech, SaySpeech):
+        if isinstance(self.speech, SaySpeech | CompanionSpeech):
             self.speech.rate = p.speech_rate_wpm
         if isinstance(self.cues, CuePlayer):
             self.cues.sounds["received"] = sound_path(p.received_sound)

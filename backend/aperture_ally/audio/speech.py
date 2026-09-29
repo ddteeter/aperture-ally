@@ -77,6 +77,115 @@ class SaySpeech:
             raise
 
 
+class CompanionSpeech:
+    """Speech through Aperture Ally.app over a loopback socket (macos/ApertureAlly/.../CompanionServer.swift).
+
+    The app keeps the voice loaded and one audio engine running, so speech starts ~0.1 s after the request
+    instead of ~1 s, a new utterance replaces the playing one in ~20 ms, and "done" means the audio really
+    finished (native audio spike, docs/local-verification-results.md). If the app isn't reachable, falls back
+    to `say` so speech never goes silent.
+    """
+
+    name = "companion"
+
+    def __init__(self, port: int, rate_wpm: int | None = None, voice: str | None = None,
+                 fallback: SaySpeech | None = None):
+        self.port = port
+        self.rate = rate_wpm
+        self.voice = voice
+        self.fallback = fallback
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
+        self._waiters: dict[str, dict[str, asyncio.Future]] = {}
+        self._pump: asyncio.Task | None = None
+        self._n = 0
+        self.using_fallback = False
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    async def _connect(self) -> None:
+        if self._writer is not None and not self._writer.is_closing():
+            return
+        self._reader, self._writer = await asyncio.wait_for(asyncio.open_connection("127.0.0.1", self.port), 1.0)
+        self._pump = asyncio.create_task(self._read_events())
+
+    async def _read_events(self) -> None:
+        import json
+
+        try:
+            while self._reader is not None:
+                line = await self._reader.readline()
+                if not line:
+                    break
+                try:
+                    ev = json.loads(line)
+                except ValueError:
+                    continue
+                w = self._waiters.get(ev.get("id", ""))
+                if not w:
+                    continue
+                kind = ev.get("event")
+                if kind == "started" and not w["started"].done():
+                    w["started"].set_result(True)
+                elif kind in ("done", "cancelled", "error"):
+                    if not w["started"].done():
+                        w["started"].set_result(False)
+                    if not w["finished"].done():
+                        w["finished"].set_result((kind, ev.get("detail")))
+        finally:
+            for w in self._waiters.values():  # the app went away mid-utterance
+                for f in w.values():
+                    if not f.done():
+                        f.set_exception(ConnectionError("companion disconnected"))
+            self._writer = self._reader = None
+
+    async def _send(self, obj: dict) -> None:
+        import json
+
+        assert self._writer is not None
+        self._writer.write((json.dumps(obj) + "\n").encode())
+        await self._writer.drain()
+
+    async def speak(self, text: str, on_started: Callable[[], Awaitable[None]]) -> None:
+        try:
+            await self._connect()
+        except (OSError, TimeoutError):
+            if self.fallback is None:
+                raise RuntimeError("Aperture Ally.app isn't running (companion speech)") from None
+            if not self.using_fallback:
+                log.warning("companion speech unavailable on port %s; using `say`", self.port)
+            self.using_fallback = True
+            self.fallback.rate, self.fallback.voice = self.rate, self.voice
+            await self.fallback.speak(text, on_started)
+            return
+        self.using_fallback = False
+        self._n += 1
+        uid = f"u{self._n}"
+        loop = asyncio.get_running_loop()
+        w = {"started": loop.create_future(), "finished": loop.create_future()}
+        self._waiters[uid] = w
+        try:
+            await self._send({"op": "speak", "id": uid, "text": text, "rate_wpm": self.rate, "voice": self.voice})
+            if await w["started"]:
+                await on_started()
+            kind, detail = await w["finished"]
+            if kind == "error":
+                raise RuntimeError(f"companion speech: {detail}")
+            if kind == "cancelled":
+                raise asyncio.CancelledError(detail)
+        except asyncio.CancelledError:
+            if self._writer is not None and not self._writer.is_closing():
+                try:
+                    await self._send({"op": "stop", "id": uid})
+                except (OSError, AssertionError):
+                    pass
+            raise
+        finally:
+            self._waiters.pop(uid, None)
+
+
 class MockSpeech:
     """Simulated speech: 'plays' for words / words_per_s seconds; records what was said."""
 

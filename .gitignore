@@ -16,7 +16,7 @@ frontend/playwright-report/
 *.sqlite3
 *.sqlite3-*
 data/
-ApertureAlly/
+/ApertureAlly/
 fixtures/generated/
 fixtures/private/
 evals/datasets/*
@@ -31,3 +31,7 @@ evals/results/*
 
 # Claude Code agent worktrees (spikes etc.)
 .claude/worktrees/
+
+# Swift build output and the built app
+macos/**/.build/
+/build/

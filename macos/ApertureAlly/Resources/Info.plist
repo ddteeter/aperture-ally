@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key><string>Aperture Ally</string>
+	<key>CFBundleDisplayName</key><string>Aperture Ally</string>
+	<key>CFBundleIdentifier</key><string>com.drewteeter.aperture-ally</string>
+	<key>CFBundleExecutable</key><string>ApertureAlly</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>0.1</string>
+	<key>CFBundleVersion</key><string>1</string>
+	<key>LSMinimumSystemVersion</key><string>14.0</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSMicrophoneUsageDescription</key><string>Aperture Ally records your push-to-talk questions to the coach. Audio outside a question stays in a two-second memory buffer and is never saved or sent.</string>
+	<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+	<key>ApertureAllyRepo</key><string>__REPO__</string>
+</dict>
+</plist>

@@ -528,3 +528,19 @@ built-in speakers by the built-in mic, with onset set against ambient noise; 12 
 - **Speech:** a small long-lived Swift companion (one engine, rendered and cached values, newest replaces
   playing, a playback-complete callback). It becomes the app's speech backend, cutting ~0.85 s off every
   spoken start.
+
+### Companion app "Aperture Ally.app" (2026-09-28)
+
+`macos/ApertureAlly` (build: `scripts/build-mac-app.sh`, add `--install` to copy to /Applications). One menu-bar app
+that starts and supervises the server (or uses one already running on 8765), shows the UI in its own window
+(full screen with ⌃⌘F), and speaks for the backend over a loopback socket (`APERTURE_ALLY_SPEECH_PROVIDER=companion`,
+falls back to `say` if the app isn't running).
+
+- **Voice (blind A/B with the owner):** AVSpeechSynthesizer was "super robotic": on this Mac it only sees compact
+  Samantha. The system voice from Spoken Content (a Siri voice, which `say` uses) isn't offered to it.
+  NSSpeechSynthesizer in-process uses that system voice: the owner judged it the same voice and cadence as `say`.
+  The app uses NSSpeechSynthesizer (deprecated since macOS 14, still works). Downloaded Premium/Enhanced voices would
+  be the fallback if it goes away.
+- **Latency:** request to speaking started 29 ms (vs ~960 ms for a `say` process). Five replacements 150 ms apart:
+  the last one finished `done` (the owner's check by ear is below).
+- Mic permission is asked for by the app (the server is its child process).
