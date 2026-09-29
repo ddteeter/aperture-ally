@@ -147,6 +147,17 @@ class Settings(BaseSettings):
     ready_cue_sound: str = "/System/Library/Sounds/Tink.aiff"
     keep_voice_audio: bool = False
 
+    # --- direct camera control (docs/plans/camera-control.md) ------------------------------
+    camera: Literal["off", "direct", "mock"] = Field(
+        "off", description="direct = the app controls the camera over USB (python-gphoto2) when OM Capture doesn't "
+                           "hold it; mock = a simulated camera for demos and tests; off = watch folder only")
+    camera_poll_s: float = Field(2.0, gt=0, description="How often to look for the camera while it's absent")
+    camera_speak_delay_ms: int = Field(300, ge=0, description="Speak a changed setting this long after the last press")
+    camera_repeat_delay_ms: int = Field(400, ge=50, description="Holding a D-pad direction starts repeating after this")
+    camera_repeat_hz: float = Field(6.0, gt=0, description="Steps per second while a D-pad direction is held")
+    camera_tick_sound: str = "/System/Library/Sounds/Tink.aiff"
+    camera_end_sound: str = "/System/Library/Sounds/Bottle.aiff"
+
     # --- global keys -----------------------------------------------------------------------
     global_keys: Literal["pynput", "gamepad", "none"] = Field(
         "none", description="pynput = keyboard-style remote (needs Input Monitoring); gamepad = 8BitDo Micro in S mode")

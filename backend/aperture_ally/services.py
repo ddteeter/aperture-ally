@@ -149,6 +149,14 @@ class ApertureAllyApp:
                                      audio=self.audio, recorder=recorder or build_recorder(settings),
                                      transcriber=transcriber or build_transcriber(settings), app=self)
         self.keys = None
+        from .camera.driver import FakeDriver, GPhotoDriver
+        from .camera.service import CameraService
+
+        fake = FakeDriver() if settings.camera == "mock" else None
+        self.camera = CameraService(
+            settings.camera, (lambda: fake) if fake else GPhotoDriver, self.bus.publish,
+            inbox=settings.data_dir / "camera-inbox", poll_s=settings.camera_poll_s,
+            destination_fn=lambda: self.ingest.watched_folder)
         self.started = False
 
     def _provider_hosts(self) -> list[str]:
@@ -222,6 +230,7 @@ class ApertureAllyApp:
         if isinstance(self.voice.recorder, ContinuousRecorder):
             self._mic_task = asyncio.create_task(self._mic_watchdog(self.voice.recorder))
         self.network.start()
+        self.camera.start(asyncio.get_running_loop())
         self.started = True
 
     async def _mic_watchdog(self, rec: ContinuousRecorder, every_s: float = 2.0) -> None:
@@ -239,6 +248,8 @@ class ApertureAllyApp:
             await asyncio.sleep(every_s)
 
     async def stop(self) -> None:
+        # Hand the camera back first so its own buttons work even if the rest of shutdown is slow.
+        await asyncio.get_running_loop().run_in_executor(None, self.camera.stop)
         if self._mic_task:
             self._mic_task.cancel()
         if isinstance(self.voice.recorder, ContinuousRecorder):

@@ -59,6 +59,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
     { name = "google-genai" },
+    { name = "gphoto2", marker = "sys_platform == 'darwin'" },
     { name = "hidapi" },
     { name = "httpx" },
     { name = "numpy" },
@@ -87,6 +88,7 @@ requires-dist = [
     { name = "anthropic", specifier = ">=1.0" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "google-genai", specifier = ">=1.0" },
+    { name = "gphoto2", marker = "sys_platform == 'darwin'", specifier = ">=2.6.4" },
     { name = "hidapi", specifier = ">=0.15.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "numpy", specifier = ">=2.0" },
@@ -315,6 +317,16 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/62/0a/a3b7856ca840031d4393dbdd97b67fe811b20061315ed68b67b5c85ca80d/google_genai-2.25.0.tar.gz", hash = "sha256:ab603baa5eee0205926ad0f8d7f93e0400df6d67650e99c33e01ab228ea16ad6", size = 699564, upload-time = "2026-09-22T17:23:01.238Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5d/a8/178dbb9d1d6cac721b01592e291146a024bae5ee3224e36569348921dd6c/google_genai-2.25.0-py3-none-any.whl", hash = "sha256:2e8f3a5f76ed00d5ffc3153f6089bc7d3511054eed53ad9cfc6095a7dc59b028", size = 1159631, upload-time = "2026-09-22T17:22:59.291Z" },
+]
+
+[[package]]
+name = "gphoto2"
+version = "2.6.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/53/da9007f2902e56be9afa6606df781c85243f9f5f189c1916c2237b953360/gphoto2-2.6.4.tar.gz", hash = "sha256:78b83a9462aec01bb15cb8b05202c6652a711827a0b794c60d39272c7d604cf7", size = 578665, upload-time = "2026-06-09T15:29:42.152Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/cc/47f1b92458825ad530c61884294034a4ac52379227657a6414d675a58b93/gphoto2-2.6.4-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:74e223c018589f5f14f3da588e9046d8583099d591d49040f9ac60266b6c26ed", size = 6455437, upload-time = "2026-06-09T14:32:50.633Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/76/2635780dd6d1afacbc398e814b4cd25ce3b529376da901dc47a3aa97327f/gphoto2-2.6.4-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:51e2ba0e9fe0913b6155756172ff1920890af1fb10b8ec7db6e36ba692d1bbec", size = 7459189, upload-time = "2026-06-09T15:23:03.36Z" },
 ]
 
 [[package]]

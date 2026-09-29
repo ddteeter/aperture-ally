@@ -21,6 +21,7 @@ dependencies = [
   "httpx>=0.27",
   "anthropic>=1.0",
   "hidapi>=0.15.0",
+  "gphoto2>=2.6.4 ; sys_platform == 'darwin'",
 ]
 
 [project.scripts]

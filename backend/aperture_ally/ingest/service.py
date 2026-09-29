@@ -157,6 +157,7 @@ class IngestService:
         self._observer = None
         self._reconcile_task: asyncio.Task | None = None
         self.watched_session_id: str | None = None
+        self.watched_folder: Path | None = None  # where direct camera control saves photos (camera/service.py)
         self.replay_paths: set[str] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
 
@@ -181,6 +182,7 @@ class IngestService:
         folder = Path(session.watch_folder).expanduser()
         folder.mkdir(parents=True, exist_ok=True)
         self.watched_session_id = session.id
+        self.watched_folder = folder
         try:
             from watchdog.events import FileSystemEventHandler
             from watchdog.observers import Observer
@@ -216,6 +218,7 @@ class IngestService:
             self._observer = None
             await asyncio.get_running_loop().run_in_executor(None, lambda: (obs.stop(), obs.join(3)))
         self.watched_session_id = None
+        self.watched_folder = None
 
     def _threadsafe_hint(self, session_id: str, path: Path) -> None:
         if self._loop and not self._loop.is_closed():
