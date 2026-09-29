@@ -175,3 +175,132 @@ async def test_a_camera_photo_arrives_in_the_active_shoot_like_a_tethered_one(ma
     await h.app.camera.trigger()
     (cap,) = await h.n_captures(s, 1)
     assert cap.source_paths and "AA9290001.JPG" in cap.source_paths[0]
+
+
+# --- the remote's camera buttons ---------------------------------------------------------------------
+from aperture_ally.camera.remote import FIRST_PHOTO_NOTE, CameraFeedback, RemoteCamera  # noqa: E402
+
+
+class Heard:
+    def __init__(self):
+        self.cues: list[str] = []
+        self.said: list[str] = []
+
+    async def cue(self, kind):
+        self.cues.append(kind)
+
+    async def speak(self, text):
+        self.said.append(text)
+
+
+@pytest.fixture
+async def remote(cam):
+    cam.svc.start()
+    await cam.wait(lambda: cam.svc.state == "connected")
+    heard = Heard()
+    applied = []
+
+    async def apply():
+        applied.append(1)
+        return "f 2.8, applied"
+
+    r = RemoteCamera(cam.svc, CameraFeedback(heard.speak, heard.cue, 0.05), apply, repeat_delay_s=0.1, repeat_hz=50)
+    return r, heard, cam, applied
+
+
+async def test_rapid_presses_tick_each_time_and_speak_only_the_last_value(remote):
+    r, heard, cam, _ = remote
+    for _ in range(4):
+        assert await r.press("up") is True
+        await r.release("up")
+    await asyncio.sleep(0.15)
+    assert heard.cues == ["camera_tick"] * 4
+    assert heard.said == ["f 3.5"]  # 5.6 → 5.0 → 4.5 → 4.0 → 3.5: only the final value is spoken
+    assert cam.svc.values["aperture"] == "3.5"
+
+
+async def test_holding_repeats_and_stops_at_the_end_of_the_range(remote):
+    r, heard, _cam, _ = remote
+    await r.press("zl")  # ISO down: Auto is already the bottom
+    await asyncio.sleep(0.15)
+    await r.release("zl")
+    assert heard.cues[0] == "camera_end"
+    await asyncio.sleep(0.1)
+    assert heard.said[-1] == "ISO auto, lowest"
+    heard.cues.clear()
+    await r.press("right")
+    await asyncio.sleep(0.3)  # held: repeats after 0.1 s
+    await r.release("right")
+    n = len(heard.cues)
+    assert n >= 3 and set(heard.cues) == {"camera_tick"}
+    await asyncio.sleep(0.1)
+    assert len(heard.cues) == n  # released: no more steps
+
+
+async def test_shutter_notes_the_slow_first_photo_apply_and_readout(remote):
+    r, heard, _cam, applied = remote
+    await r.press("a")
+    await asyncio.sleep(0.02)
+    assert heard.said == [FIRST_PHOTO_NOTE]
+    await r.press("y")
+    await asyncio.sleep(0.02)
+    assert applied and heard.said[-1] == "f 2.8, applied"
+    await r.press("plus")
+    await asyncio.sleep(0.02)
+    assert heard.said[-1] == "f 5.6, compensation zero, ISO auto"
+
+
+async def test_camera_buttons_without_a_camera_say_so_once_then_just_bump(remote):
+    r, heard, cam, _ = remote
+    cam.fake.present = False
+    await cam.wait(lambda: cam.svc.state == "asleep")
+    await r.press("up")
+    await r.press("up")
+    await asyncio.sleep(0.02)
+    assert heard.said == ["Camera asleep. Half-press the shutter to wake it."]
+    assert heard.cues == ["camera_end"]
+    assert await r.press("l") is False  # not a camera button: push-to-talk keeps it
+
+
+async def test_y_applies_the_coachs_aperture_and_says_when_the_lens_cant(make_harness):
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    await h.wait(lambda: h.app.camera.state == "connected", 5, "camera connected")
+    assert await h.app.apply_camera_suggestion() == "Nothing to apply from the last photo."
+    target = {"v": ("aperture", "2.8")}
+
+    async def suggestion():
+        return target["v"]
+
+    h.app.camera_suggestion = suggestion
+    assert await h.app.apply_camera_suggestion() == "f 2.8, applied."
+    assert h.app.camera.values["aperture"] == "2.8"
+    applied = [e for e in h.app.bus.recent if e["type"] == "camera.applied"][-1]["payload"]
+    assert applied["before"] == "5.6" and applied["after"] == "2.8"
+    target["v"] = ("aperture", "1.4")  # the simulated lens stops at f/1.8
+    assert await h.app.apply_camera_suggestion() == "f 1.8: the lens can't go to f/1.4."
+
+
+async def test_camera_api_steps_sets_triggers_and_serves_a_live_frame(make_harness):
+    import httpx
+
+    from aperture_ally.app import create_app
+
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    app = create_app(h.app.settings, coach=h.app)
+    await h.wait(lambda: h.app.camera.state == "connected", 5, "camera connected")
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
+        snap = (await c.get("/api/camera")).json()
+        assert snap["state"] == "connected" and snap["settings"]["aperture"]["display"] == "f/5.6"
+        r = (await c.post("/api/camera/step", json={"setting": "aperture", "dir": -1})).json()
+        assert r["display"] == "f/5" and r["source"] == "ui"
+        assert (await c.post("/api/camera/step", json={"setting": "shutter", "dir": 1})).status_code == 422
+        r = (await c.post("/api/camera/set", json={"setting": "iso", "value": "400"})).json()
+        assert r["display"] == "ISO 400"
+        assert (await c.post("/api/camera/set", json={"setting": "iso", "value": "7"})).status_code == 200  # nearest
+        frame = await c.get("/api/camera/frame")
+        assert frame.status_code == 200 and frame.headers["content-type"] == "image/jpeg"
+        assert (await c.post("/api/camera/trigger")).json()["first_photo"] is True
+        assert (await c.post("/api/camera/apply")).json()["text"] == "Nothing to apply from the last photo."
+        assert (await c.post("/api/camera/release")).json()["state"] == "released"
+        assert (await c.post("/api/camera/step", json={"setting": "iso", "dir": 1})).status_code == 409
+        assert (await c.get("/api/camera/live")).status_code == 409

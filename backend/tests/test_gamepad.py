@@ -75,3 +75,21 @@ async def test_hold_l_to_talk_r_pauses_b_cancels_and_a_disconnect_mid_hold_fails
     assert opened[0] == (0x057E, 0x2009) and len(opened) >= 2          # it keeps trying to reconnect
     d = g.diagnostics()
     assert d["source"] == "gamepad" and not d["held"] and "not connected" in (d["error"] or "")
+
+
+async def test_every_press_and_release_also_reaches_the_camera_handler():
+    buttons = []
+
+    async def on_button(name, down):
+        buttons.append((name, down))
+
+    async def noop(*_):
+        pass
+
+    g = GamepadListener("l", "b", "hold", noop, noop, "r", on_button=on_button)
+    g._loop = asyncio.get_running_loop()
+    g.feed({"up"})
+    g.feed({"up", "a"})
+    g.feed(set())
+    await asyncio.sleep(0.05)
+    assert buttons == [("up", True), ("a", True), ("a", False), ("up", False)]

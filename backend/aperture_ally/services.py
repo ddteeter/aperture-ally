@@ -69,7 +69,8 @@ class NotFound(Exception):
 
 def build_cues(settings: Settings):
     if settings.speech_provider in ("say", "companion"):
-        return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound},
+        return CuePlayer({"received": settings.received_cue_sound, "failure": settings.failure_cue_sound,
+                          "camera_tick": settings.camera_tick_sound, "camera_end": settings.camera_end_sound},
                          settings.cue_volume)
     return MockCuePlayer()
 
@@ -157,6 +158,14 @@ class ApertureAllyApp:
             settings.camera, (lambda: fake) if fake else GPhotoDriver, self.bus.publish,
             inbox=settings.data_dir / "camera-inbox", poll_s=settings.camera_poll_s,
             destination_fn=lambda: self.ingest.watched_folder)
+        from .camera.remote import CameraFeedback, RemoteCamera
+
+        self.remote_camera = RemoteCamera(
+            self.camera,
+            CameraFeedback(lambda text: self.audio.speak(text, lambda: True, {"kind": "camera"}), self._camera_cue,
+                           settings.camera_speak_delay_ms / 1000),
+            self.apply_camera_suggestion,
+            repeat_delay_s=settings.camera_repeat_delay_ms / 1000, repeat_hz=settings.camera_repeat_hz)
         self.started = False
 
     def _provider_hosts(self) -> list[str]:
@@ -278,6 +287,52 @@ class ApertureAllyApp:
             if c.processing_state not in ("discovered", "stabilizing"):
                 self.tracker.capture_ready(s.id, c.shot_id, c.id, c.seq, self.tracker.later_bracket_frame(c.exif))
 
+    # --- camera control ------------------------------------------------------------------------
+    async def _camera_cue(self, kind: str) -> None:
+        """Ticks through the companion app (~50 ms) when it's running, else afplay (~170 ms)."""
+        path = self.settings.camera_tick_sound if kind == "camera_tick" else self.settings.camera_end_sound
+        if isinstance(self.speech, CompanionSpeech) and await self.speech.cue(path):
+            return
+        self.cues.play(kind)
+
+    async def camera_suggestion(self) -> tuple[str, str] | None:
+        """The coach's one camera-side change for the newest photo, as (setting, value), when it's machine-readable.
+        For now that's the aperture in the exposure starting point; a structured field comes with the prompt change."""
+        active = await self.active_session()
+        if not active:
+            return None
+        for c in reversed(await self.store.captures(active.id)):
+            a = await self.store.latest_completed_assessment(c.id)
+            if a is None:
+                continue
+            note = a.exposure_note or {}
+            f = note.get("new_f_number")
+            return ("aperture", f"{float(f):.1f}") if note.get("applicable") and f else None
+        return None
+
+    async def apply_camera_suggestion(self) -> str:
+        from .camera import settings as S
+
+        s = await self.camera_suggestion()
+        if s is None:
+            return "Nothing to apply from the last photo."
+        setting, value = s
+        before = self.camera.values.get(setting)
+        r = await self.camera.set_value(setting, value, source="coach")
+        self.bus.publish("camera.applied", setting=setting, before=before, after=r["value"],
+                         display=r["display"], clamped=r["clamped"])
+        if r["clamped"]:
+            return f"{S.spoken(setting, r['value'])}: the lens can't go to {S.display(setting, value)}."  # type: ignore[arg-type]
+        return f"{r['spoken']}, applied."
+
+    async def on_remote_button(self, name: str, down: bool) -> None:
+        if self.camera.mode == "off":
+            return
+        if down:
+            await self.remote_camera.press(name)
+        else:
+            await self.remote_camera.release(name)
+
     async def start_global_keys(self) -> None:
         from .input.gamepad import GamepadListener
         from .input.global_keys import GlobalKeyListener
@@ -303,7 +358,7 @@ class ApertureAllyApp:
         s = self.settings
         if s.global_keys == "gamepad":
             self.keys = GamepadListener(s.gamepad_ptt, s.gamepad_cancel, s.ptt_mode, dispatch,
-                                        self.voice.listener_failed, s.gamepad_pause)
+                                        self.voice.listener_failed, s.gamepad_pause, on_button=self.on_remote_button)
         else:
             self.keys = GlobalKeyListener(s.ptt_key, s.cancel_key, s.ptt_mode, dispatch, self.voice.listener_failed,
                                           s.pause_key)

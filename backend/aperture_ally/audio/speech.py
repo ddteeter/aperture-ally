@@ -148,6 +148,15 @@ class CompanionSpeech:
         self._writer.write((json.dumps(obj) + "\n").encode())
         await self._writer.drain()
 
+    async def cue(self, path: str, volume: float = 1.0) -> bool:
+        """Play a short sound in the app (~50 ms to sound vs ~170 ms for afplay). False if the app isn't there."""
+        try:
+            await self._connect()
+            await self._send({"op": "cue", "path": path, "volume": volume})
+            return True
+        except (OSError, TimeoutError, AssertionError):
+            return False
+
     async def speak(self, text: str, on_started: Callable[[], Awaitable[None]]) -> None:
         try:
             await self._connect()

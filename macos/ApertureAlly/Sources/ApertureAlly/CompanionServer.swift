@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Network
 
@@ -8,6 +9,8 @@ import Network
 ///                                                     ← {"id":"u1","event":"started"}
 ///                                                     ← {"id":"u1","event":"done"|"cancelled"|"error","detail":…}
 ///   → {"op":"stop","id":"u1"}   (id optional: stop whatever is playing)
+///   → {"op":"cue","path":"/System/Library/Sounds/Tink.aiff","volume":1}   (short sound, played in-process, ~50 ms;
+///                                                     no reply; a repeat restarts it so rapid ticks stay distinct)
 final class CompanionServer {
     private let port: UInt16
     private let speech: SpeechService
@@ -83,8 +86,32 @@ final class CompanionServer {
                          })
         case "stop":
             speech.stop(id: msg["id"] as? String)
+        case "cue":
+            if let path = msg["path"] as? String {
+                Cues.shared.play(path: path, volume: Float(msg["volume"] as? Double ?? 1))
+            }
         default:
             send(["event": "error", "detail": "unknown op \(op)"], on: c)
         }
+    }
+}
+
+/// Short sounds (camera ticks) kept loaded so each plays at once; mixes with speech.
+final class Cues {
+    static let shared = Cues()
+    private var sounds: [String: NSSound] = [:]
+
+    func play(path: String, volume: Float) {
+        let snd: NSSound
+        if let s = sounds[path] {
+            snd = s
+        } else {
+            guard let s = NSSound(contentsOfFile: path, byReference: true) else { return }
+            sounds[path] = s
+            snd = s
+        }
+        snd.volume = max(0, min(1, volume))
+        if snd.isPlaying { snd.stop() }
+        snd.play()
     }
 }

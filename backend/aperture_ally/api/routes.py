@@ -19,7 +19,7 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ..coaching.providers.mock import MockProvider
@@ -947,6 +947,118 @@ def device_summary(app) -> dict[str, Any]:
         r = {"state": "asleep", "detail": "Remote asleep or out of range. Press any button to wake it. Space still works as talk."}
     r["reconnects"] = (keys or {}).get("reconnects", 0)
     return {"mic": m, "remote": r}
+
+
+# --- direct camera control (camera/service.py) -----------------------------------------------------
+class CameraStepBody(BaseModel):
+    setting: Literal["aperture", "exposurecompensation", "iso"]
+    dir: Literal[-1, 1]
+
+
+class CameraSetBody(BaseModel):
+    setting: Literal["aperture", "exposurecompensation", "iso"]
+    value: str = Field(..., max_length=20)
+
+
+async def _camera(fn):
+    from ..camera.service import NotConnected
+
+    try:
+        return await fn()
+    except NotConnected as e:
+        raise HTTPException(409, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.get("/camera")
+async def camera_state(request: Request):
+    return app_of(request).camera.snapshot()
+
+
+@router.post("/camera/take")
+async def camera_take(request: Request):
+    return await _camera(app_of(request).camera.take)
+
+
+@router.post("/camera/release")
+async def camera_release(request: Request):
+    return await _camera(app_of(request).camera.release)
+
+
+@router.post("/camera/step")
+async def camera_step(body: CameraStepBody, request: Request):
+    return await _camera(lambda: app_of(request).camera.step(body.setting, body.dir, source="ui"))
+
+
+@router.post("/camera/set")
+async def camera_set(body: CameraSetBody, request: Request):
+    return await _camera(lambda: app_of(request).camera.set_value(body.setting, body.value, source="ui"))
+
+
+@router.post("/camera/trigger")
+async def camera_trigger(request: Request):
+    return await _camera(lambda: app_of(request).camera.trigger(source="ui"))
+
+
+@router.post("/camera/apply")
+async def camera_apply(request: Request):
+    app = app_of(request)
+    text = await _camera(app.apply_camera_suggestion)
+    app.coaching._spawn(app.audio.speak(text, lambda: True, {"kind": "camera"}))
+    return {"text": text}
+
+
+@router.get("/camera/suggestion")
+async def camera_suggestion(request: Request):
+    from ..camera import settings as S
+
+    s = await app_of(request).camera_suggestion()
+    return {"setting": s[0], "value": s[1], "display": S.display(s[0], s[1])} if s else None  # type: ignore[arg-type]
+
+
+@router.get("/camera/frame")
+async def camera_frame(request: Request):
+    """The newest live-view frame (JPEG); starts live view for a few seconds if nobody is watching."""
+    cam = app_of(request).camera
+    if cam.state != "connected":
+        raise HTTPException(409, cam.detail)
+    cam.live_watchers += 1
+    try:
+        seq = cam.frame_seq
+        for _ in range(50):
+            if cam.frame is not None and cam.frame_seq != seq:
+                break
+            await asyncio.sleep(0.02)
+    finally:
+        cam.live_watchers -= 1
+    if cam.frame is None:
+        raise HTTPException(503, "no live-view frame yet")
+    return Response(cam.frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/camera/live")
+async def camera_live(request: Request):
+    """Live view as MJPEG (multipart/x-mixed-replace), for an <img>. Frames are captured only while it's open."""
+    cam = app_of(request).camera
+    if cam.state != "connected":
+        raise HTTPException(409, cam.detail)
+
+    async def frames():
+        cam.live_watchers += 1
+        seq = -1
+        try:
+            while not await request.is_disconnected() and cam.state == "connected":
+                if cam.frame is not None and cam.frame_seq != seq:
+                    seq = cam.frame_seq
+                    yield (b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                           + str(len(cam.frame)).encode() + b"\r\n\r\n" + cam.frame + b"\r\n")
+                await asyncio.sleep(1 / 30)
+        finally:
+            cam.live_watchers -= 1
+
+    return StreamingResponse(frames(), media_type="multipart/x-mixed-replace; boundary=frame",
+                             headers={"Cache-Control": "no-store"})
 
 
 @router.get("/devices")

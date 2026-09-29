@@ -69,10 +69,12 @@ class GamepadListener:
 
     def __init__(self, ptt_button: str, cancel_button: str | None, mode: str,
                  dispatch: Callable[[str], Awaitable[None]], on_failure: Callable[[str], Awaitable[None]],
-                 pause_button: str | None = None, *, ids: tuple[int, int] = SWITCH_PRO, open_device=None):
+                 pause_button: str | None = None, *, ids: tuple[int, int] = SWITCH_PRO, open_device=None,
+                 on_button: Callable[[str, bool], Awaitable[None]] | None = None):
         self.tracker = PTTKeyTracker(KeySpec.parse(ptt_button), KeySpec.parse(cancel_button) if cancel_button else None,
                                      mode, KeySpec.parse(pause_button) if pause_button else None)
         self.dispatch, self.on_failure = dispatch, on_failure
+        self.on_button = on_button  # every press/release too (camera buttons: camera/remote.py)
         self.ids = ids
         self._open = open_device or _open_hid
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -138,14 +140,18 @@ class GamepadListener:
         now = time.monotonic()
         actions = []
         with self._lock:
-            for name in sorted(pressed - self._pressed):
+            down, up = sorted(pressed - self._pressed), sorted(self._pressed - pressed)
+            for name in down:
                 actions.append(self.tracker.on_press(name, now))
-            for name in sorted(self._pressed - pressed):
+            for name in up:
                 actions.append(self.tracker.on_release(name, now))
             self._pressed = set(pressed)
         for a in actions:
             if a:
                 self._emit(a)
+        if self.on_button and self._loop and not self._loop.is_closed():
+            for name, is_down in [(n, True) for n in down] + [(n, False) for n in up]:
+                asyncio.run_coroutine_threadsafe(self.on_button(name, is_down), self._loop)
 
     def _release_all(self) -> None:
         """A disconnect while talk is held: fail closed (the recording is discarded, not sent)."""
