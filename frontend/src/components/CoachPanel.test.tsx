@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ComparisonMetrics, SessionState } from "../api/types";
+import type { CoachEvent, ComparisonMetrics, SessionState } from "../api/types";
 import { makeCtx, renderWithCtx } from "../test/ctx";
 import { assessment, baselineCapture, experiment, followUpCapture, makeCapture, sessionState, shot } from "../test/fixtures";
 import { CoachPanel, coachMode } from "./CoachPanel";
@@ -87,6 +87,26 @@ describe("CoachPanel", () => {
     expect(call(f)).toMatchObject({ url: "/api/captures/cap-2/assess", method: "POST" });
   });
 
+  it("shows the early spoken sentence and verdict while the details are still streaming", async () => {
+    const running = assessment({ status: "running", result: null, provider: "claude", created_at: new Date().toISOString() });
+    const cap = followUpCapture(running, { processing_state: "analyzing" });
+    let emit: (ev: CoachEvent) => void = () => undefined;
+    const c = ctxWith();
+    c.subscribe = (fn) => {
+      emit = fn;
+      return () => undefined;
+    };
+    renderWithCtx(<CoachPanel capture={cap} shot={shot} captures={[cap]} experiments={[]} keeper={null} />, c);
+    act(() =>
+      emit({ seq: 1, type: "coach.speech.early", ts: "", session_id: "s1", capture_id: "cap-2",
+        payload: { text: "Needs retake. Move the light left.", verdict: "needs_retake", ready_ms: 1300 } }),
+    );
+    expect(screen.getByRole("heading", { name: "Needs retake" })).toBeInTheDocument();
+    expect(screen.getByTestId("spoken-early")).toHaveTextContent("Needs retake. Move the light left.");
+    expect(screen.getByText("Spoken · at 1.3 s")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Criteria (checking)" })).toBeInTheDocument();
+  });
+
   it("shows analysis steps and cancels with the button or Esc", async () => {
     const f = mockFetch({ cancelled: true });
     const running = assessment({ status: "running", result: null, provider: "claude", created_at: new Date().toISOString() });
@@ -103,13 +123,36 @@ describe("CoachPanel", () => {
     await vi.waitFor(() => expect(f).toHaveBeenCalledTimes(2));
   });
 
+  it("says 'Usable, but…' with an optional change, 'Usable' with nothing to change, and shows a correction", () => {
+    const a = retakeAssessment();
+    a.result = { ...a.result!, verdict: "usable_candidate" };
+    const { unmount } = renderWithCtx(
+      <CoachPanel capture={followUpCapture(a, { baseline_capture_id: null })} shot={shot} captures={[]} experiments={[]} keeper={null} />,
+      ctxWith(),
+    );
+    expect(screen.getByRole("heading", { name: "Usable, but…" })).toBeInTheDocument();
+    expect(screen.getByText("One change at the camera · optional")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Disagree\? See what the coach saw/ })).toBeInTheDocument();
+    unmount();
+
+    const b = retakeAssessment();
+    b.result = { ...b.result!, verdict: "usable_candidate", primary_action: null, spoken_text: "Usable. Keep it." };
+    b.early_speech = { text: "Open to f/2.8.", ready_ms: 1300, corrected: true };
+    renderWithCtx(<CoachPanel capture={followUpCapture(b, { baseline_capture_id: null })} shot={shot} captures={[]} experiments={[]} keeper={null} />, ctxWith());
+    expect(screen.getByRole("heading", { name: "Usable" })).toBeInTheDocument();
+    expect(screen.getByTestId("nothing-to-change")).toHaveTextContent("Keep it.");
+    const corr = screen.getByTestId("correction");
+    expect(corr).toHaveTextContent("Usable. Keep it.");
+    expect(within(corr).getByText("“Open to f/2.8.”").tagName).toBe("S");
+  });
+
   it("lists what is probably fixable in post, apart from the one camera-side action", () => {
     const a = retakeAssessment();
     a.result = { ...a.result!, fixable_in_post: ["White balance is warm", "Slight tilt"] };
     renderWithCtx(<CoachPanel capture={followUpCapture(a, { baseline_capture_id: null })} shot={shot} captures={[]} experiments={[]} keeper={null} />, ctxWith());
     const box = screen.getByTestId("fixable-in-post");
-    expect(box).toHaveTextContent("Probably fixable in post");
-    expect(within(box).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["White balance is warm", "Slight tilt"]);
+    expect(box).toHaveTextContent("Probably fixable in post · no need to reshoot");
+    expect(within(box).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["~White balance is warm", "~Slight tilt"]);
   });
 
   it("renders a retake verdict: do this, why, coach asks, criteria, causes, model line", async () => {
@@ -124,6 +167,9 @@ describe("CoachPanel", () => {
     expect(screen.getByText("Photo #2 · verdict in 4.2 s · spoken")).toBeInTheDocument();
     expect(screen.getByText("Move the light a hand-width camera-left.")).toBeInTheDocument();
     expect(screen.getByText("Starting point not calculated: light is flash: equivalence does not hold")).toBeInTheDocument();
+    // The why and what-to-expect sit under a disclosure, so the glance text stays short.
+    expect(screen.queryByText("The right edge falls darker.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Why, and what to expect/ }));
     expect(screen.getByText("The right edge falls darker.")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Show me on the photo ↙" }));

@@ -783,8 +783,10 @@ class _EarlySpeech:
             return
         self.text = spoken
         self.ready_ms = round((time.monotonic() - self.t_start) * 1000, 1)
+        # The verdict streams before spoken_text, so the panel can show both while the details arrive.
         self.service.bus.publish("coach.speech.early", session_id=self.meta["session_id"],
-                                 capture_id=self.meta["capture_id"], ready_ms=self.ready_ms)
+                                 capture_id=self.meta["capture_id"], ready_ms=self.ready_ms, text=spoken,
+                                 verdict=completed_string_field(partial, "verdict"))
         self.task = self.service._spawn(self.service.audio.speak(spoken, self.guard, self.meta))
 
 

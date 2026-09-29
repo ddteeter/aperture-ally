@@ -59,7 +59,8 @@ async def test_advice_is_spoken_while_the_rest_of_the_result_streams(make_harnes
     from aperture_ally.coaching.prompt import PROMPT_VERSION
 
     assert a.prompt_version == PROMPT_VERSION and h.speech.spoken[0] == a.result["spoken_text"]
-    assert any(e["type"] == "coach.speech.early" for e in h.app.bus.recent)
+    early = next(e for e in h.app.bus.recent if e["type"] == "coach.speech.early")
+    assert early["payload"]["text"] and early["payload"]["verdict"] in ("usable_candidate", "needs_retake", "uncertain")
 
 
 class _RepairingProvider(MockProvider):

@@ -53,7 +53,9 @@ describe("shortcutFor", () => {
     expect(shortcutFor(ev("8", { metaKey: true }))).toBeNull();
     expect(shortcutFor(ev("1"))).toBeNull();
     expect(shortcutFor(ev("n", { metaKey: true }))).toEqual({ kind: "newShoot" });
-    expect(shortcutFor(ev("n"))).toBeNull();
+    expect(shortcutFor(ev("n"))).toEqual({ kind: "notes" });
+    expect(shortcutFor(ev("i", { metaKey: true }))).toEqual({ kind: "saw" });
+    expect(shortcutFor(ev(",", { metaKey: true }))).toEqual({ kind: "settings" });
   });
 
   it("never fires while typing", () => {

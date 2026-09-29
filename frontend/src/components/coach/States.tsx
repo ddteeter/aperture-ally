@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
 import type { Assessment, Capture, PendingFile, Shot } from "../../api/types";
-import { useApp } from "../../AppContext";
-import { CAPTURE_STATE, type StatusMeta } from "../../ui/status";
+import { useApp, useCoachEvents } from "../../AppContext";
+import { CAPTURE_STATE, verdictMeta, type StatusMeta } from "../../ui/status";
 import { analysisSteps, providerLabel, raiseCap } from "./model";
 import { GlanceHead, Kbd, Label } from "./parts";
 import { useKey } from "./useKey";
@@ -75,6 +75,13 @@ export function AnalysingView({ capture, la, shot }: { capture: Capture; la: Ass
     }
   };
   useKey({ key: "Escape" }, () => void cancel());
+  const [early, setEarly] = useState<{ text: string; verdict: string | null; at: number } | null>(null);
+  useCoachEvents((ev) => {
+    if (ev.type === "coach.speech.early" && ev.capture_id === capture.id && typeof ev.payload.text === "string") {
+      setEarly({ text: ev.payload.text, verdict: (ev.payload.verdict as string | null) ?? null, at: Number(ev.payload.ready_ms ?? 0) });
+    }
+  });
+  if (early) return <StreamingView capture={capture} early={early} shot={shot} onCancel={() => void cancel()} />;
   const meta: StatusMeta = { ...CAPTURE_STATE.analysing, word: `Analysing #${capture.seq}` };
   return (
     <>
@@ -99,6 +106,54 @@ export function AnalysingView({ capture, la, shot }: { capture: Capture; la: Ass
         <span style={{ width: "70%", height: 26 }} />
       </div>
       <button type="button" className="cp-btn cp-self-start" onClick={() => void cancel()}>
+        Cancel analysis <Kbd>Esc</Kbd>
+      </button>
+    </>
+  );
+}
+
+/** The spoken sentence arrived first and is already playing; criteria and post notes fill in without moving it. */
+function StreamingView({
+  capture,
+  early,
+  shot,
+  onCancel,
+}: {
+  capture: Capture;
+  early: { text: string; verdict: string | null; at: number };
+  shot: Shot | null;
+  onCancel: () => void;
+}) {
+  const base = verdictMeta((early.verdict as never) ?? null);
+  const meta = early.verdict ? base : { ...CAPTURE_STATE.analysing, word: `Photo #${capture.seq}` };
+  const crit = shot?.criteria ?? [];
+  const at = early.at ? `${(early.at / 1000).toFixed(1)} s` : "";
+  return (
+    <>
+      <GlanceHead meta={meta} sub={`Photo #${capture.seq} · speaking now · details arriving`} />
+      <div className="cp-stack cp-gap-8">
+        <Label>Spoken{at ? ` · at ${at}` : ""}</Label>
+        <p className="cp-do" data-testid="spoken-early">
+          {early.text}
+        </p>
+      </div>
+      <div className="cp-stack cp-gap-10" aria-busy="true">
+        <div className="cp-split">
+          <Label>Criteria</Label>
+          <span className="cp-hint cp-acc">● Checking {crit.length || "the"} {crit.length === 1 ? "criterion" : "criteria"}</span>
+        </div>
+        <ul className="cp-crit" aria-label="Criteria (checking)">
+          {crit.map((c) => (
+            <li key={c.id}>
+              <span className="cp-crit-g cp-skel-box" aria-hidden="true" />
+              <span className="cp-crit-t cp-t3">{c.text}</span>
+              <span className="cp-skel-bar" aria-hidden="true" />
+            </li>
+          ))}
+        </ul>
+        <span className="cp-hint">The spoken sentence arrived first and is already playing. Criteria and fixable-in-post notes fill in here without moving it.</span>
+      </div>
+      <button type="button" className="cp-btn cp-self-start" onClick={onCancel}>
         Cancel analysis <Kbd>Esc</Kbd>
       </button>
     </>

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { api } from "../../api/client";
-import type { Assessment, Capture, CriterionResult, Shot } from "../../api/types";
+import type { Assessment, AssessmentResult, Capture, CriterionResult, SessionState, Shot } from "../../api/types";
 import { useApp } from "../../AppContext";
+import { useShortcuts } from "../../lib/keys";
 import { criterionMeta, verdictMeta } from "../../ui/status";
 import { criteriaSummary, modelLine, pickShowZone, seconds, startingPoint } from "./model";
 import { CoachSaw } from "./CoachSaw";
@@ -18,17 +19,56 @@ export function speechWord(s: string | null | undefined): string | null {
   return { spoken: "spoken", pending: "speaking soon", suppressed: "not spoken", cancelled: "speech stopped", failed: "speech failed" }[s] ?? null;
 }
 
+/** "Usable" with nothing to change, "Usable, but…" (fine to keep, one optional change), or the verdict's own word. */
+export function verdictKind(r: AssessmentResult): "usable" | "usable_but" | "retake" | "uncertain" {
+  if (r.verdict === "usable_candidate") return r.primary_action ? "usable_but" : "usable";
+  return r.verdict === "needs_retake" ? "retake" : "uncertain";
+}
+
+/** The next shot to work on after this one: the first unresolved shot after it, wrapping round. */
+export function nextShotTitle(state: SessionState | null, shotId: string | null): string | null {
+  if (!state) return null;
+  const order = state.coverage.shots;
+  const i = order.findIndex((c) => c.shot_id === shotId);
+  const rotated = [...order.slice(i + 1), ...order.slice(0, Math.max(i, 0))];
+  const next = rotated.find((c) => !c.resolved && c.shot_id !== shotId);
+  return next ? state.shots.find((s) => s.id === next.shot_id)?.title ?? null : null;
+}
+
+function clock(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 /** Retake / usable candidate / uncertain verdict for a single-photo assessment. */
 export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessment; shot: Shot | null }) {
   const { state } = useApp();
   const r = a.result!;
   const pa = r.primary_action;
-  const meta = verdictMeta(r.verdict);
+  const kind = verdictKind(r);
+  const base = verdictMeta(r.verdict);
+  const meta = kind === "usable" ? { ...base, word: "Usable" } : kind === "usable_but" ? { ...base, word: "Usable, but…" } : base;
   const sp = startingPoint(a.exposure_note);
   const show = pickShowZone(r);
   const [causes, setCauses] = useState(false);
+  const [why, setWhy] = useState(false);
   const [saw, setSaw] = useState(false);
-  const sub = [`Photo #${capture.seq}`, seconds(a.timings?.total_ms) && `verdict in ${seconds(a.timings.total_ms)}`, speechWord(a.speech_status)]
+  useShortcuts((sc, e) => {
+    if (sc.kind === "saw" && !e.defaultPrevented) {
+      setSaw(true);
+      return true;
+    }
+    return false;
+  });
+  const correction = a.early_speech?.corrected ? a.early_speech : null;
+  const next = kind === "usable" ? nextShotTitle(state, shot?.id ?? null) : null;
+  const sub = [
+    `Photo #${capture.seq}`,
+    kind === "usable_but" ? "fine to keep · one change would help" : kind === "usable" ? "no change needed" : null,
+    kind !== "usable_but" && seconds(a.timings?.total_ms) && `verdict in ${seconds(a.timings.total_ms)}`,
+    speechWord(a.speech_status),
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -37,17 +77,37 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
 
   return (
     <>
+      {correction && (
+        <div role="alert" className="cp-correction" data-testid="correction">
+          <span className="cp-correction-label">! CORRECTION{a.completed_at ? ` · SPOKEN ${clock(a.completed_at)}` : ""}</span>
+          <span className="cp-correction-text">{r.spoken_text}</span>
+          <span className="cp-correction-was">
+            Earlier I said <s>“{correction.text}”</s>. The full check changed the advice.
+          </span>
+        </div>
+      )}
       <GlanceHead meta={meta} sub={sub} tag={honestyTag(a, state?.session.simulated)} />
 
       {pa && (
         <div className="cp-stack cp-gap-8">
-          <Label>Do this</Label>
+          <Label>{kind === "usable_but" ? "One change at the camera · optional" : "Do this"}</Label>
           <p className="cp-do">{pa.instruction}</p>
           {sp && <StartingPointLine sp={sp} />}
         </div>
       )}
+      {kind === "usable" && (
+        <div className="cp-stack cp-gap-8" data-testid="nothing-to-change">
+          <Label>Nothing to change</Label>
+          <p className="cp-do">Keep it.{next ? ` Next: ${next}.` : ""}</p>
+        </div>
+      )}
 
       {pa && (
+        <button type="button" className="cp-disclosure" aria-expanded={why} onClick={() => setWhy((v) => !v)}>
+          {why ? "▾" : "▸"} Why, and what to expect
+        </button>
+      )}
+      {pa && why && (
         <dl className="cp-kv">
           <dt className="cp-label">Why</dt>
           <dd>
@@ -96,10 +156,13 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
 
       {(r.fixable_in_post?.length ?? 0) > 0 && (
         <div className="cp-stack cp-gap-6" data-testid="fixable-in-post">
-          <Label>Probably fixable in post</Label>
-          <ul className="cp-causes">
+          <Label>Probably fixable in post · no need to reshoot</Label>
+          <ul className="cp-post">
             {r.fixable_in_post!.map((c, i) => (
-              <li key={i}>{c}</li>
+              <li key={i}>
+                <span className="cp-post-g" aria-hidden="true">~</span>
+                {c}
+              </li>
             ))}
           </ul>
         </div>
@@ -120,11 +183,12 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
         </div>
       )}
 
+      <button type="button" className="cp-disagree" aria-keyshortcuts="Meta+I" onClick={() => setSaw(true)}>
+        <span>Disagree? See what the coach saw</span>
+        <span className="cp-kbd-t">⌘I</span>
+      </button>
       <p className="cp-model" data-testid="coach-meta">
-        {modelLine(a)}{" "}
-        <button type="button" className="cp-link" onClick={() => setSaw(true)}>
-          What the coach saw
-        </button>
+        {modelLine(a)}
       </p>
       {saw && <CoachSaw assessmentId={a.id} captureId={a.capture_id} onClose={() => setSaw(false)} />}
     </>
