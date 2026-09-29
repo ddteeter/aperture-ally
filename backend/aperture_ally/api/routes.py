@@ -969,6 +969,7 @@ async def diagnostics(request: Request, session_id: str | None = None):
         "voice": app.voice.snapshot(),
         "speech_backend": app.speech.name,
         "mic": _mic_status(app),
+        "devices": device_summary(app),
         "speech_stop_latency_ms": {"n": len(stops), "last": stops[-5:], "max": max(stops) if stops else None},
         "providers": {"configured": app.providers.configured(), "health": app.providers.health},
         "timing": summarize(marks),

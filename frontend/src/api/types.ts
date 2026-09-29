@@ -657,10 +657,29 @@ export interface TimingSummary {
   n_captures: number;
 }
 
+/** The held-open recorder's status (absent fields when the mic opens per question). */
+export interface MicStatus {
+  recorder: string;
+  always_open: boolean;
+  open?: boolean;
+  stalled?: boolean;
+  error?: string | null;
+  reopened?: number;
+  last_stall?: string | null;
+  active_device?: string | null;
+  fallback?: boolean;
+  device?: string | null;
+  /** RMS of the latest block, int16 scale. */
+  level?: number;
+  since_audio_s?: number | null;
+}
+
 export interface Diagnostics {
   checks: DoctorCheck[];
   config: Record<string, unknown>;
-  keys: KeysDiagnostics;
+  keys: KeysDiagnostics & { source?: string; connected?: boolean; reconnects?: number };
+  mic?: MicStatus;
+  devices?: DeviceSummary;
   voice: VoiceSnapshot;
   speech_backend: string;
   speech_stop_latency_ms: { n: number; last: number[]; max: number | null };

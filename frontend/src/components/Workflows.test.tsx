@@ -6,7 +6,7 @@ import { ApiError, api } from "../api/client";
 import type { Session, SetupRevisionSummary } from "../api/types";
 import { makeCtx, renderWithCtx } from "../test/ctx";
 import { CoverageTab } from "./CoverageTab";
-import { DiagnosticsTab } from "./DiagnosticsTab";
+import { DiagnosticsTab, levelPct } from "./DiagnosticsTab";
 import { NewShoot, shootName } from "./NewShoot";
 import { SessionsTab } from "./SessionsTab";
 import { SetupTab } from "./SetupTab";
@@ -255,6 +255,28 @@ describe("SetupTab", () => {
 });
 
 describe("DiagnosticsTab", () => {
+  it("shows each device in detail: the fallback mic with its level, and a sleeping remote", async () => {
+    vi.spyOn(api, "diagnostics").mockResolvedValue(
+      makeDiag({
+        mic: { recorder: "sounddevice", always_open: true, open: true, fallback: true, active_device: "MacBook Air Microphone",
+          device: "Drew’s AirPods Pro", level: 1000, reopened: 1, last_stall: "device vanished (reopened)" },
+        devices: {
+          mic: { state: "fallback", device: "MacBook Air Microphone", preferred: "Drew’s AirPods Pro", detail: "" },
+          remote: { state: "asleep", detail: "", reconnects: 3 },
+        },
+      }),
+    );
+    renderWithCtx(<DiagnosticsTab />, makeCtx({ state: makeState() }));
+    const mic = await screen.findByRole("region", { name: "Microphone" });
+    expect(mic).toHaveTextContent("Using the fallback mic");
+    expect(mic).toHaveTextContent("PreferredDrew’s AirPods Pro");
+    expect(within(mic).getByRole("meter", { name: "Input level" })).toHaveAttribute("aria-valuenow", String(levelPct(1000)));
+    expect(screen.getByRole("region", { name: "Remote" })).toHaveTextContent("Asleep · press any button");
+    expect(screen.getByRole("region", { name: "Camera" })).toHaveTextContent("Tethered through OM Capture");
+    expect(levelPct(32768)).toBe(100);
+    expect(levelPct(0)).toBe(0);
+  });
+
   it("shows health rows, timings, and starts a replay", async () => {
     vi.spyOn(api, "diagnostics").mockResolvedValue(makeDiag());
     const imports = vi.spyOn(api, "imports").mockResolvedValue({ replay: "stale_switch", task: "t1" });

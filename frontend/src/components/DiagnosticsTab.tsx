@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Diagnostics, MockFailMode } from "../api/types";
 import { useApp, useCoachEvents } from "../AppContext";
@@ -47,6 +47,7 @@ export function DiagnosticsTab() {
           Could not load diagnostics: {loadError}
         </p>
       )}
+      {diag?.devices && <DevicesPanel diag={diag} />}
       <div className="wf-stack-12">
         <h2 className="wf-title" id="health-h">
           Health
@@ -170,6 +171,116 @@ export function DiagnosticsTab() {
           </details>
         </div>
       )}
+    </div>
+  );
+}
+
+/** RMS on the int16 scale → 0–100 % meter over a −60…0 dBFS range. */
+export function levelPct(rms: number | undefined): number {
+  if (!rms || rms <= 0) return 0;
+  const db = 20 * Math.log10(rms / 32768);
+  return Math.max(0, Math.min(100, Math.round(((db + 60) / 60) * 100)));
+}
+
+const DEV_TONE = {
+  ok: { c: "var(--ok)", t: "var(--ok-t)" },
+  unc: { c: "var(--unc)", t: "var(--unc-t)" },
+  ret: { c: "var(--ret)", t: "var(--ret-t)" },
+  off: { c: "var(--t3)", t: "var(--raised)" },
+} as const;
+
+function DeviceCard(props: { name: string; glyph: string; state: string; tone: keyof typeof DEV_TONE; rows: [string, string][]; children?: ReactNode }) {
+  const t = DEV_TONE[props.tone];
+  return (
+    <section className="dev-card" aria-label={props.name}>
+      <div className="dev-card-head">
+        <span className="dev-card-g" style={{ background: t.t, color: t.c }} aria-hidden="true">
+          {props.glyph}
+        </span>
+        <span className="wf-stack-2">
+          <span className="dev-card-name">{props.name}</span>
+          <span className="dev-card-state" style={{ color: t.c }}>
+            {props.state}
+          </span>
+        </span>
+      </div>
+      <dl className="dev-rows">
+        {props.rows.map(([k, v]) => (
+          <div key={k} className="dev-row">
+            <dt>{k}</dt>
+            <dd>{v}</dd>
+          </div>
+        ))}
+      </dl>
+      {props.children}
+    </section>
+  );
+}
+
+/** Mic, remote and camera in detail: what's in use, since when, the fallback, and why (Library design · 5). */
+function DevicesPanel({ diag }: { diag: Diagnostics }) {
+  const d = diag.devices!;
+  const mic = diag.mic;
+  const keys = diag.keys;
+  const micTone = d.mic.state === "ok" ? "ok" : d.mic.state === "none" ? "ret" : d.mic.state === "unmanaged" ? "off" : "unc";
+  const micState = { ok: `On ${d.mic.device ?? "mic"}`, fallback: "Using the fallback mic", none: "No microphone", stalled: "Open but silent", unmanaged: "Opens per question" }[d.mic.state];
+  const remTone = d.remote.state === "ok" ? "ok" : d.remote.state === "asleep" ? "unc" : "off";
+  const remState = { ok: "Connected", asleep: "Asleep · press any button", keyboard: "Keyboard mode", off: "Not in use" }[d.remote.state];
+  const lastKey = keys.events?.[keys.events.length - 1];
+  return (
+    <div className="wf-stack-12 wf-span-2">
+      <div className="wf-row-baseline">
+        <h2 className="wf-title">Devices</h2>
+        <span className="wf-t3 wf-small">The top bar only shows these when something changes or is wrong</span>
+      </div>
+      <div className="dev-grid">
+        <DeviceCard
+          name="Microphone"
+          glyph="◉"
+          state={micState}
+          tone={micTone}
+          rows={[
+            ["Device", mic?.active_device ?? "—"],
+            ["Preferred", mic?.device ?? "system default"],
+            ["Held open", mic?.always_open ? (mic.open ? "yes" : "no") : "no (opens per question)"],
+            ["Reopened", String(mic?.reopened ?? 0)],
+            ...(mic?.last_stall ? ([["Last reopen", mic.last_stall]] as [string, string][]) : []),
+            ...(mic?.error ? ([["Error", mic.error]] as [string, string][]) : []),
+          ]}
+        >
+          {mic?.always_open && (
+            <div className="wf-stack-4">
+              <span className="wf-xxs wf-t3">Input level · speak to test</span>
+              <div className="dev-meter" role="meter" aria-label="Input level" aria-valuenow={levelPct(mic.level)} aria-valuemin={0} aria-valuemax={100}>
+                <span style={{ width: `${levelPct(mic.level)}%` }} />
+              </div>
+            </div>
+          )}
+        </DeviceCard>
+        <DeviceCard
+          name="Remote"
+          glyph="▣"
+          state={remState}
+          tone={remTone}
+          rows={[
+            ["Device", keys.source === "gamepad" ? "8BitDo Micro · gamepad (S) mode" : keys.running ? "Keyboard (global keys)" : "—"],
+            ["Last input", lastKey ? `${lastKey.key} (${lastKey.kind})` : "none yet"],
+            ["Battery", "not reported"],
+            ["Reconnects", String(d.remote.reconnects ?? 0)],
+            ...(keys.error ? ([["Error", keys.error]] as [string, string][]) : []),
+          ]}
+        />
+        <DeviceCard
+          name="Camera"
+          glyph="◎"
+          state="Tethered through OM Capture"
+          tone="off"
+          rows={[
+            ["Photos arrive", "through the watch folder"],
+            ["Direct control", "not built yet (live view, remote aperture)"],
+          ]}
+        />
+      </div>
     </div>
   );
 }
