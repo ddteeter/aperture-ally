@@ -84,6 +84,6 @@ late). Design for: a short tick per step (a different one at the end of the rang
 connection state for the camera (connected / waiting / camera asleep) and a clear "release camera" when
 switching back to OM Capture.
 
-Deliver: screens for 1a–d, 2, 3, 4, 5 in both themes; empty, loading and error states; a note on where
-Library lives in the navigation and keyboard shortcuts for anything new.
+Deliver: screens for 1a–d, 2, 3, 4, 5 and 6 in both themes; empty, loading and error states; a note on
+where Library lives in the navigation and keyboard shortcuts for anything new.
 ```
