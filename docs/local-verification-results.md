@@ -542,5 +542,5 @@ falls back to `say` if the app isn't running).
   The app uses NSSpeechSynthesizer (deprecated since macOS 14, still works). Downloaded Premium/Enhanced voices would
   be the fallback if it goes away.
 - **Latency:** request to speaking started 29 ms (vs ~960 ms for a `say` process). Five replacements 150 ms apart:
-  the last one finished `done` (the owner's check by ear is below).
+  the last one finished `done`. By ear (AirPods): same voice as `say`, Glass clear over speech, no clipped endings.
 - Mic permission is asked for by the app (the server is its child process).
