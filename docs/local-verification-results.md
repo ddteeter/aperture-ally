@@ -456,3 +456,44 @@ Spend in session 0 ≈ **$0.21**.
 - No Input Monitoring needed, nothing typed into the app in front.
 - After the laptop died and woke, the Micro reconnected on a button press; the app needed no restart.
 - Still to check at the camera: range, and sleep/wake mid-shoot.
+
+### Direct control spike (2026-09-28): camera-button presses PASS
+
+Spike code and automated results: branch `spike/camera-control` (`spikes/camera_control/README.md`): persistent
+python-gphoto2 connection, settings in 15–85 ms, live view ~15 fps, remote trigger with JPEG + ORF download,
+remote photos go to PC + SD.
+
+**Camera-button test with the owner** (`camera_button_test.py`, OM Capture closed):
+
+| Phase | Frames shot | Downloaded (JPEG + ORF) |
+|---|---|---|
+| Singles (Single drive) | 3 | 3/3 |
+| Burst (sequential) | 6 | 6/6 |
+| AE bracket, 5f (Single, one press per frame) | 14 | 14/14, each tagged "AE Bracketing, Shot n" |
+
+No missed presses, no missed ORFs, no reconnects.
+
+**Timing.**
+- The **first photo of a connection took ~9.6 s**: libgphoto2 lists every file on the card once, and that
+  time grows with the card's file count.
+- After that, the **JPEG was on the Mac 0.5–0.6 s after the "photo taken" event**, and the ORF ~1.9 s after.
+  Through OM Capture the JPEG took ~1–2 s.
+- Bursts arrive at the USB 2.0 pace, about 1.9 s per JPEG+ORF pair.
+
+**Findings.**
+- **Drive-mode changes reach the connection.** The camera reports property `0xD009` when drive mode changes:
+  1 = Single, 2 = sequential; 34/35/65 appeared while setting drive/bracketing, and their meaning isn't
+  decoded yet.
+- **The camera stayed locked after the test program disconnected.** Its buttons didn't respond until the USB
+  cable was unplugged. A direct mode must hand control back on exit (the "camera control off" command; the
+  camera emits `0xC105` on connect).
+- **AE bracket in Single drive is one press per frame** (as the owner shoots). In Sequential, one held press
+  takes the whole bracket.
+
+**Assessment.** Direct control can replace OM Capture for ingestion (JPEG ~2× faster) and add live view,
+remote trigger and settings. Remaining work for a real mode:
+- release control on exit;
+- hide or mitigate the first-photo delay (a warm-up listing, keeping the card lean, or capture target
+  PC-only; the owner decides on card settings);
+- reconnect after the camera sleeps;
+- decode the drive and bracket properties.
