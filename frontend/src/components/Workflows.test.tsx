@@ -98,14 +98,28 @@ describe("SessionsTab", () => {
     expect(onOpen).toHaveBeenCalledWith("s0");
   });
 
-  it("creates a session with template, provider, teaching and outdoor theme", async () => {
+  it("creates a session from a project's template, with day notes, provider, teaching and outdoor theme", async () => {
     const create = vi.spyOn(api, "createSession").mockResolvedValue(makeSession({ id: "new" }));
+    const tpl = (id: string, name: string, n: number, source: string | null, preferences = "") => ({
+      id, project_id: "p1", name, preferences, version: 1, source, archived: false, created_at: "", updated_at: "",
+      shot_count: n, shot_titles: [],
+    });
+    vi.spyOn(api, "projects").mockResolvedValue([
+      { id: "p1", name: "Running blog", preferences: "Soft backgrounds.", archived: false, created_at: "", updated_at: "",
+        templates: [tpl("t-shoe", "Shoe review", 6, "running_shoe", "Laces tidy."), tpl("t-app", "Apparel", 8, "running_apparel")] },
+    ]);
+    vi.spyOn(api, "prefs").mockResolvedValue({ prefs: { speech_rate_wpm: 270, received_sound: "Glass", cue_volume: 1, my_preferences: "" } } as never);
     const onOpen = vi.fn();
     renderWithCtx(<SessionsTab sessions={[]} onOpen={onOpen} />, makeCtx({ state: makeState() }));
     expect(screen.getByRole("radio", { name: /^OpenAI/ })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: /^Apparel detail\s*8 shots/ })).toBeChecked();
+    expect(await screen.findByRole("radio", { name: /^Apparel\s*8 shots/ })).toBeChecked();
     await userEvent.type(screen.getByLabelText("Name"), "Shoe day");
-    await userEvent.click(screen.getByRole("radio", { name: /^Shoe product/ }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Shoe review/ }));
+    await userEvent.type(screen.getByLabelText("Day notes (this shoot only)"), "Overcast.");
+    const follows = screen.getByTestId("coach-follows");
+    expect(follows).toHaveTextContent("Project · Running blog: Soft backgrounds.");
+    expect(follows).toHaveTextContent("Template · Shoe review: Laces tidy.");
+    expect(follows).toHaveTextContent("This shoot: Overcast.");
     await userEvent.click(screen.getByRole("radio", { name: /^Mock/ }));
     expect(screen.getByText("Verdicts will be scripted. Labelled on every screen.", { exact: false })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("switch", { name: /Teaching mode/ }));
@@ -118,7 +132,9 @@ describe("SessionsTab", () => {
       product: "",
       watch_folder: "relative/path",
       assess_provider: "mock",
-      template: "running_shoe",
+      template_id: "t-shoe",
+      project_id: "p1",
+      shoot_preferences: "Overcast.",
       teaching_mode: false,
       simulated: false,
       ui_theme: "daylight",

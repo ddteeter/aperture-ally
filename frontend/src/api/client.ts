@@ -1,5 +1,8 @@
 // Small typed fetch client for the Aperture Ally backend. All routes live under /api.
 import type {
+  ModelCallView,
+  Project,
+  ShootTemplate,
   AudioPrefs,
   AudioPrefsView,
   BaselineCandidate,
@@ -167,6 +170,20 @@ export const api = {
       ...body,
     }),
   coachStop: () => request<{ stopped: unknown }>("POST", "/coach/stop"),
+
+  // projects → shoot templates → shoots
+  projects: () => request<Project[]>("GET", "/projects"),
+  createProject: (body: { name: string; preferences?: string }) => request<Project>("POST", "/projects", body),
+  patchProject: (pid: string, body: Partial<Pick<Project, "name" | "preferences" | "archived">>) =>
+    request<Project>("PATCH", `/projects/${enc(pid)}`, body),
+  createTemplate: (pid: string, body: { name: string; preferences?: string; copy_from?: string | null }) =>
+    request<ShootTemplate>("POST", `/projects/${enc(pid)}/templates`, body),
+  template: (tid: string) => request<ShootTemplate>("GET", `/templates/${enc(tid)}`),
+  patchTemplate: (tid: string, body: Partial<Pick<ShootTemplate, "name" | "preferences" | "archived">>) =>
+    request<ShootTemplate>("PATCH", `/templates/${enc(tid)}`, body),
+  saveToTemplate: (sid: string, newName?: string | null) =>
+    request<ShootTemplate>("POST", `/sessions/${enc(sid)}/save-to-template`, newName ? { new_name: newName } : {}),
+  assessmentCalls: (aid: string) => request<ModelCallView[]>("GET", `/assessments/${enc(aid)}/calls`),
 
   // audio preferences (live; saved per person)
   prefs: () => request<AudioPrefsView>("GET", "/prefs"),

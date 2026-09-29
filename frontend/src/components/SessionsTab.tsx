@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api/client";
-import type { ProviderName, Session, TemplateName, UiTheme } from "../api/types";
+import type { ProviderName, Session, UiTheme } from "../api/types";
 import { useApp } from "../AppContext";
+import { LibraryPanel, useProjects } from "./Library";
 import "./workflows.css";
-import { TEMPLATE_SHOTS, watchFolderNote } from "./workflowsLogic";
+import { watchFolderNote } from "./workflowsLogic";
 
 /** Fields a newer backend may add to the session list; shown when present. */
 type SessionRow = Session & {
@@ -14,16 +15,10 @@ type SessionRow = Session & {
 };
 
 const TEMPLATE_LABEL: Record<string, string> = {
-  running_apparel: "Apparel detail",
-  running_shoe: "Shoe product",
+  running_apparel: "Apparel",
+  running_shoe: "Shoe review",
   empty: "Blank",
 };
-
-const TEMPLATES: { id: TemplateName; label: string }[] = [
-  { id: "running_apparel", label: "Apparel detail" },
-  { id: "running_shoe", label: "Shoe product" },
-  { id: "empty", label: "Blank" },
-];
 
 const PROVIDERS: { id: ProviderName; label: string; desc: string }[] = [
   { id: "claude", label: "Claude", desc: "Cloud · paid" },
@@ -141,6 +136,7 @@ export function SessionsTab({ sessions, onOpen }: { sessions: Session[]; onOpen:
         )}
         <p className="wf-t3 wf-xs">Only the active session's watch folder is watched; creating or activating a session pauses the others.</p>
         {state && sid && <ImportPhotos sid={sid} />}
+        <LibraryPanel />
       </div>
 
       <CreateSession onCreated={(s) => onOpen(s.id)} providers={state?.providers_configured ?? null} />
@@ -160,7 +156,25 @@ function CreateSession({
   const [product, setProduct] = useState("");
   const [watch, setWatch] = useState("");
   const [provider, setProvider] = useState<ProviderName | "">("");
-  const [template, setTemplate] = useState<TemplateName>("running_apparel");
+  const [projects] = useProjects();
+  const [projectId, setProjectId] = useState<string>("");
+  const [templateId, setTemplateId] = useState<string | null>(null); // "" = blank, null = not chosen yet
+  const [dayNotes, setDayNotes] = useState("");
+  const [mine, setMine] = useState("");
+  useEffect(() => {
+    api.prefs().then((v) => setMine(v.prefs.my_preferences ?? "")).catch(() => undefined);
+  }, []);
+  const project = projects?.find((p) => p.id === projectId) ?? projects?.[0] ?? null;
+  const templates = project?.templates ?? [];
+  // Default: Apparel (the owner's most common shoot), else the project's first template.
+  const chosenId = templateId ?? (templates.find((t) => t.source === "running_apparel") ?? templates[0])?.id ?? "";
+  const chosen = templates.find((t) => t.id === chosenId) ?? null;
+  const levels = [
+    ["Yours", mine],
+    [project ? `Project · ${project.name}` : "Project", project?.preferences ?? ""],
+    [chosen ? `Template · ${chosen.name}` : "Template", chosen?.preferences ?? ""],
+    ["This shoot", dayNotes],
+  ].filter(([, v]) => v.trim());
   const [teaching, setTeaching] = useState(true);
   const [simulated, setSimulated] = useState(false);
   const [uiTheme, setUiTheme] = useState<UiTheme>(theme);
@@ -177,7 +191,9 @@ function CreateSession({
         product: product.trim(),
         watch_folder: watch.trim() || null,
         assess_provider: provider || null,
-        template,
+        ...(chosen ? { template_id: chosen.id } : { template: "empty" as const }),
+        project_id: project?.id ?? null,
+        shoot_preferences: dayNotes.trim(),
         teaching_mode: teaching,
         simulated,
         ui_theme: uiTheme,
@@ -206,18 +222,66 @@ function CreateSession({
           <input className="wf-input" value={product} onChange={(e) => setProduct(e.target.value)} placeholder="e.g. Ridgeline 2.5L running shell" />
         </label>
 
+        {projects && projects.length > 1 && (
+          <label className="wf-field">
+            <span className="wf-label">Project</span>
+            <select
+              className="wf-input"
+              value={project?.id ?? ""}
+              onChange={(e) => {
+                setProjectId(e.target.value);
+                setTemplateId(null);
+              }}
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <fieldset className="wf-fieldset">
-          <legend className="wf-label">Template</legend>
+          <legend className="wf-label">Shoot template{project && projects && projects.length === 1 ? ` · ${project.name}` : ""}</legend>
           <div className="wf-cards wf-cards-3">
-            {TEMPLATES.map((t) => (
-              <label key={t.id} className="wf-pick">
-                <input type="radio" name="new-template" checked={template === t.id} onChange={() => setTemplate(t.id)} />
-                <span className="wf-strong">{t.label}</span>
-                <span className="wf-t3 wf-xxs">{TEMPLATE_SHOTS[t.id] ? `${TEMPLATE_SHOTS[t.id]} shots` : "Start empty"}</span>
+            {templates.map((t) => (
+              <label key={t.id} className="wf-pick" title={t.shot_titles.join(" · ")}>
+                <input type="radio" name="new-template" checked={chosenId === t.id} onChange={() => setTemplateId(t.id)} />
+                <span className="wf-strong">{t.name}</span>
+                <span className="wf-t3 wf-xxs">
+                  {t.shot_count} shots · v{t.version}
+                </span>
               </label>
             ))}
+            <label className="wf-pick">
+              <input type="radio" name="new-template" checked={chosenId === ""} onChange={() => setTemplateId("")} />
+              <span className="wf-strong">Blank</span>
+              <span className="wf-t3 wf-xxs">Start empty</span>
+            </label>
           </div>
         </fieldset>
+
+        <label className="wf-field">
+          <span className="wf-label">Day notes (this shoot only)</span>
+          <textarea
+            className="wf-input"
+            rows={2}
+            value={dayNotes}
+            maxLength={2000}
+            placeholder="E.g. “Outdoors, no backdrop; overcast”"
+            onChange={(e) => setDayNotes(e.target.value)}
+          />
+        </label>
+        {levels.length > 0 && (
+          <div className="wf-stack-2" data-testid="coach-follows">
+            <span className="wf-label">The coach will follow</span>
+            {levels.map(([k, v]) => (
+              <span key={k} className="wf-xs">
+                <span className="wf-t3">{k}:</span> {v}
+              </span>
+            ))}
+          </div>
+        )}
 
         <fieldset className="wf-fieldset">
           <legend className="wf-label">AI provider</legend>

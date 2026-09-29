@@ -367,6 +367,9 @@ class Store:
                  json.dumps(extra) if extra else None),
             )
 
+    def assessment_calls(self, assessment_id: str) -> list[ModelCall]:
+        return self.query(ModelCall, "assessment_id=?", (assessment_id,), "started_at")
+
     def model_calls(self, session_id: str | None = None) -> list[ModelCall]:
         if session_id:
             return self.query(ModelCall, "session_id=?", (session_id,), "started_at")

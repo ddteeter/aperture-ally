@@ -27,7 +27,13 @@ export interface Session {
   created_at: string;
   updated_at: string;
   /** Shot-list template the session started from ("empty" = none); null for sessions created before it was stored. */
-  template?: TemplateName | null;
+  template?: string | null;
+  /** Project → shoot template this shoot was created from, and the template version it copied. */
+  project_id?: string | null;
+  template_id?: string | null;
+  template_version?: number | null;
+  /** Day-only notes for the coach ("Outdoors, no backdrop"); override the levels above. */
+  shoot_preferences?: string;
   /** Summary counts, present in GET /sessions list items only. */
   shot_count?: number;
   capture_count?: number;
@@ -645,6 +651,9 @@ export interface SessionCreate {
   simulated?: boolean;
   ui_theme?: UiTheme;
   setup?: Partial<SetupFields> | null;
+  template_id?: string | null;
+  project_id?: string | null;
+  shoot_preferences?: string;
 }
 
 export type TemplateName = "running_shoe" | "running_apparel" | "empty";
@@ -662,6 +671,7 @@ export type SessionPatch = Partial<
     | "budget_usd"
     | "max_model_calls"
     | "ui_theme"
+    | "shoot_preferences"
   >
 >;
 
@@ -699,6 +709,8 @@ export interface AudioPrefs {
   speech_rate_wpm: number;
   received_sound: string;
   cue_volume: number;
+  /** Your defaults: taste across all projects. */
+  my_preferences?: string;
 }
 
 export interface AudioPrefsView {
@@ -711,4 +723,63 @@ export interface AudioPrefsView {
   /** sound | speech | none, from APERTURE_ALLY_RECEIVED_CUE. */
   received_cue: string;
   speech_backend: string;
+}
+
+// --- projects → shoot templates → shoots (server: aperture_ally/projects.py) ----------------------
+
+export interface TemplateShot {
+  title: string;
+  purpose: string;
+  must_show: string[];
+  framing: string;
+  criteria: Criterion[];
+  sharp_regions: Region[];
+}
+
+export interface ShootTemplate {
+  id: string;
+  project_id: string;
+  name: string;
+  preferences: string;
+  shots: TemplateShot[];
+  version: number;
+  /** Built-in starter it was seeded from (running_shoe, running_apparel), else null. */
+  source: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TemplateSummary = Omit<ShootTemplate, "shots"> & { shot_count: number; shot_titles: string[] };
+
+export interface Project {
+  id: string;
+  name: string;
+  preferences: string;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+  templates: TemplateSummary[];
+}
+
+/** One stored model call (request + response) behind an assessment: "What the coach saw". */
+export interface ModelCallView {
+  id: string;
+  purpose: string;
+  attempt: number;
+  provider: string;
+  model_requested: string | null;
+  model_resolved: string | null;
+  prompt_version: string | null;
+  status: string;
+  latency_ms: number | null;
+  usage: Record<string, number>;
+  validation_errors: string[];
+  request: {
+    instructions?: string;
+    context?: Record<string, unknown>;
+    images?: { role: string; kind: string; region_id: string; label: string; bytes?: number }[];
+    image_bytes_total?: number;
+  };
+  response_text: string | null;
 }

@@ -315,6 +315,23 @@ async def create_session(body: SessionCreate, request: Request):
     return s.model_dump()
 
 
+@router.get("/assessments/{aid}/calls")
+async def assessment_calls(aid: str, request: Request):
+    """What the coach saw: every stored model call (request + raw response) behind one assessment."""
+    app = app_of(request)
+    if await app.store.get(Assessment, aid) is None:
+        raise HTTPException(404, "assessment not found")
+    out = []
+    for c in await app.store.assessment_calls(aid):
+        d = c.model_dump(exclude={"network", "response_id"})
+        req = dict(d.get("request") or {})
+        # Paths stay on this computer; the UI shows images through the capture image endpoints instead.
+        req["images"] = [{k: v for k, v in im.items() if k != "path"} for im in req.get("images") or []]
+        d["request"] = req
+        out.append(d)
+    return out
+
+
 # --- projects and shoot templates -------------------------------------------------------------
 def _project_errors(fn):
     from functools import wraps

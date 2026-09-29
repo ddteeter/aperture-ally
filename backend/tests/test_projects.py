@@ -89,3 +89,20 @@ async def test_shoots_from_before_projects_are_attached_on_start(make_harness, t
     by_name = {s.name: s for s in await h.app.store.list_sessions()}
     assert by_name["old shoe"].template_id == shoe.id and by_name["old shoe"].project_id == proj.id
     assert by_name["old blank"].template_id is None and by_name["old blank"].project_id == proj.id
+
+
+async def test_what_the_coach_saw_returns_the_stored_request_without_local_paths(api, fx):
+    c, h = api
+    s = await h.session()
+    await h.use_shot(s, "Upper", "mesh")
+    h.drop(s, fx / "P9260002.JPG")
+    await h.n_captures(s, 1)
+    await h.settled(15)
+    (a,) = await h.app.store.assessments(s.id)
+    calls = (await c.get(f"/api/assessments/{a.id}/calls")).json()
+    assert len(calls) == 1 and calls[0]["purpose"] == "assess" and calls[0]["prompt_version"] == a.prompt_version
+    req = calls[0]["request"]
+    assert "Craft, on every shot" in req["instructions"] and req["context"]["preferences"]["project"]
+    assert req["images"] and all("path" not in im for im in req["images"])
+    assert calls[0]["response_text"]
+    assert (await c.get("/api/assessments/nope/calls")).status_code == 404

@@ -4,6 +4,7 @@ import type { Assessment, Capture, CriterionResult, Shot } from "../../api/types
 import { useApp } from "../../AppContext";
 import { criterionMeta, verdictMeta } from "../../ui/status";
 import { criteriaSummary, modelLine, pickShowZone, seconds, startingPoint } from "./model";
+import { CoachSaw } from "./CoachSaw";
 import { GlanceHead, Label } from "./parts";
 
 /** Tag shown next to the verdict when the coach is not a real model or the session is replayed. */
@@ -26,6 +27,7 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
   const sp = startingPoint(a.exposure_note);
   const show = pickShowZone(r);
   const [causes, setCauses] = useState(false);
+  const [saw, setSaw] = useState(false);
   const sub = [`Photo #${capture.seq}`, seconds(a.timings?.total_ms) && `verdict in ${seconds(a.timings.total_ms)}`, speechWord(a.speech_status)]
     .filter(Boolean)
     .join(" · ");
@@ -119,8 +121,12 @@ export function VerdictView({ capture, a, shot }: { capture: Capture; a: Assessm
       )}
 
       <p className="cp-model" data-testid="coach-meta">
-        {modelLine(a)}
+        {modelLine(a)}{" "}
+        <button type="button" className="cp-link" onClick={() => setSaw(true)}>
+          What the coach saw
+        </button>
       </p>
+      {saw && <CoachSaw assessmentId={a.id} captureId={a.capture_id} onClose={() => setSaw(false)} />}
     </>
   );
 }

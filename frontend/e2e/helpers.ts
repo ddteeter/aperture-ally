@@ -6,7 +6,7 @@ export async function createSession(page: Page, name: string, opts: { simulated?
   await form.getByLabel(/^Name/).fill(name);
   await form.getByRole("radio", { name: /^Mock/ }).check();
   // The replay scenarios use the running-shoe shot list (apparel is the UI default).
-  await form.getByRole("radio", { name: /^Shoe product/ }).check();
+  await form.getByRole("radio", { name: /^Shoe review/ }).check();
   if (opts.simulated) await form.getByLabel(/Simulated practice run/).check();
   await form.getByRole("button", { name: "Create and start shooting" }).click();
   // Creating opens the session on the Shoot tab.
