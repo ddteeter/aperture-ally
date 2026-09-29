@@ -106,3 +106,59 @@ async def test_what_the_coach_saw_returns_the_stored_request_without_local_paths
     assert req["images"] and all("path" not in im for im in req["images"])
     assert calls[0]["response_text"]
     assert (await c.get("/api/assessments/nope/calls")).status_code == 404
+
+
+async def test_templates_keep_a_version_history_and_shoots_know_how_they_differ(api):
+    c, h = api
+    (p,) = (await c.get("/api/projects")).json()
+    shoe = next(t for t in p["templates"] if t["name"] == "Shoe review")
+    assert shoe["history"][-1]["summary"] == "Built-in starter" and shoe["shoot_count"] == 0
+    s = (await c.post("/api/sessions", json={"name": "Pegasus 42", "template_id": shoe["id"]})).json()
+    st = (await c.get(f"/api/sessions/{s['id']}")).json()
+    assert st["origin"]["template_name"] == "Shoe review" and st["origin"]["changes"] == []
+
+    shots = await h.app.store.shots(s["id"])
+    heel = shots[3]
+    await h.app.update_shot(heel.id, {"criteria": [*[c.model_dump() for c in heel.criteria],
+                                                   {"id": "pull_tab_straight", "text": "Pull tab straight, not folded"}]})
+    await c.post(f"/api/sessions/{s['id']}/shots", json={"title": "Laces detail", "framing": "Top-down"})
+    changes = (await c.get(f"/api/sessions/{s['id']}")).json()["origin"]["changes"]
+    assert [x["g"] for x in changes] == ["~", "+"]
+    assert changes[0]["title"] == f"4 · {heel.title}" and "Pull tab straight" in changes[0]["detail"]
+    assert changes[1]["title"] == "7 · Laces detail" and "Top-down" in changes[1]["detail"]
+    row = next(x for x in (await c.get("/api/sessions")).json() if x["id"] == s["id"])
+    assert row["origin"]["changes"] == 2 and row["origin"]["template_name"] == "Shoe review"
+
+    t = (await c.post(f"/api/sessions/{s['id']}/save-to-template", json={})).json()
+    assert t["version"] == 2
+    last = t["history"][-1]
+    assert last["how"] == "from_shoot" and last["session_name"] == "Pegasus 42" and "+1 more" in last["summary"]
+    st = (await c.get(f"/api/sessions/{s['id']}")).json()
+    assert st["origin"]["changes"] == [] and st["origin"]["saved"]["version"] == 2
+    (p,) = (await c.get("/api/projects")).json()
+    shoe = next(x for x in p["templates"] if x["name"] == "Shoe review")
+    assert shoe["shoot_count"] == 1 and shoe["last_used"] and p["shoot_count"] >= 1
+
+
+async def test_editing_a_templates_shots_in_the_library_is_a_new_version(api):
+    c, _h = api
+    (p,) = (await c.get("/api/projects")).json()
+    apparel = next(t for t in p["templates"] if t["name"] == "Apparel")
+    full = (await c.get(f"/api/templates/{apparel['id']}")).json()
+    shots = full["shots"]
+    shots[0]["framing"] = "On a hanger, front"
+    t = (await c.patch(f"/api/templates/{apparel['id']}", json={"shots": shots})).json()
+    assert t["version"] == 2 and t["history"][-1]["how"] == "edited" and "Framing changed" in t["history"][-1]["summary"]
+    same = (await c.patch(f"/api/templates/{apparel['id']}", json={"shots": t["shots"]})).json()
+    assert same["version"] == 2   # no changes, no new version
+    dup = (await c.post(f"/api/projects/{p['id']}/templates", json={"name": "Shorts", "copy_from": apparel["id"]})).json()
+    assert dup["history"][0]["how"] == "duplicated" and "Apparel v2" in dup["history"][0]["summary"]
+
+
+async def test_archived_projects_are_listed_but_their_templates_are_not(api):
+    c, _h = api
+    q = (await c.post("/api/projects", json={"name": "Race photos 2025"})).json()
+    await c.post(f"/api/projects/{q['id']}/templates", json={"name": "Finish line"})
+    await c.patch(f"/api/projects/{q['id']}", json={"archived": True})
+    archived = next(x for x in (await c.get("/api/projects")).json() if x["id"] == q["id"])
+    assert archived["archived"] is True and archived["templates"] == []

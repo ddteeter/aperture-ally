@@ -96,6 +96,7 @@ class TemplateBody(BaseModel):
     preferences: str | None = Field(None, max_length=2000)
     archived: bool | None = None
     copy_from: str | None = Field(None, description="Create only: start from this template's shot list")
+    shots: list[dict[str, Any]] | None = Field(None, description="Edit only: the whole shot list (a new version)")
 
 
 class SaveToTemplateBody(BaseModel):
@@ -281,6 +282,7 @@ async def session_state(app: ApertureAllyApp, sid: str) -> dict[str, Any]:
         "voice": app.voice.snapshot(),
         "watching": app.ingest.watched_session_id == sid,
         "pending_change": app.tracker.get(sid).pending_change,
+        "origin": await app.projects.shoot_origin(s),
         "usage": await app.usage(sid),
         "provider_health": app.providers.health,
         "providers_configured": app.providers.configured(),
@@ -299,7 +301,13 @@ async def list_sessions(request: Request):
     store = app_of(request).store
     counts = await store.session_counts()
     zero = {"shot_count": 0, "capture_count": 0, "keeper_count": 0}
-    return [{**s.model_dump(), **zero, **counts.get(s.id, {})} for s in await store.list_sessions()]
+    projects = app_of(request).projects
+    out = []
+    for s in await store.list_sessions():
+        o = await projects.shoot_origin(s)
+        origin = {k: o[k] for k in ("project_name", "template_name", "template_current_version", "saved")}
+        out.append({**s.model_dump(), **zero, **counts.get(s.id, {}), "origin": {**origin, "changes": len(o["changes"])}})
+    return out
 
 
 @router.post("/sessions", status_code=201)

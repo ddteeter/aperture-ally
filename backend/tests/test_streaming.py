@@ -90,6 +90,13 @@ async def test_a_repair_that_changes_the_advice_is_spoken_as_a_correction(make_h
     assert a.repair_attempted and h.speech.spoken[0] == "Move the light far away."
     assert h.speech.spoken[1].startswith("Correction: ") and a.result["spoken_text"] in h.speech.spoken[1]
     assert any(e["type"] == "coach.speech.corrected" for e in h.app.bus.recent)
+    # Stored for the coach panel: what was said early, and that it was corrected.
+    async def stored():
+        (a,) = await h.app.store.assessments(s.id)
+        return a if a.early_speech else None
+
+    a = await h.wait(stored, 10, "early speech stored")
+    assert a.early_speech["text"] == "Move the light far away." and a.early_speech["corrected"] is True
 
 
 async def test_spoken_last_keeps_the_old_order_version_and_no_early_speech(make_harness, fx):

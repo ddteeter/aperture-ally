@@ -484,6 +484,7 @@ class CoachingService:
             return assessment
 
         early_task = early.task if early else None
+        corrected = False
         if speak and trigger != "eval" and early_task is not None:
             # spoken_text was already being spoken while the rest streamed in: finish it, then add what only the
             # validated result can say (exposure starting point, teaching prompt), or correct it after a repair.
@@ -493,7 +494,8 @@ class CoachingService:
             final = (assessment.result or {}).get("spoken_text", "").strip()
             meta = {"session_id": session.id, "capture_id": capture.id, "assessment_id": assessment.id,
                     "kind": "advice"}
-            if final != (early.text or "").strip():
+            corrected = final != (early.text or "").strip()
+            if corrected:
                 self.bus.publish("coach.speech.corrected", session_id=session.id, capture_id=capture.id,
                                  assessment_id=assessment.id)
                 status = await self.audio.speak(f"Correction: {text}", guard, meta)
@@ -517,6 +519,7 @@ class CoachingService:
             if early_task is not None:
                 a.timings["spoken_early"] = 1
                 a.timings["spoken_text_ready_ms"] = early.ready_ms
+                a.early_speech = {"text": early.text, "ready_ms": early.ready_ms, "corrected": corrected}
             if status != "not_applicable":
                 a.timings["speech_call_ms"] = speech_ms
                 a.timings["spoken_words"] = len(text.split())

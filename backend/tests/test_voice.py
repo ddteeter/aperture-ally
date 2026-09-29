@@ -31,8 +31,13 @@ async def test_press_release_question_answered_and_spoken(h, fx):
     await asyncio.sleep(0.3)
     await h.app.voice.release()
     await h.wait(lambda: _spoken(h, 2), 10, "answer spoken")
-    (turn,) = await h.app.store.voice_turns(s.id)
-    assert turn.intent == "question" and turn.status == "spoken" and turn.capture_id == r["capture_id"]
+
+    async def saved():  # the turn's status is stored just after speech finishes; under load that lags
+        (t,) = await h.app.store.voice_turns(s.id)
+        return t if t.status == "spoken" else None
+
+    turn = await h.wait(saved, 10, "turn stored as spoken")
+    assert turn.intent == "question" and turn.capture_id == r["capture_id"]
     assert "Why does the glare matter" in turn.answer
 
 

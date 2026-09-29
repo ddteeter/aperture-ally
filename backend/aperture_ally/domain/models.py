@@ -130,6 +130,8 @@ class Session(BaseModel):
     project_id: str | None = None
     template_id: str | None = None
     template_version: int | None = Field(None, description="Template version the shot list was copied from")
+    template_saved: dict[str, Any] | None = Field(
+        None, description="Last save of this shoot's shot list: {template_id, name, version, as_new}")
     shoot_preferences: str = Field("", description="This shoot only ('outdoors, no backdrop'); overrides above")
     status: SessionStatus = SessionStatus.active
     watch_since: str = Field(default_factory=utcnow)
@@ -159,6 +161,17 @@ class Project(BaseModel):
     updated_at: str = Field(default_factory=utcnow)
 
 
+class TemplateVersion(BaseModel):
+    """One entry in a template's history: how it reached this version."""
+
+    version: int
+    at: str = Field(default_factory=utcnow)
+    how: Literal["created", "duplicated", "edited", "from_shoot"] = "created"
+    session_id: str | None = None
+    session_name: str | None = None
+    summary: str = ""
+
+
 class ShootTemplate(BaseModel):
     """A reusable shoot for one product type ('Shoe review', 'Half tights'): its shot list and preferences."""
 
@@ -169,6 +182,7 @@ class ShootTemplate(BaseModel):
     shots: list[TemplateShot] = Field(default_factory=list)
     version: int = 1
     source: str | None = Field(None, description="Built-in starter it was seeded from (running_shoe, …)")
+    history: list[TemplateVersion] = Field(default_factory=list, description="Newest last")
     archived: bool = False
     created_at: str = Field(default_factory=utcnow)
     updated_at: str = Field(default_factory=utcnow)
@@ -252,6 +266,8 @@ class Assessment(BaseModel):
     error: str | None = None
     repair_attempted: bool = False
     speech_status: Literal["pending", "spoken", "suppressed", "cancelled", "not_applicable"] = "pending"
+    early_speech: dict[str, Any] | None = Field(
+        None, description="spoken_text said while the rest streamed: {text, ready_ms, corrected}")
     context_generation: int = 0
     created_at: str = Field(default_factory=utcnow)
     completed_at: str | None = None
