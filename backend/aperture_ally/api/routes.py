@@ -300,7 +300,7 @@ async def health(request: Request):
 async def list_sessions(request: Request):
     store = app_of(request).store
     counts = await store.session_counts()
-    zero = {"shot_count": 0, "capture_count": 0, "keeper_count": 0}
+    zero = {"shot_count": 0, "capture_count": 0, "keeper_count": 0, "cover_capture_id": None}
     projects = app_of(request).projects
     out = []
     for s in await store.list_sessions():

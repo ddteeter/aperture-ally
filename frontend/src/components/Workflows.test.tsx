@@ -7,6 +7,7 @@ import type { Session, SetupRevisionSummary } from "../api/types";
 import { makeCtx, renderWithCtx } from "../test/ctx";
 import { CoverageTab } from "./CoverageTab";
 import { DiagnosticsTab } from "./DiagnosticsTab";
+import { NewShoot, shootName } from "./NewShoot";
 import { SessionsTab } from "./SessionsTab";
 import { SetupTab } from "./SetupTab";
 import { ShotListTab } from "./ShotListTab";
@@ -80,56 +81,72 @@ describe("CoverageTab", () => {
 });
 
 describe("SessionsTab", () => {
-  it("lists sessions with provider / SIMULATED tags and opens one", async () => {
+  it("groups shoots by project › template, tags how each shot list relates to it, and opens one", async () => {
     const onOpen = vi.fn();
+    const onOpenTemplate = vi.fn();
+    const origin = (changes: number, saved: Session["template_saved"] = null) => ({
+      project_name: "Running blog", template_name: "Shoe review", template_current_version: 3, saved, changes,
+    });
     const sessions: Session[] = [
-      makeSession({ id: "s0", name: "Old", assess_provider: "claude", status: "paused" }),
-      makeSession({ id: "s1", name: "Current", simulated: true }),
+      makeSession({ id: "s0", name: "Pegasus 41", assess_provider: "claude", status: "paused", project_id: "p1", template_id: "t-shoe",
+        origin: origin(0, { template_id: "t-shoe", name: "Shoe review", version: 3, as_new: false }) }),
+      makeSession({ id: "s1", name: "Pegasus 42", assess_provider: "claude", project_id: "p1", template_id: "t-shoe", origin: origin(2) }),
+      makeSession({ id: "s2", name: "Dry run", simulated: true, project_id: "p1", template_id: "t-shoe", origin: origin(0) }),
     ];
-    renderWithCtx(<SessionsTab sessions={sessions} onOpen={onOpen} />, makeCtx({ state: makeState() }));
-    const rows = screen.getAllByRole("row");
-    expect(rows[1]).toHaveTextContent("Current");
-    expect(rows[1]).toHaveTextContent("MOCK PROVIDER");
-    expect(rows[1]).toHaveTextContent("SIMULATED");
-    expect(rows[1]).toHaveTextContent("0 / 3");
-    expect(rows[2]).toHaveTextContent("Claude");
-    expect(rows[2]).toHaveTextContent("Paused");
-    await userEvent.click(within(rows[2]).getByRole("button", { name: /^Old/ }));
+    renderWithCtx(
+      <SessionsTab sessions={sessions} onOpen={onOpen} onNewShoot={vi.fn()} onOpenTemplate={onOpenTemplate} />,
+      makeCtx({ state: makeState() }),
+    );
+    const group = screen.getByRole("region", { name: "Running blog › Shoe review" });
+    expect(group).toHaveTextContent("v3 · 3 shoots");
+    expect(group).toHaveTextContent("2 shots changed · not saved");
+    expect(group).toHaveTextContent("Saved to template → v3");
+    expect(group).toHaveTextContent("MOCK PROVIDER");
+    await userEvent.click(within(group).getByRole("button", { name: "Open template" }));
+    expect(onOpenTemplate).toHaveBeenCalledWith("t-shoe");
+    await userEvent.click(within(group).getByRole("button", { name: /^Pegasus 41/ }));
     expect(onOpen).toHaveBeenCalledWith("s0");
+    await userEvent.click(screen.getByRole("radio", { name: "Date" }));
+    expect(screen.queryByRole("region", { name: "Running blog › Shoe review" })).toBeNull();
   });
+});
 
-  it("creates a session from a project's template, with day notes, provider, teaching and outdoor theme", async () => {
+describe("NewShoot", () => {
+  it("starts a shoot from a project's template with today's notes, previewing what the coach will follow", async () => {
     const create = vi.spyOn(api, "createSession").mockResolvedValue(makeSession({ id: "new" }));
     const tpl = (id: string, name: string, n: number, source: string | null, preferences = "") => ({
       id, project_id: "p1", name, preferences, version: 1, source, archived: false, created_at: "", updated_at: "",
-      shot_count: n, shot_titles: [],
+      shot_count: n, shot_titles: ["Hero", "Outsole"], shoot_count: 0, last_used: null, history: [],
     });
     vi.spyOn(api, "projects").mockResolvedValue([
       { id: "p1", name: "Running blog", preferences: "Soft backgrounds.", archived: false, created_at: "", updated_at: "",
+        shoot_count: 0, last_used: null,
         templates: [tpl("t-shoe", "Shoe review", 6, "running_shoe", "Laces tidy."), tpl("t-app", "Apparel", 8, "running_apparel")] },
     ]);
     vi.spyOn(api, "prefs").mockResolvedValue({ prefs: { speech_rate_wpm: 270, received_sound: "Glass", cue_volume: 1, my_preferences: "" } } as never);
-    const onOpen = vi.fn();
-    renderWithCtx(<SessionsTab sessions={[]} onOpen={onOpen} />, makeCtx({ state: makeState() }));
-    expect(screen.getByRole("radio", { name: /^OpenAI/ })).toBeDisabled();
-    expect(await screen.findByRole("radio", { name: /^Apparel\s*8 shots/ })).toBeChecked();
-    await userEvent.type(screen.getByLabelText("Name"), "Shoe day");
-    await userEvent.click(screen.getByRole("radio", { name: /^Shoe review/ }));
-    await userEvent.type(screen.getByLabelText("Day notes (this shoot only)"), "Overcast.");
+    const onCreated = vi.fn();
+    renderWithCtx(<NewShoot preset={null} onCreated={onCreated} onLibrary={vi.fn()} />, makeCtx({ state: makeState() }));
+    expect(await screen.findByRole("button", { name: /^Apparel\s*8 shots/ })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: /^Shoe review/ }));
+    await userEvent.type(screen.getByPlaceholderText("e.g. Pegasus 42"), "Pegasus 42");
+    await userEvent.type(screen.getByPlaceholderText("Light, place, anything different today"), "Overcast.");
     const follows = screen.getByTestId("coach-follows");
-    expect(follows).toHaveTextContent("Project · Running blog: Soft backgrounds.");
-    expect(follows).toHaveTextContent("Template · Shoe review: Laces tidy.");
-    expect(follows).toHaveTextContent("This shoot: Overcast.");
-    await userEvent.click(screen.getByRole("radio", { name: /^Mock/ }));
-    expect(screen.getByText("Verdicts will be scripted. Labelled on every screen.", { exact: false })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("switch", { name: /Teaching mode/ }));
+    expect(follows).toHaveTextContent("Todaythis shootOvercast.");
+    expect(follows).toHaveTextContent("TemplateShoe review v1Laces tidy.");
+    expect(follows).toHaveTextContent("ProjectRunning blogSoft backgrounds.");
+    expect(screen.getByText("Your defaults: empty, so it isn’t sent.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: /^Outdoor/ }));
+    expect(document.documentElement.dataset.theme).toBe("daylight");
+    await userEvent.click(screen.getByRole("button", { name: "Change…" }));
+    expect(screen.getByRole("option", { name: /OpenAI · not configured/ })).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText("Coach"), "mock");
+    await userEvent.click(screen.getByLabelText(/Teaching mode/));
     await userEvent.type(screen.getByLabelText("Watch folder"), "relative/path");
     expect(screen.getByText("! Use a full path, starting with / or ~")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Create and start shooting" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Start outdoor shoot/ }));
     expect(create).toHaveBeenCalledWith({
-      name: "Shoe day",
-      product: "",
+      name: shootName("Pegasus 42"),
+      product: "Pegasus 42",
       watch_folder: "relative/path",
       assess_provider: "mock",
       template_id: "t-shoe",
@@ -139,7 +156,7 @@ describe("SessionsTab", () => {
       simulated: false,
       ui_theme: "daylight",
     });
-    await waitFor(() => expect(onOpen).toHaveBeenCalledWith("new"));
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
   });
 });
 

@@ -179,7 +179,7 @@ export const api = {
   createTemplate: (pid: string, body: { name: string; preferences?: string; copy_from?: string | null }) =>
     request<ShootTemplate>("POST", `/projects/${enc(pid)}/templates`, body),
   template: (tid: string) => request<ShootTemplate>("GET", `/templates/${enc(tid)}`),
-  patchTemplate: (tid: string, body: Partial<Pick<ShootTemplate, "name" | "preferences" | "archived">>) =>
+  patchTemplate: (tid: string, body: Partial<Pick<ShootTemplate, "name" | "preferences" | "archived" | "shots">>) =>
     request<ShootTemplate>("PATCH", `/templates/${enc(tid)}`, body),
   saveToTemplate: (sid: string, newName?: string | null) =>
     request<ShootTemplate>("POST", `/sessions/${enc(sid)}/save-to-template`, newName ? { new_name: newName } : {}),

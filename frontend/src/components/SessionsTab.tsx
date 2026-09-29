@@ -1,33 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { api } from "../api/client";
-import type { ProviderName, Session, UiTheme } from "../api/types";
+import { useState } from "react";
+import { api, imageUrl } from "../api/client";
+import type { Session } from "../api/types";
 import { useApp } from "../AppContext";
-import { LibraryPanel, useProjects } from "./Library";
+import "./library.css";
+import "./sessions.css";
 import "./workflows.css";
-import { watchFolderNote } from "./workflowsLogic";
 
-/** Fields a newer backend may add to the session list; shown when present. */
-type SessionRow = Session & {
-  template?: string | null;
-  capture_count?: number;
-  keeper_count?: number;
-  shot_count?: number;
-};
-
-const TEMPLATE_LABEL: Record<string, string> = {
-  running_apparel: "Apparel",
-  running_shoe: "Shoe review",
-  empty: "Blank",
-};
-
-const PROVIDERS: { id: ProviderName; label: string; desc: string }[] = [
-  { id: "claude", label: "Claude", desc: "Cloud · paid" },
-  { id: "openai", label: "OpenAI", desc: "Cloud · paid" },
-  { id: "gemini", label: "Gemini", desc: "Cloud · paid" },
-  { id: "mock", label: "Mock", desc: "Scripted · free" },
-];
-
-const PROVIDER_LABEL: Record<string, string> = { claude: "Claude", openai: "OpenAI", gemini: "Gemini", mock: "MOCK PROVIDER" };
+type SessionRow = Session;
 
 const STATUS: Record<string, { glyph: string; word: string }> = {
   active: { glyph: "●", word: "Active" },
@@ -39,12 +18,94 @@ function shortDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   if (d.toDateString() === new Date().toDateString()) return "Today";
-  return d.toLocaleDateString([], { month: "short", day: "2-digit" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
-export function SessionsTab({ sessions, onOpen }: { sessions: Session[]; onOpen: (sid: string) => void }) {
+type GroupBy = "template" | "date";
+const GROUP_KEY = "aperture-ally.sessions-group";
+
+interface Group {
+  id: string;
+  title: string;
+  meta: string;
+  templateId: string | null;
+  rows: SessionRow[];
+}
+
+/** How a shoot's shot list relates to its template, as the row tag. */
+export function relationTag(s: SessionRow): { g: string; text: string; kind: "diff" | "saved" | "same" | "new" | "mock" | "none" } {
+  if (s.assess_provider === "mock") return { g: "▦", text: "MOCK PROVIDER", kind: "mock" };
+  if (s.simulated) return { g: "▦", text: "SIMULATED", kind: "mock" };
+  const o = s.origin;
+  if (o && o.changes > 0) return { g: "◆", text: `${o.changes} ${o.changes === 1 ? "shot" : "shots"} changed · not saved`, kind: "diff" };
+  if (o?.saved?.as_new) return { g: "+", text: `Saved as new template: ${o.saved.name}`, kind: "new" };
+  if (o?.saved) return { g: "↑", text: `Saved to template → v${o.saved.version}`, kind: "saved" };
+  if (o?.template_name) return { g: "=", text: "Same as template", kind: "same" };
+  return { g: "·", text: "Blank shot list", kind: "none" };
+}
+
+function groupSessions(rows: SessionRow[], by: GroupBy): Group[] {
+  const map = new Map<string, Group>();
+  for (const s of rows) {
+    let id: string, title: string;
+    if (by === "date") {
+      id = shortDate(s.created_at);
+      title = id;
+    } else if (!s.project_id) {
+      id = "none";
+      title = "Before projects";
+    } else {
+      id = s.template_id ?? `p:${s.project_id}`;
+      title = [s.origin?.project_name, s.origin?.template_name ?? "Blank shot list"].filter(Boolean).join(" › ");
+    }
+    const g = map.get(id) ?? { id, title, meta: "", templateId: by === "template" ? s.template_id ?? null : null, rows: [] };
+    g.rows.push(s);
+    map.set(id, g);
+  }
+  for (const g of map.values()) {
+    const n = `${g.rows.length} ${g.rows.length === 1 ? "shoot" : "shoots"}`;
+    const v = g.templateId ? g.rows[0].origin?.template_current_version : null;
+    g.meta = v ? `v${v} · ${n}` : n;
+  }
+  return [...map.values()];
+}
+
+export function SessionsTab({
+  sessions,
+  onOpen,
+  onNewShoot,
+  onOpenTemplate,
+}: {
+  sessions: Session[];
+  onOpen: (sid: string) => void;
+  onNewShoot: () => void;
+  onOpenTemplate: (templateId: string) => void;
+}) {
   const { sid, state, run, refresh, refreshSessions } = useApp();
+  const [by, setByState] = useState<GroupBy>(() => {
+    try {
+      return localStorage.getItem(GROUP_KEY) === "date" ? "date" : "template";
+    } catch {
+      return "template";
+    }
+  });
+  const setBy = (v: GroupBy) => {
+    try {
+      localStorage.setItem(GROUP_KEY, v);
+    } catch {
+      /* ignore */
+    }
+    setByState(v);
+    setFilter("all");
+  };
+  const [filter, setFilter] = useState("all");
   const rows = [...sessions].reverse() as SessionRow[];
+  const allGroups = groupSessions(rows, "template");
+  const groups = groupSessions(rows, by).map((g) => ({
+    ...g,
+    rows: filter === "all" ? g.rows : g.rows.filter((r) => (r.template_id ?? (r.project_id ? `p:${r.project_id}` : "none")) === filter),
+  })).filter((g) => g.rows.length);
+  const projectCount = new Set(sessions.map((s) => s.project_id).filter(Boolean)).size;
 
   const photos = (s: SessionRow) => (s.id === sid && state ? state.captures.length : s.capture_count);
   const keepers = (s: SessionRow) =>
@@ -52,331 +113,117 @@ export function SessionsTab({ sessions, onOpen }: { sessions: Session[]; onOpen:
       ? `${state.coverage.resolved} / ${state.coverage.total}`
       : s.keeper_count != null && s.shot_count != null
         ? `${s.keeper_count} / ${s.shot_count}`
-        : null;
+        : "—";
+  const filterLabel = (g: Group) => (g.id === "none" ? g.title : g.title.split(" › ").pop()!);
 
   return (
-    <div className="wf-screen wf-split wf-split-aside-520">
-      <div className="wf-main">
-        <div className="wf-row-baseline wf-gap-14">
-          <h2 className="wf-h1" id="sessions-h">
-            Sessions
-          </h2>
-          <span className="wf-t3 wf-small">
-            {sessions.length} {sessions.length === 1 ? "shoot" : "shoots"} · stored on this computer
-          </span>
-        </div>
-        {rows.length === 0 ? (
-          <p className="wf-t2">No sessions yet. Create one on the right.</p>
-        ) : (
-          <div className="wf-sess-table" role="table" aria-labelledby="sessions-h">
-            <div className="wf-sess-row wf-sess-headrow" role="row">
-              <span role="columnheader">SHOOT</span>
-              <span role="columnheader">DATE</span>
-              <span role="columnheader">PHOTOS</span>
-              <span role="columnheader">KEEPERS</span>
-              <span role="columnheader">PROVIDER</span>
-              <span role="columnheader">STATUS</span>
-            </div>
-            {rows.map((s) => {
-              const st = STATUS[s.status] ?? { glyph: "·", word: s.status };
-              const k = keepers(s);
-              const p = photos(s);
-              const tpl = s.template ? TEMPLATE_LABEL[s.template] ?? s.template : null;
-              return (
-                <div key={s.id} role="row" className={s.id === sid ? "wf-sess-row is-current" : "wf-sess-row"}>
-                  <span role="cell" className="wf-stack-2 wf-minw0">
-                    <button type="button" className="wf-sess-open" onClick={() => onOpen(s.id)}>
-                      {s.name}
-                      <span className="sr-only"> — open</span>
-                    </button>
-                    <span className="wf-t3 wf-xs">
-                      {[s.product || "—", tpl].filter(Boolean).join(" · ")}
-                      {s.id === sid && " · open now"}
-                    </span>
-                  </span>
-                  <span role="cell" className="wf-t2 wf-small">
-                    {shortDate(s.created_at)}
-                  </span>
-                  <span role="cell" className="wf-mono wf-small">
-                    {p ?? "—"}
-                  </span>
-                  <span role="cell" className="wf-mono wf-small">
-                    {k ?? "—"}
-                  </span>
-                  <span role="cell" className="wf-tags">
-                    <span className={s.assess_provider === "mock" ? "wf-tag wf-tag-mock" : "wf-tag"}>
-                      {PROVIDER_LABEL[s.assess_provider] ?? s.assess_provider}
-                    </span>
-                    {s.simulated && <span className="wf-tag wf-tag-mock">SIMULATED</span>}
-                  </span>
-                  <span role="cell" className="wf-sess-status wf-small">
-                    <span>
-                      <span className="wf-mono" aria-hidden="true">{st.glyph}</span> {st.word}
-                    </span>
-                    {s.status !== "active" && (
-                      <button
-                        type="button"
-                        className="wf-btn-text wf-xs"
-                        onClick={() =>
-                          run("Make active", async () => {
-                            await api.patchSession(s.id, { status: "active" });
-                            await refreshSessions();
-                            if (s.id === sid) await refresh();
-                          })
-                        }
-                      >
-                        Make active<span className="sr-only"> {s.name}</span>
-                      </button>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <p className="wf-t3 wf-xs">Only the active session's watch folder is watched; creating or activating a session pauses the others.</p>
-        {state && sid && <ImportPhotos sid={sid} />}
-        <LibraryPanel />
-      </div>
-
-      <CreateSession onCreated={(s) => onOpen(s.id)} providers={state?.providers_configured ?? null} />
-    </div>
-  );
-}
-
-function CreateSession({
-  onCreated,
-  providers,
-}: {
-  onCreated: (s: Session) => void;
-  providers: Record<ProviderName, boolean> | null;
-}) {
-  const { run, refreshSessions, theme } = useApp();
-  const [name, setName] = useState("");
-  const [product, setProduct] = useState("");
-  const [watch, setWatch] = useState("");
-  const [provider, setProvider] = useState<ProviderName | "">("");
-  const [projects] = useProjects();
-  const [projectId, setProjectId] = useState<string>("");
-  const [templateId, setTemplateId] = useState<string | null>(null); // "" = blank, null = not chosen yet
-  const [dayNotes, setDayNotes] = useState("");
-  const [mine, setMine] = useState("");
-  useEffect(() => {
-    api.prefs().then((v) => setMine(v.prefs.my_preferences ?? "")).catch(() => undefined);
-  }, []);
-  const project = projects?.find((p) => p.id === projectId) ?? projects?.[0] ?? null;
-  const templates = project?.templates ?? [];
-  // Default: Apparel (the owner's most common shoot), else the project's first template.
-  const chosenId = templateId ?? (templates.find((t) => t.source === "running_apparel") ?? templates[0])?.id ?? "";
-  const chosen = templates.find((t) => t.id === chosenId) ?? null;
-  const levels = [
-    ["Yours", mine],
-    [project ? `Project · ${project.name}` : "Project", project?.preferences ?? ""],
-    [chosen ? `Template · ${chosen.name}` : "Template", chosen?.preferences ?? ""],
-    ["This shoot", dayNotes],
-  ].filter(([, v]) => v.trim());
-  const [teaching, setTeaching] = useState(true);
-  const [simulated, setSimulated] = useState(false);
-  const [uiTheme, setUiTheme] = useState<UiTheme>(theme);
-  const [busy, setBusy] = useState(false);
-  const note = watchFolderNote(watch);
-  const unconfigured = (p: ProviderName) => p !== "mock" && providers != null && providers[p] === false;
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const s = await run("Create session", () =>
-      api.createSession({
-        name: name.trim(),
-        product: product.trim(),
-        watch_folder: watch.trim() || null,
-        assess_provider: provider || null,
-        ...(chosen ? { template_id: chosen.id } : { template: "empty" as const }),
-        project_id: project?.id ?? null,
-        shoot_preferences: dayNotes.trim(),
-        teaching_mode: teaching,
-        simulated,
-        ui_theme: uiTheme,
-      }),
-    );
-    setBusy(false);
-    if (s) {
-      setName("");
-      await refreshSessions();
-      onCreated(s);
-    }
-  };
-
-  return (
-    <aside className="wf-aside wf-aside-wide" aria-labelledby="create-h">
-      <form onSubmit={submit} className="wf-stack-18">
-        <h2 className="wf-title-l" id="create-h">
-          New shoot
+    <div className="wf-screen ses-screen">
+      <div className="ses-head">
+        <h2 className="ses-h1" id="sessions-h">
+          Sessions
         </h2>
-        <label className="wf-field">
-          <span className="wf-label">Name</span>
-          <input className="wf-input" required maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="wf-field">
-          <span className="wf-label">Product</span>
-          <input className="wf-input" value={product} onChange={(e) => setProduct(e.target.value)} placeholder="e.g. Ridgeline 2.5L running shell" />
-        </label>
-
-        {projects && projects.length > 1 && (
-          <label className="wf-field">
-            <span className="wf-label">Project</span>
-            <select
-              className="wf-input"
-              value={project?.id ?? ""}
-              onChange={(e) => {
-                setProjectId(e.target.value);
-                setTemplateId(null);
-              }}
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        <fieldset className="wf-fieldset">
-          <legend className="wf-label">Shoot template{project && projects && projects.length === 1 ? ` · ${project.name}` : ""}</legend>
-          <div className="wf-cards wf-cards-3">
-            {templates.map((t) => (
-              <label key={t.id} className="wf-pick" title={t.shot_titles.join(" · ")}>
-                <input type="radio" name="new-template" checked={chosenId === t.id} onChange={() => setTemplateId(t.id)} />
-                <span className="wf-strong">{t.name}</span>
-                <span className="wf-t3 wf-xxs">
-                  {t.shot_count} shots · v{t.version}
-                </span>
-              </label>
-            ))}
-            <label className="wf-pick">
-              <input type="radio" name="new-template" checked={chosenId === ""} onChange={() => setTemplateId("")} />
-              <span className="wf-strong">Blank</span>
-              <span className="wf-t3 wf-xxs">Start empty</span>
-            </label>
+        <span className="lib-t3 lib-small">
+          {sessions.length} {sessions.length === 1 ? "shoot" : "shoots"}
+          {projectCount ? ` · ${projectCount} ${projectCount === 1 ? "project" : "projects"}` : ""} · stored on this Mac
+        </span>
+        <div className="ses-head-actions">
+          <span className="lib-small lib-t2">Group by</span>
+          <div className="ses-seg" role="radiogroup" aria-label="Group by">
+            <button type="button" role="radio" aria-checked={by === "template"} onClick={() => setBy("template")}>
+              Project › Template
+            </button>
+            <button type="button" role="radio" aria-checked={by === "date"} onClick={() => setBy("date")}>
+              Date
+            </button>
           </div>
-        </fieldset>
-
-        <label className="wf-field">
-          <span className="wf-label">Day notes (this shoot only)</span>
-          <textarea
-            className="wf-input"
-            rows={2}
-            value={dayNotes}
-            maxLength={2000}
-            placeholder="E.g. “Outdoors, no backdrop; overcast”"
-            onChange={(e) => setDayNotes(e.target.value)}
-          />
-        </label>
-        {levels.length > 0 && (
-          <div className="wf-stack-2" data-testid="coach-follows">
-            <span className="wf-label">The coach will follow</span>
-            {levels.map(([k, v]) => (
-              <span key={k} className="wf-xs">
-                <span className="wf-t3">{k}:</span> {v}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <fieldset className="wf-fieldset">
-          <legend className="wf-label">AI provider</legend>
-          <div className="wf-cards wf-cards-4">
-            {PROVIDERS.map((p) => {
-              const off = unconfigured(p.id);
-              return (
-                <label key={p.id} className={off ? "wf-pick is-disabled" : "wf-pick"}>
-                  <input
-                    type="radio"
-                    name="new-provider"
-                    checked={provider === p.id}
-                    disabled={off}
-                    onChange={() => setProvider(p.id)}
-                  />
-                  <span className="wf-strong">{p.label}</span>
-                  <span className="wf-t3 wf-xxs">{off ? "Not configured" : p.desc}</span>
-                </label>
-              );
-            })}
-          </div>
-          {provider === "" && <span className="wf-t3 wf-xs">None picked: the server default is used.</span>}
-          {providers && PROVIDERS.some((p) => unconfigured(p.id)) && (
-            <span className="wf-t3 wf-xs">Providers without an API key are disabled. Add keys in the server's environment.</span>
-          )}
-          {provider === "mock" && (
-            <div className="wf-mock-band">
-              <span className="wf-mock-tag">MOCK PROVIDER</span>Verdicts will be scripted. Labelled on every screen.
-            </div>
-          )}
-        </fieldset>
-
-        <div className="wf-field">
-          <label htmlFor="new-watch" className="wf-label">
-            Watch folder
-          </label>
-          <input
-            id="new-watch"
-            className="wf-input wf-mono"
-            value={watch}
-            onChange={(e) => setWatch(e.target.value)}
-            placeholder="~/Pictures/Tether/my-shoot"
-            aria-describedby="watch-note"
-          />
-          <span id="watch-note" className={note.tone === "ok" ? "wf-xs wf-ok" : "wf-xs wf-unc"}>
-            {note.text}
-          </span>
+          <button type="button" className="lib-btn lib-btn-pri lib-btn-s ses-new" onClick={onNewShoot}>
+            New shoot <span className="lib-kbd">⌘N</span>
+          </button>
         </div>
-
-        <button
-          type="button"
-          role="switch"
-          aria-checked={teaching}
-          className="wf-toggle"
-          onClick={() => setTeaching((t) => !t)}
-        >
-          <span className={teaching ? "wf-switch is-on" : "wf-switch"} aria-hidden="true">
-            <span />
-          </span>
-          <span className="wf-stack-2">
-            <span className="wf-strong">Teaching mode · {teaching ? "On" : "Off"}</span>
-            <span className="wf-t3 wf-xs">
-              {teaching ? "Coach explains why and names the concept" : "Just the action — faster to hear"}
-            </span>
-          </span>
-        </button>
-
-        <fieldset className="wf-fieldset">
-          <legend className="wf-label">Where are you shooting?</legend>
-          <div className="wf-cards wf-cards-2">
-            <label className="wf-pick">
-              <input type="radio" name="new-theme" checked={uiTheme === "studio"} onChange={() => setUiTheme("studio")} />
-              <span className="wf-strong">Indoor</span>
-              <span className="wf-t3 wf-xxs">Studio · dark screen</span>
-            </label>
-            <label className="wf-pick">
-              <input type="radio" name="new-theme" checked={uiTheme === "daylight"} onChange={() => setUiTheme("daylight")} />
-              <span className="wf-strong">Outdoor</span>
-              <span className="wf-t3 wf-xxs">☀ Daylight · readable in sun</span>
-            </label>
+      </div>
+      {allGroups.length > 1 && (
+        <div className="ses-filters" role="group" aria-label="Filter">
+          <button type="button" className="ses-chip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+            All · {sessions.length}
+          </button>
+          {allGroups.map((g) => (
+            <button key={g.id} type="button" className="ses-chip" aria-pressed={filter === g.id} onClick={() => setFilter(g.id)}>
+              {filterLabel(g)} · {g.rows.length}
+            </button>
+          ))}
+        </div>
+      )}
+      {rows.length === 0 && (
+        <div className="lib-empty ses-empty">
+          <span className="lib-strong lib-body">No shoots yet</span>
+          <span className="lib-small lib-t2">Start one from a template. It shows up here with its photos and keepers.</span>
+          <div className="lib-row-8">
+            <button type="button" className="lib-btn lib-btn-pri lib-btn-s" onClick={onNewShoot}>
+              New shoot
+            </button>
           </div>
-        </fieldset>
-
-        <label className="wf-check">
-          <input type="checkbox" checked={simulated} onChange={(e) => setSimulated(e.target.checked)} />
-          <span>
-            Simulated practice run <span className="wf-t3">— marked SIMULATED; results are not hardware evidence</span>
-          </span>
-        </label>
-
-        <button type="submit" className="wf-btn wf-btn-pri wf-btn-l" disabled={busy || !name.trim()}>
-          {busy ? "Creating…" : "Create and start shooting"}
-        </button>
-      </form>
-    </aside>
+        </div>
+      )}
+      {groups.map((g) => (
+        <section key={g.id} className="ses-group" aria-label={g.title}>
+          <div className="ses-group-head">
+            <span className="lib-body lib-bold">{g.title}</span>
+            <span className="lib-mono lib-xs lib-t3">{g.meta}</span>
+            {g.templateId && (
+              <button type="button" className="lib-btn-text lib-small ses-group-action" onClick={() => onOpenTemplate(g.templateId!)}>
+                Open template
+              </button>
+            )}
+          </div>
+          {g.rows.map((s) => {
+            const tag = relationTag(s);
+            const st = STATUS[s.status] ?? { glyph: "·", word: s.status };
+            const cover = s.cover_capture_id;
+            return (
+              <div key={s.id} className={s.id === sid ? "ses-row is-current" : "ses-row"}>
+                {cover ? <img className="ses-thumb" src={imageUrl(cover, "thumb")} alt="" loading="lazy" /> : <div className="ses-thumb ses-thumb-empty" aria-hidden="true" />}
+                <span className="lib-stack-2 lib-minw0">
+                  <button type="button" className="ses-open" onClick={() => onOpen(s.id)}>
+                    {s.name}
+                    <span className="sr-only"> — open</span>
+                  </button>
+                  <span className="lib-xs lib-t3 lib-ellipsis">
+                    {[s.shoot_preferences || s.product || "—", s.status === "active" ? "in progress" : s.status !== "completed" ? st.word.toLowerCase() : null, s.id === sid ? "open now" : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </span>
+                <span className="lib-small lib-t2">{shortDate(s.created_at)}</span>
+                <span className="lib-mono lib-small" title="Photos">{photos(s) ?? "—"}</span>
+                <span className="lib-mono lib-small" title="Keepers">{keepers(s)}</span>
+                <span className="ses-tag-cell">
+                  <span className={`ses-tag ses-tag-${tag.kind}`}>
+                    <span className="lib-mono">{tag.g}</span> {tag.text}
+                  </span>
+                  {s.status !== "active" && (
+                    <button
+                      type="button"
+                      className="lib-btn-text lib-xs"
+                      onClick={() =>
+                        run("Make active", async () => {
+                          await api.patchSession(s.id, { status: "active" });
+                          await refreshSessions();
+                          if (s.id === sid) await refresh();
+                        })
+                      }
+                    >
+                      Make active<span className="sr-only"> {s.name}</span>
+                    </button>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </section>
+      ))}
+      <p className="lib-t3 lib-xs">Only the active shoot's watch folder is watched; starting or activating a shoot pauses the others.</p>
+      {state && sid && <ImportPhotos sid={sid} />}
+    </div>
   );
 }
 

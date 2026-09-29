@@ -8,16 +8,19 @@ import { SessionsTab } from "./components/SessionsTab";
 import { ShootTab } from "./components/ShootTab";
 import { CoverageTab } from "./components/CoverageTab";
 import { DiagnosticsTab } from "./components/DiagnosticsTab";
+import { LibraryTab } from "./components/LibraryTab";
+import { NewShoot, type NewShootPreset } from "./components/NewShoot";
 import { SetupTab } from "./components/SetupTab";
 import { ShotListTab } from "./components/ShotListTab";
 import { useEventStream } from "./hooks/useEventStream";
 import { Debouncer, eventRelevance } from "./lib/events";
 import { useShortcuts } from "./lib/keys";
-import { TABS, type Tab } from "./tabs";
+import { HIDDEN_TABS, TABS, type Tab } from "./tabs";
 
 
 function tabFromHash(): Tab {
   const h = window.location.hash.replace(/^#\/?/, "");
+  if (h in HIDDEN_TABS) return h as Tab;
   return (TABS.find((t) => t.id === h)?.id ?? "shoot") as Tab;
 }
 
@@ -70,6 +73,7 @@ export function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
   const [localTheme, setLocalTheme] = useState<UiTheme>(loadTheme);
+  const [newShootPreset, setNewShootPreset] = useState<NewShootPreset | null>(null);
 
   useEffect(() => {
     const onHash = () => setTabState(tabFromHash());
@@ -80,6 +84,24 @@ export function App() {
     window.location.hash = t;
     setTabState(t);
   }, []);
+  const openNewShoot = useCallback(
+    (preset?: NewShootPreset) => {
+      setNewShootPreset(preset ?? null);
+      setTab("newshoot");
+    },
+    [setTab],
+  );
+  const openTemplate = useCallback(
+    (templateId: string) => {
+      try {
+        localStorage.setItem("aperture-ally.library", JSON.stringify({ kind: "template", id: templateId }));
+      } catch {
+        /* ignore */
+      }
+      setTab("library");
+    },
+    [setTab],
+  );
 
   const pushError = useCallback((text: string) => {
     const id = ++errId.current;
@@ -254,6 +276,10 @@ export function App() {
       if (t) setTab(t.id);
       return true;
     }
+    if (s.kind === "newShoot") {
+      openNewShoot();
+      return true;
+    }
     if (s.kind === "theme") {
       const next = theme === "daylight" ? "studio" : "daylight";
       setTheme(next);
@@ -290,7 +316,23 @@ export function App() {
           ))}
         </div>
         <main id="main" tabIndex={-1} className={`app-main tab-${tab}`}>
-          {tab === "sessions" && <SessionsTab sessions={sessions} onOpen={(id) => { setSid(id); setTab("shoot"); }} />}
+          {tab === "sessions" && (
+            <SessionsTab
+              sessions={sessions}
+              onOpen={(id) => { setSid(id); setTab("shoot"); }}
+              onNewShoot={() => openNewShoot()}
+              onOpenTemplate={openTemplate}
+            />
+          )}
+          {tab === "newshoot" && (
+            <NewShoot
+              key={JSON.stringify(newShootPreset)}
+              preset={newShootPreset}
+              onCreated={(s) => { setSid(s.id); setTab("shoot"); }}
+              onLibrary={() => setTab("library")}
+            />
+          )}
+          {tab === "library" && <LibraryTab onNewShoot={openNewShoot} />}
           {tab === "shoot" && (state ? <ShootTab /> : sid ? noSession : <FirstRun onTab={setTab} />)}
           {tab === "coverage" && (state ? <CoverageTab /> : noSession)}
           {tab === "shotlist" && (state ? <ShotListTab /> : noSession)}
@@ -341,8 +383,8 @@ export function FirstRun({ onTab }: { onTab: (t: Tab) => void }) {
           </li>
         </ol>
         <div className="first-run-actions">
-          <button type="button" className="primary btn-xl" onClick={() => onTab("sessions")}>
-            New shoot
+          <button type="button" className="primary btn-xl" onClick={() => onTab("newshoot")}>
+            New shoot <span className="kbd">⌘N</span>
           </button>
           <button type="button" className="btn-xl" onClick={() => onTab("sessions")}>
             Open a past shoot

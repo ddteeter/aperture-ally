@@ -146,6 +146,8 @@ dl.kv.config { grid-template-columns: 1fr; }
 .app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: var(--app); }
 .app-main { flex: 1; min-height: 0; overflow: auto; }
 .app-main.tab-shoot { overflow: hidden; display: flex; flex-direction: column; }
+/* Two-column desk screens scroll inside their own columns. */
+.app-main.tab-library, .app-main.tab-newshoot { overflow: hidden; }
 .app-main:not(.tab-shoot) { padding: 0; }
 
 /* Top bar (48 px). */

@@ -46,11 +46,14 @@ describe("shortcutFor", () => {
     expect(shortcutFor(ev("Escape"))).toEqual({ kind: "escape" });
   });
 
-  it("switches tabs with ⌘1–6 or Ctrl+1–6 only", () => {
+  it("switches tabs with ⌘1–7 or Ctrl+1–7 only (Library ⌘6, Diagnostics ⌘7), and ⌘N opens New shoot", () => {
     expect(shortcutFor(ev("1", { metaKey: true }))).toEqual({ kind: "tab", index: 0 });
     expect(shortcutFor(ev("6", { ctrlKey: true }))).toEqual({ kind: "tab", index: 5 });
-    expect(shortcutFor(ev("7", { metaKey: true }))).toBeNull();
+    expect(shortcutFor(ev("7", { metaKey: true }))).toEqual({ kind: "tab", index: 6 });
+    expect(shortcutFor(ev("8", { metaKey: true }))).toBeNull();
     expect(shortcutFor(ev("1"))).toBeNull();
+    expect(shortcutFor(ev("n", { metaKey: true }))).toEqual({ kind: "newShoot" });
+    expect(shortcutFor(ev("n"))).toBeNull();
   });
 
   it("never fires while typing", () => {

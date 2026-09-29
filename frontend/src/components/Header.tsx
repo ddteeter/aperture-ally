@@ -1,7 +1,7 @@
 import type { ProviderName, Session, SessionState } from "../api/types";
 import { useApp } from "../AppContext";
 import type { ConnectionStatus } from "../hooks/useEventStream";
-import { TABS, type Tab } from "../tabs";
+import { HIDDEN_TABS, TABS, type Tab } from "../tabs";
 import { CoachingPill } from "./ShootStatus";
 
 export const PROVIDER_NAME: Record<ProviderName, string> = {
@@ -83,7 +83,7 @@ export function Header(props: {
           <a
             key={t.id}
             href={`#${t.id}`}
-            aria-current={props.tab === t.id ? "page" : undefined}
+            aria-current={(HIDDEN_TABS[props.tab] ?? props.tab) === t.id ? "page" : undefined}
             aria-keyshortcuts={`Meta+${i + 1} Control+${i + 1}`}
             onClick={(e) => {
               e.preventDefault();

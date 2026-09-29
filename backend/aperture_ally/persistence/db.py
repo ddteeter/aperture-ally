@@ -226,9 +226,9 @@ class Store:
     def list_sessions(self) -> list[Session]:
         return self.query(Session, order="created_at DESC")
 
-    def session_counts(self) -> dict[str, dict[str, int]]:
-        """Per session: shots, captures and active keepers."""
-        out: dict[str, dict[str, int]] = {}
+    def session_counts(self) -> dict[str, dict[str, Any]]:
+        """Per session: shots, captures, active keepers, and a cover photo (first keeper, else first capture)."""
+        out: dict[str, dict[str, Any]] = {}
         with self._lock:
             for key, sql in (("shot_count", "SELECT session_id, COUNT(*) FROM shots GROUP BY session_id"),
                              ("capture_count", "SELECT session_id, COUNT(*) FROM captures GROUP BY session_id"),
@@ -236,6 +236,14 @@ class Store:
                                               "WHERE revoked_at IS NULL GROUP BY session_id")):
                 for sid, n in self._conn.execute(sql).fetchall():
                     out.setdefault(sid, {})[key] = n
+            for sid, cid in self._conn.execute(
+                    "SELECT session_id, id FROM captures c WHERE seq = "
+                    "(SELECT MIN(seq) FROM captures WHERE session_id = c.session_id)").fetchall():
+                out.setdefault(sid, {})["cover_capture_id"] = cid
+            for sid, cid in self._conn.execute(
+                    "SELECT session_id, capture_id FROM keeper_decisions WHERE revoked_at IS NULL "
+                    "ORDER BY rowid DESC").fetchall():
+                out.setdefault(sid, {})["cover_capture_id"] = cid  # oldest keeper wins (written last)
         return out
 
     def shots(self, session_id: str) -> list[ShotRequirement]:

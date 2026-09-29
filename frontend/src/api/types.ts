@@ -34,11 +34,51 @@ export interface Session {
   template_version?: number | null;
   /** Day-only notes for the coach ("Outdoors, no backdrop"); override the levels above. */
   shoot_preferences?: string;
+  /** Last save of this shoot's shot list back to a template. */
+  template_saved?: TemplateSaved | null;
   /** Summary counts, present in GET /sessions list items only. */
   shot_count?: number;
   capture_count?: number;
   /** Active (non-revoked) keepers. */
   keeper_count?: number;
+  /** First keeper, else first photo; GET /sessions list items only. */
+  cover_capture_id?: string | null;
+  /** GET /sessions list items only: project › template and how the shot list relates to it. */
+  origin?: SessionOriginSummary;
+}
+
+export interface TemplateSaved {
+  template_id: string;
+  name: string;
+  version: number;
+  as_new: boolean;
+}
+
+/** One difference between a shoot's shot list and its template: + new, ~ changed, − removed. */
+export interface ShotListChange {
+  g: "+" | "~" | "−";
+  title: string;
+  detail: string;
+}
+
+/** Where a shoot's shot list came from and how it now differs (GET /sessions/{id} → origin). */
+export interface ShootOrigin {
+  project_id: string | null;
+  project_name: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  template_version: number | null;
+  template_current_version: number | null;
+  changes: ShotListChange[];
+  saved: TemplateSaved | null;
+}
+
+export interface SessionOriginSummary {
+  project_name: string | null;
+  template_name: string | null;
+  template_current_version: number | null;
+  saved: TemplateSaved | null;
+  changes: number;
 }
 
 export interface Criterion {
@@ -297,6 +337,8 @@ export interface Assessment {
   error: string | null;
   repair_attempted: boolean;
   speech_status: string | null;
+  /** The sentence spoken while the rest streamed in, and whether the final result corrected it. */
+  early_speech?: { text: string; ready_ms: number | null; corrected: boolean } | null;
   context_generation: number;
   created_at: string;
   completed_at: string | null;
@@ -559,6 +601,7 @@ export interface SessionState {
   usage?: SessionUsage;
   /** When the watch folder last produced a file (ISO time), for "last file 12 s ago". */
   last_file_at?: string | null;
+  origin?: ShootOrigin;
 }
 
 /** Paid-call usage and caps for the session (mock calls never count). */
@@ -745,12 +788,29 @@ export interface ShootTemplate {
   version: number;
   /** Built-in starter it was seeded from (running_shoe, running_apparel), else null. */
   source: string | null;
+  /** How it reached each version, oldest first. */
+  history: TemplateVersion[];
   archived: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export type TemplateSummary = Omit<ShootTemplate, "shots"> & { shot_count: number; shot_titles: string[] };
+export interface TemplateVersion {
+  version: number;
+  at: string;
+  how: "created" | "duplicated" | "edited" | "from_shoot";
+  session_id: string | null;
+  session_name: string | null;
+  summary: string;
+}
+
+/** In the project overview: no shots, only the latest history entry, plus usage. */
+export type TemplateSummary = Omit<ShootTemplate, "shots"> & {
+  shot_count: number;
+  shot_titles: string[];
+  shoot_count: number;
+  last_used: string | null;
+};
 
 export interface Project {
   id: string;
@@ -759,6 +819,9 @@ export interface Project {
   archived: boolean;
   created_at: string;
   updated_at: string;
+  shoot_count: number;
+  last_used: string | null;
+  /** Empty for archived projects. */
   templates: TemplateSummary[];
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 export type Shortcut =
   | { kind: "tab"; index: number }
+  | { kind: "newShoot" }
   | { kind: "theme" }
   | { kind: "pause" }
   | { kind: "lost" }
@@ -23,14 +24,15 @@ export function isTypingTarget(t: EventTarget | null): boolean {
   return el.isContentEditable || el.getAttribute?.("contenteditable") === "true";
 }
 
-type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "target"> & { repeat?: boolean };
+type KeyLike = Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "target"> & { repeat?: boolean; shiftKey?: boolean };
 
 export function shortcutFor(e: KeyLike): Shortcut | null {
   if (isTypingTarget(e.target)) return null;
   // A focused slider (e.g. speech speed) owns its arrow keys; they must not also step the filmstrip.
   if (e.key.startsWith("Arrow") && (e.target as HTMLInputElement | null)?.type === "range") return null;
   const mod = e.metaKey || e.ctrlKey;
-  if (mod && !e.altKey && /^[1-6]$/.test(e.key)) return { kind: "tab", index: Number(e.key) - 1 };
+  if (mod && !e.altKey && /^[1-7]$/.test(e.key)) return { kind: "tab", index: Number(e.key) - 1 };
+  if (mod && !e.altKey && (e.key === "n" || e.key === "N") && !e.shiftKey) return { kind: "newShoot" };
   // Leave every other modified key to the browser and the other panels (⌘R, ⌘↵, ⌘F…).
   if (mod || e.altKey) return null;
   if (e.key === "Escape") return { kind: "escape" };

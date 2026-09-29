@@ -1,0 +1,57 @@
+/* New shoot (⌘N). docs/design/Aperture Ally Library.dc.html → "1b New shoot". */
+
+.ns-screen { display: grid; grid-template-columns: minmax(0, 1fr) 440px; height: 100%; min-height: 0; background: var(--app); color: var(--t1); line-height: 1.4; }
+.ns-main { overflow: auto; padding: 26px 44px 28px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.ns-title-row { gap: 14px; }
+.ns-h1 { font-size: 28px; font-weight: var(--wb); letter-spacing: -.01em; margin: 0; }
+.ns-steps { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 14px; row-gap: 22px; }
+.ns-n { font-family: var(--mono); font-size: 13px; color: var(--t3); padding-top: 2px; }
+.ns-step { display: flex; flex-direction: column; gap: 8px; border: 0; padding: 0; margin: 0; min-width: 0; color: var(--t1); font-size: inherit; }
+.ns-legend { font-size: 15px; font-weight: var(--wm); padding: 0; margin-bottom: 8px; color: var(--t1); }
+label.ns-step .ns-legend, .ns-step .lib-row-between .ns-legend { margin-bottom: 0; }
+.ns-normal { font-weight: var(--wbody); }
+.ns-maxw-520 { max-width: 520px; }
+.ns-maxw-640 { max-width: 640px; }
+.ns-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ns-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ns-pick {
+  padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line2); background: transparent; color: var(--t1); text-align: left;
+  cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font: inherit; min-height: 0; height: auto;
+}
+.ns-pick:hover { background: var(--raised); }
+.ns-pick[aria-pressed="true"] { border: 2px solid var(--acc); background: var(--raised); padding: 9px 11px; }
+.ns-pick-project { padding: 10px 14px; min-width: 200px; }
+.ns-pick-project[aria-pressed="true"] { padding: 9px 13px; }
+.ns-pick-name { font-size: 15px; font-weight: var(--wm); }
+.ns-pick-name-s { font-size: 14px; }
+.ns-shots { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.ns-shots .lib-eyebrow { margin-right: 4px; }
+.ns-shot-chip { font-size: 12px; padding: 3px 9px; border-radius: 4px; background: var(--raised); color: var(--t2); }
+.ns-seg { display: flex; background: var(--inset); border: 1px solid var(--line2); border-radius: 9px; padding: 3px; gap: 3px; max-width: 520px; }
+.ns-seg-btn {
+  flex: 1; height: 48px; border: 0; border-radius: 7px; background: transparent; color: var(--t2); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font: inherit; font-size: 14px;
+}
+.ns-seg-btn[aria-checked="true"] { background: var(--pri); color: var(--pri-ink); }
+.ns-seg-sub { font-size: 11px; opacity: .8; }
+.ns-notes { height: 64px; font-size: 15px; }
+.ns-advanced {
+  margin-left: 42px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 14px 18px; padding: 16px;
+  border: 1px solid var(--line2); border-radius: 10px; max-width: 820px;
+}
+.ns-check { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; color: var(--t1); grid-column: 1 / -1; }
+.ns-mock { grid-column: 1 / -1; background: var(--mock); color: var(--mock-ink); font-size: 12px; font-weight: var(--wb); padding: 6px 10px; border-radius: 6px; }
+.ns-indent { margin-left: 42px; }
+.ns-foot { display: flex; align-items: center; gap: 14px; margin-left: 42px; padding-top: 12px; border-top: 1px solid var(--line); }
+.ns-change { margin-left: 6px; }
+.ns-start { margin-left: auto; height: 48px; padding: 0 22px; border-radius: 9px; font-size: 15px; }
+.ns-aside { background: var(--panel); border-left: 1px solid var(--line); padding: 26px; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+.ns-level { display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line); }
+.ns-level-text { font-size: 15px; line-height: 1.45; }
+.ns-hidden { border-top: 1px solid var(--line); padding-top: 10px; }
+.ns-aside-foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (max-width: 1100px) {
+  .ns-screen { grid-template-columns: minmax(0, 1fr); }
+  .ns-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

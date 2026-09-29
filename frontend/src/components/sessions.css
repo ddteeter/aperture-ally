@@ -1,0 +1,45 @@
+/* Sessions (⌘5): shoots grouped by Project › Template. docs/design/Aperture Ally Library.dc.html → "1d Sessions". */
+
+.ses-screen { padding: 26px 36px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.ses-head { display: flex; align-items: center; gap: 14px; }
+.ses-h1 { font-size: 28px; font-weight: var(--wb); margin: 0; }
+.ses-head-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.ses-seg { display: flex; background: var(--inset); border: 1px solid var(--line2); border-radius: 7px; padding: 2px; gap: 2px; }
+.ses-seg button {
+  height: 28px; padding: 0 10px; border-radius: 5px; border: 0; background: transparent; color: var(--t2); font: inherit; font-size: 12px;
+  cursor: pointer; min-height: 0;
+}
+.ses-seg button[aria-checked="true"] { background: var(--pri); color: var(--pri-ink); font-weight: var(--wm); }
+.ses-new { margin-left: 6px; }
+.ses-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ses-chip {
+  height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line2); background: transparent; color: var(--t2);
+  font: inherit; font-size: 13px; cursor: pointer; min-height: 0;
+}
+.ses-chip[aria-pressed="true"] { border-color: var(--t2); background: var(--raised); color: var(--t1); }
+.ses-empty { align-items: flex-start; padding: 28px; }
+.ses-group { display: flex; flex-direction: column; }
+.ses-group-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 12px 8px; border-bottom: 1px solid var(--line); }
+.ses-group-action { margin-left: auto; }
+.ses-row {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) 90px 70px 70px 300px; align-items: center; column-gap: 14px;
+  padding: 8px 12px; border-radius: 8px;
+}
+.ses-row.is-current { background: var(--card); }
+.ses-thumb { width: 64px; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--raised); }
+.ses-thumb-empty { background: repeating-linear-gradient(135deg, var(--ph1) 0 6px, var(--ph2) 6px 12px); }
+.ses-open {
+  border: 0; background: transparent; color: var(--t1); font: inherit; font-size: 15px; font-weight: var(--wm); padding: 0; text-align: left;
+  cursor: pointer; min-height: 0; height: auto; justify-content: flex-start;
+}
+.ses-open:hover { text-decoration: underline; background: transparent; }
+.ses-tag-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ses-tag { justify-self: start; font-size: 12px; padding: 3px 8px; border-radius: 4px; font-weight: var(--wm); white-space: nowrap; }
+.ses-tag-diff { background: var(--unc-t); color: var(--t1); }
+.ses-tag-saved, .ses-tag-new { background: var(--raised); color: var(--t2); }
+.ses-tag-same, .ses-tag-none { background: transparent; color: var(--t3); }
+.ses-tag-mock { background: var(--mock); color: var(--mock-ink); }
+
+@media (max-width: 1100px) {
+  .ses-row { grid-template-columns: 56px minmax(0, 1fr) 70px 50px 60px 220px; }
+}

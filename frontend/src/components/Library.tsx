@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { Project, TemplateSummary } from "../api/types";
+import type { Project } from "../api/types";
 import { useApp } from "../AppContext";
 
-/** Projects → shoot templates, plus "Your defaults". A working version until the design brief's Library lands. */
+/** Shared project data, and the shoot's origin panel. The Library itself is LibraryTab.tsx. */
 
 export function useProjects(): [Project[] | null, () => Promise<void>] {
   const [projects, setProjects] = useState<Project[] | null>(null);
@@ -70,109 +70,6 @@ function NameInput({ label, submitLabel, onSubmit }: { label: string; submitLabe
         {submitLabel}
       </button>
     </form>
-  );
-}
-
-function TemplateRow({ t, onChanged }: { t: TemplateSummary; onChanged: () => Promise<void> }) {
-  const { run } = useApp();
-  const [duplicating, setDuplicating] = useState(false);
-  return (
-    <li className="wf-lib-template" data-testid={`template-${t.name}`}>
-      <div className="wf-row-baseline wf-gap-8">
-        <span className="wf-strong">{t.name}</span>
-        <span className="wf-t3 wf-xs wf-mono">
-          {t.shot_count} shots · v{t.version}
-        </span>
-        <button type="button" className="wf-btn-text wf-xs" onClick={() => setDuplicating((d) => !d)}>
-          Duplicate…<span className="sr-only"> {t.name}</span>
-        </button>
-      </div>
-      <span className="wf-t3 wf-xs">{t.shot_titles.join(" · ")}</span>
-      <SavedText
-        label={`${t.name}: preferences`}
-        value={t.preferences}
-        placeholder="Taste for this product type, e.g. “Laces tidy; show the heel counter”"
-        onSave={(v) => run("Save template preferences", async () => {
-          await api.patchTemplate(t.id, { preferences: v });
-          await onChanged();
-        })}
-      />
-      {duplicating && (
-        <NameInput
-          label="New template name"
-          submitLabel="Create copy"
-          onSubmit={(name) => run("Duplicate template", async () => {
-            await api.createTemplate(t.project_id, { name, copy_from: t.id });
-            setDuplicating(false);
-            await onChanged();
-          })}
-        />
-      )}
-    </li>
-  );
-}
-
-export function LibraryPanel() {
-  const { run } = useApp();
-  const [projects, reload] = useProjects();
-  const [mine, setMine] = useState<string | null>(null);
-  useEffect(() => {
-    api.prefs().then((v) => setMine(v.prefs.my_preferences ?? "")).catch(() => setMine(""));
-  }, []);
-
-  return (
-    <section className="wf-stack-18 wf-lib" aria-labelledby="library-h">
-      <h2 className="wf-title-l" id="library-h">
-        Library
-      </h2>
-      {mine != null && (
-        <SavedText
-          label="Your defaults (all projects)"
-          value={mine}
-          placeholder="How you like your photos, across everything. Empty is fine; add to it as your taste develops."
-          onSave={(v) => run("Save your defaults", async () => {
-            const r = await api.patchPrefs({ my_preferences: v });
-            setMine(r.prefs.my_preferences ?? "");
-          })}
-        />
-      )}
-      {projects == null && <p className="wf-t3">Loading projects…</p>}
-      {projects?.map((p) => (
-        <div key={p.id} className="wf-lib-project wf-stack-12" data-testid={`project-${p.name}`}>
-          <h3 className="wf-strong">{p.name}</h3>
-          <SavedText
-            label={`${p.name}: the project's look`}
-            value={p.preferences}
-            placeholder="E.g. “Soft, blurred backgrounds that separate the product; warm light”"
-            onSave={(v) => run("Save project preferences", async () => {
-              await api.patchProject(p.id, { preferences: v });
-              await reload();
-            })}
-          />
-          <ul className="wf-stack-12 wf-lib-templates" aria-label={`${p.name} shoot templates`}>
-            {p.templates.map((t) => (
-              <TemplateRow key={t.id} t={t} onChanged={reload} />
-            ))}
-          </ul>
-          <NameInput
-            label="New blank template"
-            submitLabel="Add template"
-            onSubmit={(name) => run("Add template", async () => {
-              await api.createTemplate(p.id, { name });
-              await reload();
-            })}
-          />
-        </div>
-      ))}
-      <NameInput
-        label="New project name"
-        submitLabel="Add project"
-        onSubmit={(name) => run("Add project", async () => {
-          await api.createProject({ name });
-          await reload();
-        })}
-      />
-    </section>
   );
 }
 
