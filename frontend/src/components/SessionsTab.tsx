@@ -18,7 +18,7 @@ function shortDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   if (d.toDateString() === new Date().toDateString()) return "Today";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return `${String(d.getDate()).padStart(2, "0")} ${"Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")[d.getMonth()]}`;
 }
 
 type GroupBy = "template" | "date";

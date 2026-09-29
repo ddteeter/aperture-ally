@@ -37,8 +37,11 @@ const PROVIDERS: { id: ProviderName; label: string }[] = [
   { id: "mock", label: "Mock (scripted, free)" },
 ];
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "Pegasus 42 · 28 Sep" (fixed three-letter months; some locales say "Sept"). */
 export function shootName(product: string, now = new Date()): string {
-  return `${product.trim()} · ${now.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`;
+  return `${product.trim()} · ${now.getDate()} ${MONTHS[now.getMonth()]}`;
 }
 
 export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPreset | null; onCreated: (s: Session) => void; onLibrary: () => void }) {
@@ -217,8 +220,14 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
             <span className="ns-legend">Product</span>
             <input className="lib-input lib-input-l" required value={product} placeholder="e.g. Pegasus 42" onChange={(e) => setProduct(e.target.value)} />
             <span className="lib-t3 lib-xs">
-              Shoot name: <span className="lib-t2">{product.trim() ? shootName(product) : "—"}</span> · folder{" "}
-              <span className="lib-mono">{watch.trim() || "the app’s own incoming folder"}</span>
+              Shoot name: <span className="lib-t2">{product.trim() ? shootName(product) : "—"}</span> ·{" "}
+              {watch.trim() ? (
+                <>
+                  folder <span className="lib-mono">{watch.trim()}</span>
+                </>
+              ) : (
+                "photos go to the app’s own incoming folder (Change… to watch OM Capture’s)"
+              )}
             </span>
           </label>
 
@@ -263,9 +272,11 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
                 {note.text}
               </span>
             </div>
-            <label className="lib-field">
-              <span className="lib-label">Coach</span>
-              <select className="lib-input" value={provider} onChange={(e) => setProvider(e.target.value as ProviderName | "")}>
+            <div className="lib-field">
+              <label className="lib-label" htmlFor="ns-coach">
+                Coach
+              </label>
+              <select id="ns-coach" className="lib-input" value={provider} onChange={(e) => setProvider(e.target.value as ProviderName | "")}>
                 <option value="">Server default</option>
                 {PROVIDERS.map((p) => (
                   <option key={p.id} value={p.id} disabled={unconfigured(p.id)}>
@@ -274,7 +285,7 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
             <label className="ns-check">
               <input type="checkbox" checked={teaching} onChange={(e) => setTeaching(e.target.checked)} />
               <span>Teaching mode: the coach explains why and names the concept</span>
