@@ -21,7 +21,7 @@ the screen, so it's too small to judge framing, focus or background from there. 
   ~5 s after the verdict is spoken. Any remote camera button returns at once (built; see "Live view returns
   after the verdict" note in the app).
 - Remote (no keyboard at the camera): L hold = talk · R pause coaching · B cancel · D-pad ↑↓ aperture · ←→
-  exposure comp · ZL/ZR ISO · A shutter · Y apply the coach's suggestion · + read out settings.
+  exposure comp · ZL/ZR ISO · A shutter · Y apply the coach's suggestion · + read out settings · X repeat advice.
 - Feedback already exists and should keep its place: the **big readout** (value in huge mono type, tick bar
   showing position in range, "end of range") while changing a setting; ticks and a spoken value.
 
@@ -53,7 +53,7 @@ the screen, so it's too small to judge framing, focus or background from there. 
   colour alone), and the honesty rules (MOCK/SIMULATED labels must stay visible).
 - Overlays must never hide the middle of the frame for long; the readout is the only thing allowed there, briefly.
 - Text sizes readable at 1–3 m (the stage's current glance sizes are the reference).
-- No new remote buttons are free except X, −, Home and ★ (Home/★ may switch the remote's mode; avoid).
+- Only − is free on the remote (Home/★ may switch the remote's mode; avoid).
 
 ## Deliverables
 

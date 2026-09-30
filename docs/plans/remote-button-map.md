@@ -13,7 +13,7 @@ Decided with the owner on 2026-09-28. Supersedes the design brief's assumption t
 | A | shutter | tested in the demo |
 | Y | apply the coach's suggestion (voice: "apply it") | the designer's proposal, kept |
 | + (Start) | read out the current settings | moved from X |
-| X | unassigned (spare) | |
+| X | repeat the last advice (keyboard R) | added 2026-09-29 at the owner's request |
 | − (Select) | unassigned in the app (quit in the demo) | |
 | Home, ★ | unassigned | one of them switches the Micro's modes; test first |
 

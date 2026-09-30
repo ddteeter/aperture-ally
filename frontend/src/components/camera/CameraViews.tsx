@@ -151,6 +151,7 @@ const REMOTE: [string, string][] = [
   ["↑ ↓", "Aperture ⅓"],
   ["← →", "Exp. comp. ⅓"],
   ["ZL ZR", "ISO ⅓"],
+  ["X", "Repeat advice"],
 ];
 
 /** The coach panel in camera mode: connection, the settings with their remote buttons, the suggestion, the legend. */

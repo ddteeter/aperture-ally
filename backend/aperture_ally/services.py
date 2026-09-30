@@ -325,7 +325,21 @@ class ApertureAllyApp:
             return f"{S.spoken(setting, r['value'])}: the lens can't go to {S.display(setting, value)}."  # type: ignore[arg-type]
         return f"{r['spoken']}, applied."
 
+    async def repeat_last(self) -> str | None:
+        """Say the last advice or answer again (keyboard R, remote X). None when nothing has been said yet."""
+        last = self.audio.last_spoken
+        if last is None:
+            return None
+        s = await self.active_session()
+        guard = self.tracker.voice_guard(s.id) if s else (lambda: True)
+        self.coaching._spawn(self.audio.speak(last.text, guard, {**last.meta, "kind": "repeat"}))
+        return last.text
+
     async def on_remote_button(self, name: str, down: bool) -> None:
+        if name == self.settings.gamepad_repeat:
+            if down and await self.repeat_last() is None:
+                await self.audio.speak("Nothing to repeat yet.", lambda: True, {"kind": "notice"})
+            return
         if self.camera.mode == "off":
             return
         if down:

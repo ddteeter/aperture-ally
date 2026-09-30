@@ -323,3 +323,15 @@ async def test_a_quick_press_released_during_a_slow_camera_step_does_not_repeat(
     await pressing
     await asyncio.sleep(0.4)
     assert heard.cues == ["camera_tick"] and cam.svc.values["iso"] == "64"
+
+
+async def test_remote_x_repeats_the_last_advice_not_a_camera_readout(make_harness):
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    await h.app.on_remote_button("x", True)
+    await h.wait(lambda: h.speech.spoken, 3, "notice spoken")
+    assert h.speech.spoken[-1] == "Nothing to repeat yet."
+    await h.app.audio.speak("Open to f/2.8 for a softer background.", lambda: True, {"kind": "advice"})
+    await h.app.audio.speak("f 4.5", lambda: True, {"kind": "camera"})
+    await h.app.on_remote_button("x", True)
+    await h.wait(lambda: len(h.speech.spoken) >= 4, 3, "repeat spoken")
+    assert h.speech.spoken[-1] == "Open to f/2.8 for a softer background."

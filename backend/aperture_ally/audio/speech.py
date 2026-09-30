@@ -318,7 +318,7 @@ class AudioController:
         try:
             await utt.task
             status = "spoken"
-            if meta.get("kind") != "preview":  # a settings preview isn't advice: R keeps repeating the advice
+            if meta.get("kind") not in ("preview", "camera", "notice"):  # only advice/answers are worth repeating
                 self.last_spoken = utt
             if self.on_mark:
                 await self.on_mark("speech_completed", meta)

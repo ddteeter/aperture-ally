@@ -164,6 +164,7 @@ class Settings(BaseSettings):
     gamepad_ptt: str = Field("l", description="gamepad button for push-to-talk (a b x y l r zl zr plus minus up down …)")
     gamepad_pause: str | None = Field("r", description="gamepad button that pauses/resumes auto-coaching")
     gamepad_cancel: str | None = Field("b", description="gamepad button that cancels speech/recording")
+    gamepad_repeat: str | None = Field("x", description="gamepad button that repeats the last advice")
     ptt_key: str = "f18"
     ptt_mode: Literal["hold", "toggle"] = "hold"
     cancel_key: str | None = None

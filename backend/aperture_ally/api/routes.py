@@ -840,14 +840,10 @@ async def voice_state(request: Request):
 
 @router.post("/coach/repeat")
 async def coach_repeat(request: Request):
-    app = app_of(request)
-    last = app.audio.last_spoken
-    if last is None:
+    text = await app_of(request).repeat_last()
+    if text is None:
         raise HTTPException(404, "nothing spoken yet")
-    s = await app.active_session()
-    guard = app.tracker.voice_guard(s.id) if s else (lambda: True)
-    app.coaching._spawn(app.audio.speak(last.text, guard, {**last.meta, "kind": "repeat"}))
-    return {"repeating": last.text}
+    return {"repeating": text}
 
 
 @router.post("/coach/stop")
