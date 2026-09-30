@@ -71,6 +71,9 @@ class RemoteCamera:
         self.camera, self.feedback, self.apply_fn = camera, feedback, apply
         self.repeat_delay_s, self.repeat_every_s = repeat_delay_s, 1 / repeat_hz
         self._repeats: dict[str, asyncio.Task] = {}
+        # Buttons down right now. A quick press can be released while its first step is still talking to the
+        # camera (50–150 ms), so repeating is decided by this, not by whether a release has been seen yet.
+        self._held: set[str] = set()
         self._no_camera_said = 0.0
         self.log: list[tuple[str, str]] = []
 
@@ -79,6 +82,7 @@ class RemoteCamera:
         if name not in CAMERA_BUTTONS:
             return False
         self.log.append(("press", name))
+        self._held.add(name)
         if self.camera.state != "connected":
             await self._no_camera()
             return True
@@ -96,6 +100,7 @@ class RemoteCamera:
         return True
 
     async def release(self, name: str) -> None:
+        self._held.discard(name)
         t = self._repeats.pop(name, None)
         if t:
             t.cancel()
@@ -107,9 +112,11 @@ class RemoteCamera:
         return r
 
     def _start_repeat(self, name: str) -> None:
+        if name not in self._held:
+            return  # already released while the first step ran
         async def run() -> None:
             await asyncio.sleep(self.repeat_delay_s)
-            while True:
+            while name in self._held:
                 r = await self._step(name)
                 if r.get("end"):
                     return  # at the end of the range: stop repeating (one end sound, not a stream of them)

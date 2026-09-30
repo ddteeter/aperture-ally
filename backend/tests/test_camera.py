@@ -304,3 +304,22 @@ async def test_camera_api_steps_sets_triggers_and_serves_a_live_frame(make_harne
         assert (await c.post("/api/camera/release")).json()["state"] == "released"
         assert (await c.post("/api/camera/step", json={"setting": "iso", "dir": 1})).status_code == 409
         assert (await c.get("/api/camera/live")).status_code == 409
+
+
+async def test_a_quick_press_released_during_a_slow_camera_step_does_not_repeat(remote):
+    """Found at the desk (2026-09-29): ZL/ZR tapped once ran to the end of the range."""
+    r, heard, cam, _ = remote
+    real_step = cam.svc.step
+
+    async def slow_step(*a, **k):
+        res = await real_step(*a, **k)
+        await asyncio.sleep(0.1)  # a real body takes 50–150 ms to report the new value
+        return res
+
+    cam.svc.step = slow_step
+    pressing = asyncio.create_task(r.press("zr"))
+    await asyncio.sleep(0.02)
+    await r.release("zr")  # released before the first step came back
+    await pressing
+    await asyncio.sleep(0.4)
+    assert heard.cues == ["camera_tick"] and cam.svc.values["iso"] == "64"
