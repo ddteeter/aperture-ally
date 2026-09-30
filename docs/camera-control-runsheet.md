@@ -34,6 +34,18 @@ settings; the shutter fires roughly 15 times.
 9. **Sleep.** Let the camera auto-power-off (or switch it off and on). It should show "Camera asleep", then
    reconnect by itself when it wakes.
 
+## Probes (added 2026-09-30, ~3 minutes, after step 9)
+
+With `APERTURE_ALLY_CAMERA_DEBUG=true` (local `.env` only), Claude lists the camera's properties through
+`GET /api/camera/debug/props` and tries single changes with `POST /api/camera/debug/set`. You watch the camera.
+
+10. **Focus point.** Claude lists the focus-related properties (AF target / AF area / manual focus drive). Put the
+    camera in S-AF with a single AF target. Claude moves the AF target by a known amount; say whether the green
+    box moves on the camera's screen and where. Then Claude tries one manual-focus nudge in MF; say whether the
+    focus changed. Goal: can the Micro move the focus point in live view (− toggles a focus mode; D-pad moves).
+11. **Level.** Claude looks for a level / roll / pitch property; tilt the camera left and right while Claude reads
+    it. Goal: whether the full-screen live view can draw the design's level.
+
 ## Pass criteria
 
 - Every step's feedback arrives with no queueing: one spoken value per burst of presses.

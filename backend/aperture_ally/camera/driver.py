@@ -201,6 +201,35 @@ class GPhotoDriver:
         except Exception:
             return None
 
+    SKIP_VALUE = {"d405"}  # a NULL text prop whose get_value() segfaults python-gphoto2 (spike finding)
+
+    def list_config(self) -> list[dict]:
+        """Every config widget: name, label, type, value and choices (debug probe; slow, ~1–3 s)."""
+        gp = self.gp
+
+        def walk(w, path, out):
+            for i in range(w.count_children()):
+                c = w.get_child(i)
+                name = c.get_name()
+                t = c.get_type()
+                if t in (gp.GP_WIDGET_SECTION, gp.GP_WIDGET_WINDOW):
+                    walk(c, f"{path}/{name}", out)
+                    continue
+                item = {"name": name, "path": f"{path}/{name}", "label": c.get_label(), "type": int(t)}
+                if name not in self.SKIP_VALUE:
+                    try:
+                        item["value"] = c.get_value()
+                    except Exception as exc:
+                        item["value_error"] = str(exc)
+                    if t in (gp.GP_WIDGET_RADIO, gp.GP_WIDGET_MENU):
+                        item["choices"] = [c.get_choice(j) for j in range(min(c.count_choices(), 40))]
+                    elif t == gp.GP_WIDGET_RANGE:
+                        item["range"] = list(c.get_range())
+                out.append(item)
+            return out
+
+        return self._call(lambda: walk(self.camera.get_config(), "", []))
+
 
 # --- a simulated E-M1 II, for tests and demos (APERTURE_ALLY_CAMERA=mock) -------------------------------
 
@@ -292,6 +321,10 @@ class FakeDriver:
 
     def battery(self) -> int | None:
         return 100
+
+    def list_config(self) -> list[dict]:
+        self._check()
+        return [{"name": k, "path": f"/main/{k}", "label": k, "type": 5, "value": v} for k, v in self.values.items()]
 
 
 def simulated_jpeg(text: str = "SIMULATED CAMERA", size: tuple[int, int] = (1024, 768)) -> bytes:

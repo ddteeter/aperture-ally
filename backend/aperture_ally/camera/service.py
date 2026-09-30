@@ -129,6 +129,21 @@ class CameraService:
             return {"first_photo": self.first_photo}
         return await self._call(f)
 
+    # --- debug probe (APERTURE_ALLY_CAMERA_DEBUG=true): read any property, set any property ---------
+    async def list_props(self) -> list[dict[str, Any]]:
+        return await self._call(lambda: self._require().list_config(), timeout=30)
+
+    async def set_raw(self, name: str, value: str) -> dict[str, Any]:
+        def f():
+            d = self._require()
+            before = d.get(name)
+            d.set(name, value)
+            time.sleep(0.1)
+            after = d.get(name)
+            self.last_command = f"debug {name}: {before} → {after}"
+            return {"name": name, "before": before, "requested": value, "after": after}
+        return await self._call(f)
+
     # --- snapshot for the API / UI -----------------------------------------------------------
     def snapshot(self) -> dict[str, Any]:
         return {

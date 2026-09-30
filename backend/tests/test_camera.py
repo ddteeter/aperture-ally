@@ -359,3 +359,20 @@ async def test_saying_grid_off_tells_the_screen(make_harness):
     ev = next(e for e in h.app.bus.recent if e["type"] == "ui.grid")
     assert ev["payload"]["on"] is False
     await h.wait(lambda: "Grid off." in h.speech.spoken, 5, "confirmation spoken")
+
+
+async def test_camera_debug_probe_is_off_unless_enabled_then_lists_and_sets(make_harness):
+    import httpx
+
+    from aperture_ally.app import create_app
+
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    await h.wait(lambda: h.app.camera.state == "connected", 5, "camera connected")
+    app = create_app(h.app.settings, coach=h.app)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
+        assert (await c.get("/api/camera/debug/props")).status_code == 404
+        h.app.settings.camera_debug = True
+        props = (await c.get("/api/camera/debug/props", params={"q": "aper"})).json()
+        assert [p["name"] for p in props] == ["aperture"]
+        r = (await c.post("/api/camera/debug/set", json={"name": "iso", "value": "400"})).json()
+        assert r == {"name": "iso", "before": "Auto", "requested": "400", "after": "400"}

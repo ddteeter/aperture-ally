@@ -1013,6 +1013,35 @@ async def camera_suggestion(request: Request):
     return {"setting": s[0], "value": s[1], "display": S.display(s[0], s[1])} if s else None  # type: ignore[arg-type]
 
 
+class CameraRawSetBody(BaseModel):
+    name: str = Field(..., max_length=64)
+    value: str = Field(..., max_length=64)
+
+
+def _camera_debug(app) -> None:
+    if not app.settings.camera_debug:
+        raise HTTPException(404, "camera debug is off (APERTURE_ALLY_CAMERA_DEBUG=true)")
+
+
+@router.get("/camera/debug/props")
+async def camera_debug_props(request: Request, q: str | None = None):
+    """Every camera property (name, label, value, choices); `q` filters on name/label (e.g. q=focus)."""
+    app = app_of(request)
+    _camera_debug(app)
+    props = await _camera(app.camera.list_props)
+    if q:
+        ql = q.lower()
+        props = [p for p in props if ql in p["name"].lower() or ql in str(p.get("label", "")).lower()]
+    return props
+
+
+@router.post("/camera/debug/set")
+async def camera_debug_set(body: CameraRawSetBody, request: Request):
+    app = app_of(request)
+    _camera_debug(app)
+    return await _camera(lambda: app.camera.set_raw(body.name, body.value))
+
+
 @router.get("/camera/frame")
 async def camera_frame(request: Request):
     """The newest live-view frame (JPEG); starts live view for a few seconds if nobody is watching."""
