@@ -69,6 +69,7 @@ final class ServerSupervisor {
         env["APERTURE_ALLY_SPEECH_PROVIDER"] = "companion"  // speak through this app (falls back to `say`)
         env["APERTURE_ALLY_COMPANION_PORT"] = "\(companionPort)"
         env["PYTHONUNBUFFERED"] = "1"
+        env["APERTURE_ALLY_EXIT_WITH_PARENT"] = "1"  // if this app dies (even by SIGKILL), the server stops too
         p.environment = env
         if !FileManager.default.fileExists(atPath: logURL.path) {
             FileManager.default.createFile(atPath: logURL.path, contents: nil)

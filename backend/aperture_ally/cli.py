@@ -9,7 +9,28 @@ import sys
 from pathlib import Path
 
 
+def exit_with_parent(poll_s: float = 1.0) -> None:
+    """Launched by Aperture Ally.app: stop (gracefully, handing the camera back) if the app goes away."""
+    import os
+    import signal
+    import threading
+    import time
+
+    parent = os.getppid()
+
+    def watch() -> None:
+        while True:
+            time.sleep(poll_s)
+            if os.getppid() != parent:  # re-parented to launchd: the app is gone
+                os.kill(os.getpid(), signal.SIGTERM)
+                return
+
+    threading.Thread(target=watch, name="exit-with-parent", daemon=True).start()
+
+
 def cmd_serve(args) -> int:
+    import os
+
     import uvicorn
 
     from .app import create_app
@@ -23,6 +44,8 @@ def cmd_serve(args) -> int:
         return 2
     print(f"Aperture Ally on http://{s.host}:{s.port}  (provider={s.assess_provider}, speech={s.speech_provider}, "
           f"recorder={s.recorder}, transcriber={s.transcriber}, global_keys={s.global_keys})")
+    if os.environ.get("APERTURE_ALLY_EXIT_WITH_PARENT") == "1":
+        exit_with_parent()
     # Long-lived responses (the camera's live-view stream) never close on their own; without a limit, shutdown
     # waits for them forever and the camera is never handed back.
     uvicorn.run(create_app(s), host=s.host, port=s.port, log_level="info", timeout_graceful_shutdown=3)
