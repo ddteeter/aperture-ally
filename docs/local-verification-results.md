@@ -546,3 +546,26 @@ falls back to `say` if the app isn't running).
   (five values 150 ms apart) were heard as only the last one, promptly (2026-09-29), which fixes the remote-demo
   problem where `say` played the last value late.
 - Mic permission is asked for by the app (the server is its child process).
+
+### Direct camera control in the app, owner session 1 (2026-09-29): steps 1–5 PASS after fixes
+
+Run sheet: `docs/camera-control-runsheet.md`. E-M1 II on USB (OM Capture closed), 8BitDo Micro in S mode,
+AirPods. `APERTURE_ALLY_CAMERA=direct` in the local `.env` only.
+
+| Step | Result |
+|---|---|
+| 1 Connect | **PASS.** Connected by itself (10.6 s first time, 3.5 s on later reconnects). Read f/8, ISO Auto, ±0, 1/5 s, battery 71 %. Photos go to the active shoot's watch folder |
+| 2 Untested buttons | **PASS after a fix.** ZL/ZR/+ work; −, Home and ★ send nothing the app uses (none switched the Micro's mode). ZL/ZR first ran to the end of the range: a quick press was released while the first step was still waiting on the camera, before the repeat existed (race; fixed with held-state tracking + regression test) |
+| 3 Settings + live view | **PASS after two fixes.** Buttons responsive, ticks and one spoken value per burst. Live view first showed a broken image: frames were copied out of libgphoto2's buffer after it was freed (some frames were reused memory, `01 00 00 00…`; downloads had the same pattern). Then ~3 fps: each camera-event check costs **~290 ms** whatever the timeout, and every frame waited behind one. Now ~13 fps (events checked about once a second during live view, every loop for 8 s after a shutter). Owner: "a lot better". OM Capture's live view is still smoother (it probably uses a streaming mode) |
+| 4 Shutter from A | **PASS.** Shutter → JPEG on the Mac **2.0–2.7 s** (includes AF and exposure), ORF ~1 s later; first photo of a connection 8.7–13.8 s (card listing), announced by the coach. Two shots coached (Sonnet 5.5, ~$0.045 each) |
+| 5 Camera's own button | **PASS for singles and burst.** 3 singles: JPEG 0.5 s after the photo-taken event; a 5-frame burst: all 5 JPEG+ORF pairs, ~1.5–2 s apart (USB 2). The "bracket" frame was untagged, so bracketing wasn't on; earlier accidental 5-frame AE brackets were tagged shot 1…5 |
+| 6–9 | Not yet (owner stepped away). After a server restart at the end, the camera had dropped off USB (asleep or out of PC mode after the hand-back); to check in steps 7 and 9 |
+
+**Also found and fixed during the session:**
+- The open live-view stream stopped the server from shutting down (uvicorn waited for it), so the camera would never be handed back. Graceful shutdown now times out after 3 s.
+- The hand-back call ran on release: PC-mode prop `d052` went 1 → 0, accepted by the camera. Whether the body's own controls work afterwards is step 7.
+- Live view now comes back by itself ~5 s after a shot's verdict is spoken; any remote camera press returns at once (owner: at the camera you can't keep pressing L).
+- Remote X = repeat the last advice (owner's request); camera read-outs no longer count as "advice" for repeat.
+- Keyboard R (repeat) with nothing said shows a quiet notice; identical errors replace each other.
+- The coach called a stuffed Mandalorian "the shoe" (shoe shot list + a baseline frame of the shoe anchored it). Kept as an eval case for after shoot 1.
+- Owner asked for full-screen live view with overlays: design brief 3 (`docs/design-brief-live-view.md`).
