@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import type { Capture } from "../api/types";
 import { useApp, useCoachEvents } from "../AppContext";
 import { usePushToTalk } from "../hooks/usePushToTalk";
@@ -90,7 +90,7 @@ function useOnline() {
 }
 
 export function VoiceBar({ captureId }: { captureId: string | null }) {
-  const { sid, state, run } = useApp();
+  const { sid, state, run, toast } = useApp();
   const [toggleMode, setToggleMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem(TOGGLE_KEY) === "1";
@@ -162,7 +162,15 @@ export function VoiceBar({ captureId }: { captureId: string | null }) {
     pressed.current = false;
     void run("Cancel", () => api.voiceCancel());
   }, [run]);
-  const repeat = useCallback(() => void run("Repeat advice", () => api.coachRepeat()), [run]);
+  const repeat = useCallback(async () => {
+    try {
+      await api.coachRepeat();
+    } catch (e) {
+      // Nothing said yet is normal (e.g. right after a restart): say so quietly rather than as an error.
+      if (e instanceof ApiError && e.status === 404) toast({ glyph: "↻", text: "Nothing to repeat yet", tone: "neutral" });
+      else void run("Repeat advice", () => Promise.reject(e));
+    }
+  }, [run, toast]);
   const stopVoice = useCallback(() => void run("Stop voice", () => api.coachStop()), [run]);
 
   usePushToTalk({ onStart: start, onStop: stop, onToggle: toggle, onCancel: cancel }, { enabled: !!sid, toggleMode });

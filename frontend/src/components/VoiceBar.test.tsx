@@ -79,3 +79,15 @@ describe("VoiceBar", () => {
     expect(JSON.parse(String(f.mock.calls[0][1]?.body))).toMatchObject({ session_id: "s1", capture_id: "cap-2" });
   });
 });
+
+describe("Repeat with nothing said yet", () => {
+  it("is a quiet notice, not an error", async () => {
+    const { ApiError, api } = await import("../api/client");
+    vi.spyOn(api, "coachRepeat").mockRejectedValue(new ApiError(404, "nothing spoken yet"));
+    const c = makeCtx({ state: sessionState(), run: vi.fn() as never });
+    renderWithCtx(<VoiceBar captureId="cap-2" />, c);
+    fireEvent.click(screen.getByRole("button", { name: /Repeat/ }));
+    await vi.waitFor(() => expect(c.toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Nothing to repeat yet" })));
+    expect(c.run).not.toHaveBeenCalled();
+  });
+});

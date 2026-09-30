@@ -65,7 +65,7 @@ export function App() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sid, setSidState] = useState<string | null>(loadSid);
   const [state, setState] = useState<SessionState | null>(null);
-  const [errors, setErrors] = useState<{ id: number; text: string }[]>([]);
+  const [errors, setErrors] = useState<{ id: number; text: string; n: number }[]>([]);
   const [received, setReceived] = useState<ReceivedInfo | null>(null);
   const [pendingNote, setPendingNote] = useState<string | null>(null);
   const sidRef = useRef(sid);
@@ -105,9 +105,13 @@ export function App() {
     [setTab],
   );
 
+  // The same error again replaces the old one (with a count) instead of stacking up.
   const pushError = useCallback((text: string) => {
     const id = ++errId.current;
-    setErrors((e) => [...e.slice(-3), { id, text }]);
+    setErrors((e) => {
+      const same = e.find((x) => x.text === text);
+      return [...e.filter((x) => x.text !== text).slice(-3), { id, text, n: (same?.n ?? 0) + 1 }];
+    });
   }, []);
 
   const setSid = useCallback((next: string | null) => {
@@ -311,6 +315,7 @@ export function App() {
             <div key={e.id} className="alert alert-error">
               <span>
                 <span className="glyph" aria-hidden="true">!</span> {e.text}
+                {e.n > 1 && <span className="mono muted"> ×{e.n}</span>}
               </span>
               <button type="button" onClick={() => setErrors((x) => x.filter((y) => y.id !== e.id))}>
                 Dismiss
