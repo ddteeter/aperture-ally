@@ -94,3 +94,7 @@
 .cam-dialog-list li::before { content: "·"; font-family: var(--mono); color: var(--t3); margin-right: 10px; }
 .cam-dialog-actions { display: flex; gap: 8px; align-items: center; }
 .cam-dialog-note { font-size: 12px; color: var(--t3); margin-left: 6px; }
+.cam-returning {
+  position: absolute; right: 16px; top: 12px; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 4px 9px;
+  border-radius: 6px; background: var(--ovl); color: var(--ovl-ink); font-size: 12px; pointer-events: none;
+}

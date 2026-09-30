@@ -26,7 +26,7 @@ const newest = (list: Capture[]) => list.reduce<Capture | null>((a, c) => (!a ||
 
 export function ShootTab() {
   const { state, run, toast } = useApp();
-  const { cam, live, setLive } = useCamera();
+  const { cam, live, setLive, reviewing } = useCamera();
   const [releasing, setReleasing] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilmFilter>("all");
@@ -111,6 +111,11 @@ export function ShootTab() {
             />
           )}
           <Readout />
+          {reviewing && (
+            <span className="cam-returning" role="status">
+              <span className="cam-live-dot" aria-hidden="true" /> Live view returns after the verdict · any remote button or L now
+            </span>
+          )}
           <Filmstrip
             captures={visible}
             total={caps.length}
