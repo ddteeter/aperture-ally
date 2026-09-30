@@ -157,8 +157,21 @@ class GPhotoDriver:
     def trigger(self) -> None:
         self._call(lambda: self.camera.trigger_capture())
 
+    @staticmethod
+    def _copy(camera_file) -> bytes:
+        """Copy a CameraFile's data while the file object is still alive. get_data_and_size() returns a view into
+        memory the CameraFile owns; copying it after the file is garbage-collected reads freed memory (seen at the
+        desk as live-view frames starting 01 00 00 00 instead of FF D8)."""
+        data = camera_file.get_data_and_size()
+        out = bytes(memoryview(data))
+        del data
+        return out
+
     def preview(self) -> bytes:
-        return bytes(self._call(lambda: self.camera.capture_preview().get_data_and_size()))
+        def f():
+            cf = self.camera.capture_preview()
+            return self._copy(cf)
+        return self._call(f)
 
     def wait_event(self, timeout_ms: int) -> DriverEvent:
         gp = self.gp
@@ -173,7 +186,14 @@ class GPhotoDriver:
 
     def download(self, folder: str, name: str) -> bytes:
         gp = self.gp
-        return bytes(self._call(lambda: self.camera.file_get(folder, name, gp.GP_FILE_TYPE_NORMAL).get_data_and_size()))
+
+        def f():
+            cf = self.camera.file_get(folder, name, gp.GP_FILE_TYPE_NORMAL)
+            data = self._copy(cf)
+            if name.lower().endswith((".jpg", ".jpeg")) and not data.startswith(b"\xff\xd8"):
+                raise RuntimeError(f"{name}: downloaded data isn't a JPEG")
+            return data
+        return self._call(f)
 
     def battery(self) -> int | None:
         try:

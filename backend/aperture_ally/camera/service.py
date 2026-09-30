@@ -233,9 +233,11 @@ class CameraService:
         d = self._require()
         now = time.monotonic()
         if self.live_watchers > 0 and now - self._last_frame_at >= 1 / LIVE_FPS:
-            self.frame = d.preview()
-            self.frame_seq += 1
+            frame = d.preview()
             self._last_frame_at = now
+            if frame.startswith(b"\xff\xd8"):  # never pass on a corrupt frame
+                self.frame = frame
+                self.frame_seq += 1
         if self._refresh_due is not None and now >= self._refresh_due:
             self._refresh_due = None
             self._refresh_values()

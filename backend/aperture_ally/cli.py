@@ -23,7 +23,9 @@ def cmd_serve(args) -> int:
         return 2
     print(f"Aperture Ally on http://{s.host}:{s.port}  (provider={s.assess_provider}, speech={s.speech_provider}, "
           f"recorder={s.recorder}, transcriber={s.transcriber}, global_keys={s.global_keys})")
-    uvicorn.run(create_app(s), host=s.host, port=s.port, log_level="info")
+    # Long-lived responses (the camera's live-view stream) never close on their own; without a limit, shutdown
+    # waits for them forever and the camera is never handed back.
+    uvicorn.run(create_app(s), host=s.host, port=s.port, log_level="info", timeout_graceful_shutdown=3)
     return 0
 
 
