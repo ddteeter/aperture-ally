@@ -59,3 +59,11 @@ the screen, so it's too small to judge framing, focus or background from there. 
 
 A "Live view full screen" page in the design project with the states above (Studio and Daylight), design notes
 per state, and any new tokens. Say explicitly what changes in the existing Shoot v2 group-6 screens.
+
+## Decisions after the design agent's first pass (owner, 2026-09-29)
+
+- **Grid and level are on by default** (the owner's preferred default); turned off/on by voice. The level shows
+  only if the camera reports one over USB (unverified; probe the property list at the next camera session).
+- **+** reads out the settings and shows the framing note again.
+- Shutter hint "A-mode" is right (aperture priority: the camera picks the shutter).
+- Remote X now repeats the last advice; only − is free.
