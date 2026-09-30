@@ -139,6 +139,7 @@ class RemoteCamera:
     async def _readout(self) -> None:
         from . import settings as S
 
+        self.camera._emit("camera.readout")  # the live-view screen shows the framing note again
         v = self.camera.values
         parts = [S.spoken(k, v[k]) for k in S.SETTINGS if v.get(k)]
         await self.feedback.say(", ".join(parts) or "No settings read yet.")

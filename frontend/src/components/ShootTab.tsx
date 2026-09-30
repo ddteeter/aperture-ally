@@ -10,7 +10,8 @@ import { ShotList } from "./ShotList";
 import { VoiceBar } from "./VoiceBar";
 import { api } from "../api/client";
 import { connected, useCamera } from "./camera/CameraContext";
-import { CameraPanel, CameraStage, ReleaseDialog, Readout } from "./camera/CameraViews";
+import { ReleaseDialog, Readout } from "./camera/CameraViews";
+import { FullLive } from "./camera/FullLive";
 import "./shoot.css";
 
 const RAIL_KEY = "aperture-ally.rail-collapsed";
@@ -27,6 +28,8 @@ const newest = (list: Capture[]) => list.reduce<Capture | null>((a, c) => (!a ||
 export function ShootTab() {
   const { state, run, toast } = useApp();
   const { cam, live, setLive, reviewing } = useCamera();
+  // Live view is full screen (design brief 3); it stays up while a new photo is reviewed, then returns to live.
+  const fullLive = live || reviewing != null;
   const [releasing, setReleasing] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilmFilter>("all");
@@ -66,7 +69,7 @@ export function ShootTab() {
       if (!cam || cam.mode === "off") {
         toast({ glyph: "◎", text: "Camera control is off. Photos arrive through the watch folder.", tone: "neutral" });
       } else {
-        setLive(!live);
+        setLive(!fullLive);
       }
       return true;
     }
@@ -98,24 +101,15 @@ export function ShootTab() {
     <div className={railCollapsed ? "shoot rail-collapsed" : "shoot"}>
       <div className="shoot-grid">
         <ShotList collapsed={railCollapsed} onToggleCollapsed={() => setRailCollapsed((c) => !c)} />
-        <section className="shoot-center" aria-label={live ? "Live view" : "Photo"}>
-          {live ? (
-            <CameraStage />
-          ) : (
-            <CaptureViewer
-              capture={selected}
-              following={!pinned}
-              onFollow={() => setPinnedId(null)}
-              showLost={showLost}
-              onToggleLost={() => setShowLost((v) => !v)}
-            />
-          )}
-          <Readout />
-          {reviewing && (
-            <span className="cam-returning" role="status">
-              <span className="cam-live-dot" aria-hidden="true" /> Live view returns after the verdict · any remote button or L now
-            </span>
-          )}
+        <section className="shoot-center" aria-label="Photo">
+          <CaptureViewer
+            capture={selected}
+            following={!pinned}
+            onFollow={() => setPinnedId(null)}
+            showLost={showLost}
+            onToggleLost={() => setShowLost((v) => !v)}
+          />
+          {!fullLive && <Readout />}
           <Filmstrip
             captures={visible}
             total={caps.length}
@@ -125,17 +119,14 @@ export function ShootTab() {
             onSelect={select}
           />
         </section>
-        <aside className="shoot-coach" aria-label={live ? "Camera" : "Coach"}>
-          {live ? (
-            <CameraPanel onRelease={() => setReleasing(true)} />
-          ) : (
-            <CoachPanel capture={selected} shot={shot} captures={caps} experiments={state.experiments} keeper={keeper} />
-          )}
+        <aside className="shoot-coach" aria-label="Coach">
+          <CoachPanel capture={selected} shot={shot} captures={caps} experiments={state.experiments} keeper={keeper} />
         </aside>
       </div>
       <div className="shoot-voice">
         <VoiceBar captureId={selected?.id ?? null} />
       </div>
+      {fullLive && <FullLive onExit={() => setLive(false)} />}
       {releasing && <ReleaseDialog onClose={() => setReleasing(false)} />}
     </div>
   );

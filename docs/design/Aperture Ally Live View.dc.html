@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+html,body{margin:0;background:#0b0b0b;color:#ececec;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.10 230);text-decoration:none}
+a:hover{color:oklch(0.88 0.08 230);text-decoration:underline}
+button{font-family:inherit}
+:root{--mono:'IBM Plex Mono',monospace}
+[data-theme="dark"]{--rail:#0c0c0c;--t1:#ececec;--t2:#b8b8b8;--t3:#8c8c8c;--line:#262626;--ph1:#262626;--ph2:#2b2b2b;--acc:oklch(0.80 0.10 230);--acc-t:oklch(0.30 0.05 230);--ret:oklch(0.76 0.13 35);--ret-t:oklch(0.30 0.06 35);--ok:oklch(0.79 0.13 150);--unc:oklch(0.84 0.12 90);--unc-t:oklch(0.30 0.05 90);--ovl:rgba(0,0,0,.66);--ovl-ink:#ececec;--ovl-2:#b8b8b8;--aid:rgba(255,255,255,.55);--aid-sh:rgba(0,0,0,.45);--wm:500;--wb:600;color:var(--t1)}
+[data-theme="daylight"]{--rail:#f2f2f2;--t1:#0a0a0a;--t2:#242424;--t3:#3d3d3d;--line:#cfcfcf;--ph1:#b6b6b6;--ph2:#c0c0c0;--acc:oklch(0.47 0.16 245);--acc-t:oklch(0.93 0.04 245);--ret:oklch(0.50 0.18 30);--ret-t:oklch(0.93 0.05 30);--ok:oklch(0.46 0.14 150);--unc:oklch(0.50 0.12 70);--unc-t:oklch(0.93 0.06 85);--ovl:rgba(255,255,255,.94);--ovl-ink:#0a0a0a;--ovl-2:#242424;--aid:rgba(255,255,255,.8);--aid-sh:rgba(0,0,0,.6);--wm:600;--wb:700;color:var(--t1)}
+</style>
+</helmet>
+
+<section style="padding:48px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1000px">
+    <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#8c8c8c">BRIEF 3 · FULL-SCREEN LIVE VIEW · BUILDS ON SHOOT V2 GROUP 6</span>
+    <h1 style="margin:0;font-size:34px;font-weight:600;letter-spacing:-.015em">Live view, full screen</h1>
+    <span style="font-size:15px;color:#b8b8b8;line-height:1.5;text-wrap:pretty">Shown at 1470 × 956 pt (15″ Air, app full screen). Drop a real live-view frame onto the picture to test overlay contrast.</span>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="11">
+      <button onClick="{{ t.go }}" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid #333;background:{{ t.bg }};color:{{ t.fg }};font-size:14px;cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+    <span style="width:1px;height:24px;background:#333;margin:0 6px"></span>
+    <button onClick="{{ toggleTheme }}" style="height:34px;padding:0 14px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#ececec;font-size:14px;cursor:pointer">Theme: {{ themeLabel }}</button>
+  </div>
+
+  <div style="display:flex;gap:32px;align-items:flex-start">
+    <div data-theme="{{ theme }}" data-screen-label="Live view · {{ curLabel }}" style="width:1470px;height:956px;flex:none;display:grid;grid-template-columns:1275px 195px;background:var(--rail);overflow:hidden;border-radius:4px;box-shadow:0 0 0 1px #2a2a2a">
+
+      <div style="position:relative;width:1275px;height:956px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--ph1) 0 14px,var(--ph2) 14px 28px)">
+        <sc-if value="{{ showLive }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0"><image-slot id="lv-frame" shape="rect" placeholder="Drop a live-view frame (4:3)"></image-slot></div>
+        </sc-if>
+        <sc-if value="{{ isVerdict }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0"><image-slot id="lv-shot" shape="rect" placeholder="Drop the new photo (4:3)"></image-slot></div>
+        </sc-if>
+
+        <sc-if value="{{ isAsleep }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;background:var(--rail);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px">
+            <span style="font-family:var(--mono);font-size:34px;color:var(--unc)">◎</span>
+            <span style="font-size:56px;font-weight:var(--wm);letter-spacing:-.015em">Camera asleep</span>
+            <span style="font-size:26px;color:var(--t2);max-width:760px;line-height:1.4;text-wrap:pretty">Half-press the shutter on the E-M1 to wake it. Live view comes back by itself.</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showGrid }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;pointer-events:none">
+            <span style="position:absolute;top:0;bottom:0;left:33.333%;width:1px;background:var(--aid);box-shadow:1px 0 0 var(--aid-sh)"></span>
+            <span style="position:absolute;top:0;bottom:0;left:66.666%;width:1px;background:var(--aid);box-shadow:1px 0 0 var(--aid-sh)"></span>
+            <span style="position:absolute;left:0;right:0;top:33.333%;height:1px;background:var(--aid);box-shadow:0 1px 0 var(--aid-sh)"></span>
+            <span style="position:absolute;left:0;right:0;top:66.666%;height:1px;background:var(--aid);box-shadow:0 1px 0 var(--aid-sh)"></span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showLevel }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-0.4deg);display:flex;align-items:center;gap:0;pointer-events:none">
+            <span style="width:150px;height:3px;background:var(--unc);box-shadow:0 0 0 1px var(--aid-sh)"></span>
+            <span style="width:60px;height:3px;background:transparent"></span>
+            <span style="width:150px;height:3px;background:var(--unc);box-shadow:0 0 0 1px var(--aid-sh)"></span>
+          </div>
+          <span style="position:absolute;left:50%;top:calc(50% + 18px);transform:translateX(-50%);font-family:var(--mono);font-size:18px;font-weight:600;color:var(--ovl-ink);background:var(--ovl);padding:3px 10px;border-radius:6px">0.4° left</span>
+        </sc-if>
+
+        <sc-if value="{{ showShot }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:20px;top:20px;max-width:620px;display:flex;flex-direction:column;gap:6px;background:var(--ovl);color:var(--ovl-ink);padding:12px 16px 13px;border-radius:12px;backdrop-filter:blur(10px);pointer-events:none">
+            <span style="font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:var(--ovl-2)">SHOT 3 OF 8</span>
+            <span style="font-size:28px;font-weight:var(--wm);letter-spacing:-.01em;line-height:1.15">Heel counter, three-quarter</span>
+            <sc-if value="{{ showNote }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:19px;line-height:1.4;color:var(--ovl-2);text-wrap:pretty">Heel fills the right third. Must show: logo, pull tab, stitching.</span>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showLiveTag }}" hint-placeholder-val="{{ true }}">
+          <span style="position:absolute;right:20px;top:20px;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ovl-ink);background:var(--ovl);padding:6px 11px;border-radius:8px;display:flex;gap:8px;align-items:center;backdrop-filter:blur(10px)"><span style="width:9px;height:9px;border-radius:50%;background:var(--ret)"></span>LIVE</span>
+        </sc-if>
+        <sc-if value="{{ isVerdict }}" hint-placeholder-val="{{ false }}">
+          <span style="position:absolute;right:20px;top:20px;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ovl-ink);background:var(--ovl);padding:6px 11px;border-radius:8px;backdrop-filter:blur(10px)">PHOTO #14</span>
+        </sc-if>
+
+        <sc-if value="{{ showReadout }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--ovl);color:var(--ovl-ink);padding:22px 36px 20px;border-radius:16px;min-width:460px;backdrop-filter:blur(10px)">
+            <span style="font-family:var(--mono);font-size:13px;letter-spacing:.08em">APERTURE</span>
+            <span style="font-family:var(--mono);font-size:132px;font-weight:600;line-height:1;letter-spacing:-.03em">f/2.8</span>
+            <div style="display:flex;align-items:flex-end;gap:5px;height:26px">
+              <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="23"><span style="width:{{ t.wd }}px;height:{{ t.h }}px;border-radius:2px;background:{{ t.c }}"></span></sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;width:100%;font-family:var(--mono);font-size:11px"><span>f/1.8</span><span style="font-weight:600">↑↓ to change</span><span>f/22</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showCoach }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:20px;bottom:20px;max-width:1000px;display:flex;flex-direction:column;gap:10px;background:var(--ovl);color:var(--ovl-ink);padding:14px 20px 16px;border-radius:14px;backdrop-filter:blur(10px)">
+            <span style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.06em;color:{{ vs.c }}"><span style="font-size:18px">{{ vs.g }}</span>{{ vs.word }}<span style="font-weight:400;color:var(--ovl-2);letter-spacing:.02em">{{ vs.sub }}</span></span>
+            <sc-if value="{{ coachBig }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:34px;font-weight:var(--wm);line-height:1.25;letter-spacing:-.01em;text-wrap:pretty">{{ line }}</span>
+            </sc-if>
+            <sc-if value="{{ coachSmall }}" hint-placeholder-val="{{ true }}">
+              <span style="font-size:22px;line-height:1.35;color:var(--ovl-2);text-wrap:pretty">{{ line }}</span>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isVerdict }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;left:20px;right:20px;bottom:20px;display:flex;gap:28px;align-items:flex-end;background:var(--ovl);color:var(--ovl-ink);padding:20px 24px;border-radius:16px;backdrop-filter:blur(10px)">
+            <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0">
+              <span style="display:flex;align-items:center;gap:14px"><span style="width:52px;height:52px;border-radius:12px;background:var(--ret-t);color:var(--ret);display:grid;place-items:center;font-family:var(--mono);font-size:28px;font-weight:600">↺</span><span style="font-size:48px;font-weight:var(--wb);letter-spacing:-.015em;color:var(--ret)">Needs retake</span></span>
+              <span style="font-size:32px;font-weight:var(--wm);line-height:1.25;text-wrap:pretty">Heel is out of the frame on the right. Step back half a metre.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none">
+              <span style="font-family:var(--mono);font-size:44px;font-weight:600;line-height:1">4 s</span>
+              <span style="font-size:16px;color:var(--ovl-2)">to live view · any button now</span>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <aside style="border-left:1px solid var(--line);display:flex;flex-direction:column;padding:18px 16px;gap:6px;min-height:0">
+        <sc-if value="{{ hasIssues }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+            <sc-for list="{{ issues }}" as="i" hint-placeholder-count="0">
+              <div style="display:flex;flex-direction:column;gap:2px;padding:9px 11px;border-radius:9px;background:var(--unc-t);border:1.5px solid var(--unc)">
+                <span style="font-size:17px;font-weight:var(--wb);line-height:1.2">{{ i.t }}</span>
+                <span style="font-size:13px;color:var(--t2);line-height:1.3">{{ i.s }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-for list="{{ settings }}" as="s" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;gap:2px;padding:10px 10px 12px;border-radius:10px;background:{{ s.bg }}">
+            <span style="display:flex;justify-content:space-between;gap:6px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--t2)"><span>{{ s.k }}</span><span style="color:var(--t3)">{{ s.key }}</span></span>
+            <span style="font-family:var(--mono);font-size:44px;font-weight:600;line-height:1.05;letter-spacing:-.02em;color:{{ s.c }}">{{ s.v }}</span>
+            <span style="font-family:var(--mono);font-size:15px;font-weight:600;color:var(--acc)">{{ s.sug }}</span>
+          </div>
+        </sc-for>
+        <div style="flex:1"></div>
+        <sc-if value="{{ hasSug }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:2px solid var(--acc)">
+            <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--t2)">COACH SUGGESTS</span>
+            <span style="font-size:24px;font-weight:var(--wm);line-height:1.15">Open to f/2.8</span>
+            <span style="display:flex;align-items:center;gap:8px;font-size:16px;color:var(--t2)"><span style="width:30px;height:30px;border-radius:50%;background:var(--acc);color:var(--rail);display:grid;place-items:center;font-family:var(--mono);font-size:16px;font-weight:600">Y</span>applies</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ applied }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:12px;background:var(--acc-t)">
+            <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--t2)">✓ APPLIED</span>
+            <span style="font-size:22px;font-weight:var(--wm);line-height:1.15">f/2.8 set on the camera</span>
+          </div>
+        </sc-if>
+      </aside>
+    </div>
+
+    <sc-if value="{{ showSpec }}" hint-placeholder-val="{{ true }}">
+      <div style="width:440px;flex:none;display:flex;flex-direction:column;gap:22px;font-size:15px;line-height:1.5;color:#b8b8b8">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a">
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#8c8c8c">THIS STATE</span>
+          <span style="color:#ececec;text-wrap:pretty">{{ note }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#8c8c8c">HIERARCHY</span>
+          <sc-for list="{{ hier }}" as="h" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:26px 1fr;gap:8px">
+              <span style="font-family:var(--mono);color:#8c8c8c">{{ h.n }}</span>
+              <span style="text-wrap:pretty"><b style="color:#ececec;font-weight:600">{{ h.t }}</b> {{ h.d }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#8c8c8c">SIZES FOR 1–3 M</span>
+          <span style="text-wrap:pretty">On the 15″ Air 1 pt ≈ 0.22 mm. Settings 44 pt (≈10 mm) read at 3 m; the spoken line 34 pt at 2 m; nothing essential below 22 pt. Big readout unchanged at 132 pt.</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <span style="font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:#8c8c8c">OPEN QUESTIONS</span>
+          <span style="text-wrap:pretty">Level over USB is unverified — to be checked in the camera’s settings list at the next session. Design handles both: level only when the camera reports it.</span>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Studio&quot;,&quot;Daylight&quot;],&quot;default&quot;:&quot;Studio&quot;,&quot;tsType&quot;:&quot;'Studio'|'Daylight'&quot;},&quot;showSpec&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  static S = [
+    ['rest', '1 Resting', 'Nothing happening. Picture, settings in the rail, shot name, and the coach collapsed to its last line at 22 pt. The framing note is hidden.'],
+    ['open', '2 Live view opens', 'For 6 s after L opens live view (or the shot changes) the framing note and must-show items appear under the shot name, then fold away.'],
+    ['change', '3 Changing aperture', 'Existing big readout, centred. The rail value lights in accent for 3 s after the last press so a glance later still shows what moved.'],
+    ['speak', '4 Coach speaking + suggestion', 'While speaking the line is 34 pt. The suggestion sits in the rail under the settings, with “→ f/2.8” next to the value it would change. Y applies; the card turns to “Applied” for 3 s.'],
+    ['listen', '5 Listening (L held)', 'Voice state leads with the mic glyph in accent. Words appear as they are heard, so you can see if it misheard before letting go.'],
+    ['think', '6 Thinking', 'After L is released. The question stays visible until the answer starts speaking.'],
+    ['verdict', '7 After the shot', 'New photo replaces live view with the verdict over its lower edge in the verdict colour. The countdown starts when speech ends; any remote button returns at once.'],
+    ['aids', '8 Grid + level', 'On by default in every live-view state. Thirds grid (1 pt white with dark shadow, works on any content) plus a split level line that turns green within 0.2°. The level appears only when the camera reports it. “Grid off” / “grid on” by voice; remembered per template.'],
+    ['grid', '8b Grid only', 'Same voice toggle when the camera doesn’t report a level: the grid alone, with no empty level slot and no warning.'],
+    ['wrong', '9 Something’s wrong', 'Device issues appear only when wrong, at the top of the rail in amber with what to do. Coaching still works where it can.'],
+    ['asleep', '10 Camera asleep', 'The picture area says so at full size; the rail keeps the last known settings so nothing jumps when it wakes.']
+  ];
+  static HIER = [
+    ['Picture', '1275 × 956 pt, 4:3 at full height, flush left. The leftover 195 pt becomes one rail on the right rather than two thin letterbox bars. 13″ Air: 1109 × 832 picture, 171 pt rail.'],
+    ['Settings', 'always, in the rail, never over the picture. Each labelled with its remote button. Last changed one in accent.'],
+    ['Coach voice state + line', 'bottom-left over the picture. Speaking 34 pt; collapses to one 22 pt line 8 s after speech ends.'],
+    ['Suggestion', 'rail card + arrow beside the affected setting. Y applies.'],
+    ['Shot name', 'top-left, always, quiet. Framing note on open / shot change, and on + (which also reads out the settings).'],
+    ['Device state', 'invisible when fine. Amber rail chip when wrong; full picture area only for camera asleep/missing.'],
+    ['Aids', 'grid and level on by default, voice toggle. Level: only if the camera reports it over USB, otherwise grid only. Centre mark: no — the camera’s AF point already marks it.'],
+    ['Remote', 'X repeats the last advice (shown as a hint on the coach line). − is the only free button; left unassigned here.']
+  ];
+  state = { s: 0, theme: null };
+  renderVals() {
+    const S = Component.S, i = this.state.s, k = S[i][0];
+    const theme = this.state.theme ?? (this.props.theme === 'Daylight' ? 'daylight' : 'dark');
+    const STOPS = ['1.8','2','2.2','2.5','2.8','3.2','3.5','4','4.5','5','5.6','6.3','7.1','8','9','10','11','13','14','16','18','20','22'];
+    const ai = 4;
+    const ticks = STOPS.map((s, j) => ({ wd: j === ai ? 8 : 4, h: j === ai ? 26 : (['2','2.8','4','5.6','8','11','16','22'].includes(s) ? 16 : 9), c: j === ai ? 'var(--acc)' : 'var(--ovl-ink)' }));
+    const apChanged = k === 'change';
+    const apVal = k === 'change' ? 'f/2.8' : 'f/4';
+    const sugOn = k === 'speak';
+    const settings = [
+      { k: 'APERTURE', key: '↑↓', v: apVal, sug: sugOn ? '→ f/2.8' : '' , hot: apChanged },
+      { k: 'SHUTTER', key: 'A-mode', v: '1/125', sug: '' },
+      { k: 'ISO', key: 'ZL ZR', v: '200', sug: '' },
+      { k: 'COMP', key: '←→', v: '+0.3', sug: '' }
+    ].map(s => ({ ...s, bg: s.hot ? 'var(--acc-t)' : 'transparent', c: s.hot ? 'var(--acc)' : 'var(--t1)' }));
+    const VS = {
+      idle: { g: '●', word: 'COACH', sub: '· 14:36 · X repeats', c: 'var(--ovl-2)' },
+      speak: { g: '▮▮▮', word: 'SPEAKING', sub: '· R pauses', c: 'var(--acc)' },
+      listen: { g: '◉', word: 'LISTENING', sub: '· let go of L to send', c: 'var(--acc)' },
+      think: { g: '⋯', word: 'THINKING', sub: '', c: 'var(--ovl-2)' }
+    };
+    const vsKey = k === 'speak' ? 'speak' : k === 'listen' ? 'listen' : k === 'think' ? 'think' : 'idle';
+    const line = k === 'speak' ? 'Good light on the heel. The hedge behind is busy — open to f/2.8 to soften it.'
+      : k === 'listen' ? '“Is the background too busy for the…”'
+      : k === 'think' ? '“Is the background too busy for the logo?”'
+      : 'Good light on the heel. Open to f/2.8 to soften the hedge.';
+    const issues = k === 'wrong' ? [
+      { t: 'Mic unavailable', s: 'AirPods disconnected. Talk (L) is off until they’re back.' },
+      { t: 'Remote asleep', s: 'Press any button on the 8BitDo to wake it.' }
+    ] : [];
+    return {
+      theme, themeLabel: theme === 'dark' ? 'Studio' : 'Daylight', curLabel: S[i][1],
+      toggleTheme: () => this.setState({ theme: theme === 'dark' ? 'daylight' : 'dark' }),
+      tabs: S.map((s, j) => ({ label: s[1], go: () => this.setState({ s: j }), bg: j === i ? '#ececec' : '#1c1c1c', fg: j === i ? '#141414' : '#b8b8b8' })),
+      note: S[i][2], hier: Component.HIER.map((h, j) => ({ n: j + 1, t: h[0], d: h[1] })),
+      showSpec: this.props.showSpec ?? true,
+      showLive: k !== 'verdict' && k !== 'asleep', isVerdict: k === 'verdict', isAsleep: k === 'asleep',
+      showLiveTag: k !== 'verdict' && k !== 'asleep', showShot: k !== 'asleep', showNote: k === 'open',
+      showGrid: !['verdict','asleep','grid'].includes(k) || k === 'grid', showLevel: !['verdict','asleep','grid','change'].includes(k), showReadout: k === 'change', ticks,
+      showCoach: k !== 'verdict' && k !== 'asleep' && k !== 'change', vs: VS[vsKey], line,
+      coachBig: ['speak', 'listen', 'think'].includes(k), coachSmall: !['speak', 'listen', 'think'].includes(k),
+      settings, hasSug: sugOn, applied: false, issues, hasIssues: issues.length > 0
+    };
+  }
+}
+</script>
+</body>
+</html>

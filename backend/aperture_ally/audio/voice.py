@@ -33,6 +33,9 @@ _ACCEPT_RX = re.compile(
     re.IGNORECASE)
 _REPEAT_RX = re.compile(r"^\s*(please\s+)?(repeat( that)?|say (that|it) again|what did you say)\W*$", re.IGNORECASE)
 _NEXT_RX = re.compile(r"^\s*(go to\s+)?(the\s+)?next shot\W*$", re.IGNORECASE)
+_GRID_RX = re.compile(r"^\s*(please\s+)?(?:(?:turn\s+)?(?:the\s+)?grid\s+(?P<a>on|off)|(?:turn\s+)?(?P<b>on|off)\s+(?:the\s+)?grid|"
+                      r"(?P<c>show|hide)\s+(?:the\s+)?grid)\W*$", re.IGNORECASE)
+_APPLY_RX = re.compile(r"^\s*(please\s+)?(apply( it| that| the suggestion)?|do (it|that))\W*$", re.IGNORECASE)
 
 
 _PAUSE_RX = re.compile(r"^\s*(please\s+)?((pause|stop|mute)\s+(the\s+)?(coaching|coach|advice|tips)|(be\s+)?quiet(\s+please)?)\W*$",
@@ -61,6 +64,12 @@ def parse_command(transcript: str) -> tuple[str, str | None]:
         return "repeat", None
     if _NEXT_RX.match(t):
         return "next_shot", None
+    m = _GRID_RX.match(t)
+    if m:
+        word = (m.group("a") or m.group("b") or m.group("c") or "").lower()
+        return "grid", "on" if word in ("on", "show") else "off"
+    if _APPLY_RX.match(t):
+        return "apply_suggestion", None
     if _PAUSE_RX.match(t):
         return "pause_coaching", None
     if _RESUME_RX.match(t):
@@ -389,6 +398,15 @@ class VoiceController:
             if last is None:
                 return "Nothing to repeat yet.", "Nothing to repeat yet."
             return last.text, last.text
+        if turn.intent == "grid":
+            on = turn.meta.get("command_payload") == "on"
+            self.bus.publish("ui.grid", session_id=session.id, on=on)  # the live-view screen shows/hides it
+            msg = "Grid on." if on else "Grid off."
+            return msg, msg
+        if turn.intent == "apply_suggestion":
+            text = await self.app.apply_camera_suggestion() if self.app.camera.state == "connected" else \
+                "No camera connected to apply it to."
+            return text, text
         if turn.intent == "next_shot":
             shot = await self.app.advance_shot(session.id)
             msg = f"Next shot: {shot.title}. {shot.purpose}" if shot else "Every shot has an accepted keeper."

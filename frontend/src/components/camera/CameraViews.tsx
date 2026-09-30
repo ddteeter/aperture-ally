@@ -9,7 +9,7 @@ import "./camera.css";
  *  and the release dialog. */
 
 const LABEL: Record<string, string> = { aperture: "APERTURE", exposurecompensation: "EXPOSURE COMP.", iso: "ISO", shutterspeed: "SHUTTER" };
-const KEY: Record<string, string> = { aperture: "↑ ↓", exposurecompensation: "← →", iso: "ZL ZR", shutterspeed: "auto" };
+const KEY: Record<string, string> = { aperture: "↑ ↓", exposurecompensation: "← →", iso: "ZL ZR", shutterspeed: "A-mode" };
 const READOUT_MS = 1500;
 
 function num(v: string): number | null {
@@ -37,7 +37,7 @@ function display(setting: string, v: string | undefined): string {
 /** The big value in the middle of the stage while you change a setting; fades 1.5 s after the last change. */
 export function Readout() {
   const { cam, change } = useCamera();
-  const [shown, setShown] = useState<(CameraSettingChange & { n: number }) | null>(null);
+  const [shown, setShown] = useState<(CameraSettingChange & { n: number; at: number }) | null>(null);
   useEffect(() => {
     if (!change || change.setting === "shutterspeed" || change.source === "camera") return;
     setShown(change);
@@ -53,7 +53,7 @@ export function Readout() {
       ? shown.clamped
         ? "! the lens stops here"
         : "✓ applied"
-      : "⅓ stop per press";
+      : `${KEY[shown.setting] ?? ""} to change`;
   return (
     <div className="cam-readout" aria-hidden="true" data-testid="camera-readout">
       <span className="cam-readout-label">

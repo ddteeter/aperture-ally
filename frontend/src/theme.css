@@ -34,6 +34,8 @@
   --scrim: rgba(0, 0, 0, 0.62); --pop-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   --ovl: rgba(0, 0, 0, 0.66); --ovl-ink: #ececec;
   --mark-blade: #ececec; --mark-speak: #79c0e8; /* docs/design/icons/README.md */
+  /* full-screen live view (docs/design/Aperture Ally Live View.dc.html) */
+  --rail: #0c0c0c; --ovl-2: #b8b8b8; --aid: rgba(255, 255, 255, 0.55); --aid-sh: rgba(0, 0, 0, 0.45);
   color-scheme: dark;
 }
 
@@ -50,6 +52,7 @@
   --scrim: rgba(0, 0, 0, 0.45); --pop-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
   --ovl: rgba(255, 255, 255, 0.94); --ovl-ink: #0a0a0a;
   --mark-blade: #0a0a0a; --mark-speak: #1a7bb0;
+  --rail: #f2f2f2; --ovl-2: #242424; --aid: rgba(255, 255, 255, 0.8); --aid-sh: rgba(0, 0, 0, 0.6);
   color-scheme: light;
 }
 

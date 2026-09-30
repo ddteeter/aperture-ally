@@ -335,3 +335,27 @@ async def test_remote_x_repeats_the_last_advice_not_a_camera_readout(make_harnes
     await h.app.on_remote_button("x", True)
     await h.wait(lambda: len(h.speech.spoken) >= 4, 3, "repeat spoken")
     assert h.speech.spoken[-1] == "Open to f/2.8 for a softer background."
+
+
+def test_voice_commands_for_the_live_view_grid_and_applying_the_suggestion():
+    from aperture_ally.audio.voice import parse_command
+
+    assert parse_command("grid off") == ("grid", "off")
+    assert parse_command("Turn the grid on.") == ("grid", "on")
+    assert parse_command("hide the grid") == ("grid", "off")
+    assert parse_command("show grid") == ("grid", "on")
+    assert parse_command("apply it") == ("apply_suggestion", None)
+    assert parse_command("Is the grid helping?")[0] == "question"
+
+
+async def test_saying_grid_off_tells_the_screen(make_harness):
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    s = await h.session()
+    h.app.voice.transcriber.queue.append("grid off")
+    await h.app.voice.press(s.id)
+    await asyncio.sleep(0.3)
+    await h.app.voice.release()
+    await h.wait(lambda: any(e["type"] == "ui.grid" for e in h.app.bus.recent), 5, "ui.grid event")
+    ev = next(e for e in h.app.bus.recent if e["type"] == "ui.grid")
+    assert ev["payload"]["on"] is False
+    await h.wait(lambda: "Grid off." in h.speech.spoken, 5, "confirmation spoken")

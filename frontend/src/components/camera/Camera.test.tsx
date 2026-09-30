@@ -2,8 +2,10 @@ import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api/client";
-import type { CameraSnapshot, CoachEvent } from "../../api/types";
+import type { CameraSnapshot, CoachEvent, SessionState } from "../../api/types";
 import { makeCtx, renderWithCtx } from "../../test/ctx";
+import { makeCapture, sessionState } from "../../test/fixtures";
+import { FullLive } from "./FullLive";
 import { cameraChip } from "../DeviceChips";
 import { CameraProvider, REVIEW_HOLD_MS, REVIEW_MAX_MS, useCamera } from "./CameraContext";
 import { CameraPanel, CameraStage, isFullStop, Readout, ReleaseDialog } from "./CameraViews";
@@ -43,7 +45,7 @@ describe("camera control UI", () => {
     const r = screen.getByTestId("camera-readout");
     expect(r).toHaveTextContent("APERTURE");
     expect(r).toHaveTextContent("f/2.8");
-    expect(r).toHaveTextContent("⅓ stop per press");
+    expect(r).toHaveTextContent("↑ ↓ to change");
     expect(r).toHaveTextContent("f/1.8");
     expect(r.querySelectorAll(".cam-tick")).toHaveLength(APS.length);
     expect(r.querySelector(".cam-tick.is-cur")).toBe(r.querySelectorAll(".cam-tick")[4]);
@@ -65,7 +67,7 @@ describe("camera control UI", () => {
     const panel = await screen.findByTestId("camera-panel");
     expect(panel).toHaveTextContent("Connected · you control it");
     expect(panel).toHaveTextContent("Aperture↑ ↓f/4");
-    expect(panel).toHaveTextContent("Shutterauto1/250");
+    expect(panel).toHaveTextContent("ShutterA-mode1/250");
     await userEvent.click(await screen.findByRole("button", { name: /Apply f\/2.8/ }));
     expect(apply).toHaveBeenCalled();
     expect(ctx.toast).toHaveBeenCalledWith(expect.objectContaining({ text: "f 2.8, applied." }));
@@ -146,5 +148,73 @@ describe("live view after a shot", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("full-screen live view", () => {
+  function setup(extra: Partial<SessionState> = {}) {
+    vi.spyOn(api, "camera").mockResolvedValue(snap({ mode: "mock" }));
+    vi.spyOn(api, "cameraSuggestion").mockResolvedValue({ setting: "aperture", value: "2.8", display: "f/2.8" });
+    vi.spyOn(api, "devices").mockResolvedValue({
+      mic: { state: "fallback", device: "MacBook Air Microphone", preferred: "AirPods", detail: "" },
+      remote: { state: "ok", detail: "", reconnects: 0 },
+    });
+    let emitRaw: (ev: CoachEvent) => void = () => undefined;
+    const st = sessionState(extra);
+    st.shots[0] = { ...st.shots[0], framing: "Heel fills the right third.", must_show: ["logo", "pull tab"] };
+    st.session = { ...st.session, active_shot_id: st.shots[0].id, simulated: true };
+    const ctx = makeCtx({ state: st });
+    ctx.subscribe = (fn) => {
+      emitRaw = fn;
+      return () => undefined;
+    };
+    const emit = (type: string, capture_id: string | null = null, payload: Record<string, unknown> = {}) =>
+      act(() => emitRaw({ seq: 1, type, ts: "", capture_id, payload }));
+    return { ctx, emit, st };
+  }
+
+  it("fills the screen: picture with the shot, grid on by default, settings rail with the suggestion; G toggles the grid", async () => {
+    localStorage.removeItem("aperture-ally.live-grid");
+    const { ctx } = setup();
+    const onExit = vi.fn();
+    renderWithCtx(<CameraProvider><FullLive onExit={onExit} /></CameraProvider>, ctx);
+    const fl = await screen.findByTestId("full-live");
+    expect(within(fl).getByText(/SHOT 1 OF/)).toBeInTheDocument();
+    expect(screen.getByTestId("framing-note")).toHaveTextContent("Heel fills the right third. Must show: logo, pull tab.");
+    expect(screen.getByTestId("live-grid")).toBeInTheDocument();
+    expect(screen.getByTestId("rail-aperture")).toHaveTextContent("APERTURE↑↓f/4");
+    expect(await screen.findByText("→ f/2.8")).toBeInTheDocument();
+    expect(fl).toHaveTextContent("COACH SUGGESTS");
+    expect(await within(fl).findByText("Mic on the Mac")).toBeInTheDocument(); // only because something's wrong
+    expect(fl).toHaveTextContent("SIMULATED"); // honesty labels stay visible full screen
+    await userEvent.keyboard("g");
+    expect(screen.queryByTestId("live-grid")).toBeNull();
+    expect(localStorage.getItem("aperture-ally.live-grid")).toBe("0");
+    await userEvent.keyboard("{Escape}");
+    expect(onExit).toHaveBeenCalled();
+  });
+
+  it("\"grid on\" by voice brings the grid back; a new photo shows its verdict with the countdown to live view", async () => {
+    localStorage.setItem("aperture-ally.live-grid", "0");
+    const cap = makeCapture("cap-14", 14);
+    const { ctx, emit } = setup({ captures: [cap] });
+    const seen: { cur: ReturnType<typeof useCamera> | null } = { cur: null };
+    function Probe() {
+      seen.cur = useCamera();
+      return null;
+    }
+    renderWithCtx(<CameraProvider><Probe /><FullLive onExit={vi.fn()} /></CameraProvider>, ctx);
+    await screen.findByTestId("full-live");
+    expect(screen.queryByTestId("live-grid")).toBeNull();
+    emit("ui.grid", null, { on: true });
+    expect(screen.getByTestId("live-grid")).toBeInTheDocument();
+    act(() => seen.cur!.setLive(true));
+    emit("capture.ready", cap.id);
+    const v = await screen.findByTestId("live-verdict");
+    expect(v).toHaveTextContent("live view after the verdict · any button now");
+    emit("analysis.completed", cap.id);
+    emit("coach.speech.stopped");
+    await vi.waitFor(() => expect(screen.getByTestId("live-verdict")).toHaveTextContent(/[45] s/));
+    expect(screen.getByTestId("live-verdict")).toHaveTextContent("to live view · any button now");
   });
 });
