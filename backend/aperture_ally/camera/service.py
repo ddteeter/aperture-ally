@@ -28,7 +28,11 @@ from .driver import CameraAbsent, CameraBusy, CameraLost, Driver, DriverEvent, i
 log = logging.getLogger(__name__)
 
 PHOTO_TAKEN = 0xC101  # Olympus CreateRecView: the shutter fired
-LIVE_FPS = 15.0
+LIVE_FPS = 30.0  # a preview frame takes ~22 ms on the E-M1 II
+# Checking for camera events costs ~290 ms on the E-M1 II whatever the timeout (libgphoto2 asks the camera), so
+# during live view it runs about once a second, and every loop for a while after a shot (so files arrive fast).
+LIVE_EVENT_EVERY_S = 1.0
+EXPECT_FILES_S = 8.0
 READBACK_S = 0.15  # the body reports a new value ~20 ms after a set; wait this long before calling it clamped
 
 
@@ -69,6 +73,9 @@ class CameraService:
         self.frame: bytes | None = None
         self.frame_seq = 0
         self._last_frame_at = 0.0
+        self._last_event_poll = 0.0
+        self._expect_until = 0.0  # poll events every loop until then (after a shutter)
+        self.timing: dict[str, float] = {}  # rolling ms: preview, event wait (Diagnostics; tuning live view)
 
     # --- lifecycle ---------------------------------------------------------------------------
     def start(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
@@ -116,6 +123,7 @@ class CameraService:
         def f():
             d = self._require()
             self._shutter_at = time.monotonic()
+            self._expect_until = self._shutter_at + EXPECT_FILES_S
             d.trigger()
             self.last_command = "shutter"
             return {"first_photo": self.first_photo}
@@ -126,7 +134,7 @@ class CameraService:
         return {
             "mode": self.mode, "state": self.state, "detail": self.detail, "model": self.model,
             "battery": self.battery, "photos": self.photos, "first_photo_pending": self.first_photo,
-            "live_watchers": self.live_watchers, "last_command": self.last_command,
+            "live_watchers": self.live_watchers, "last_command": self.last_command, "timing": self.timing,
             "settings": {k: {"value": self.values.get(k), "display": S.display(k, self.values.get(k)),  # type: ignore[arg-type]
                              "order": self.orders.get(k, [])} for k in (*S.SETTINGS, *S.READ_ONLY)},
             "destination": str(self.current_destination()),
@@ -233,7 +241,9 @@ class CameraService:
         d = self._require()
         now = time.monotonic()
         if self.live_watchers > 0 and now - self._last_frame_at >= 1 / LIVE_FPS:
+            t0 = time.monotonic()
             frame = d.preview()
+            self._avg("preview_ms", (time.monotonic() - t0) * 1000)
             self._last_frame_at = now
             if frame.startswith(b"\xff\xd8"):  # never pass on a corrupt frame
                 self.frame = frame
@@ -241,13 +251,26 @@ class CameraService:
         if self._refresh_due is not None and now >= self._refresh_due:
             self._refresh_due = None
             self._refresh_values()
+        live_quiet = self.live_watchers > 0 and now >= self._expect_until
+        if live_quiet and now - self._last_event_poll < LIVE_EVENT_EVERY_S:
+            wait = self._last_frame_at + 1 / LIVE_FPS - time.monotonic()
+            time.sleep(min(max(wait, 0.002), 0.02))  # until the next frame is due; don't spin
+            return
+        t0 = time.monotonic()
+        self._last_event_poll = t0
         ev = d.wait_event(10 if self.live_watchers else 50)
+        self._avg("event_ms", (time.monotonic() - t0) * 1000)
         if ev.kind != "timeout":
             self._on_event(ev)
+
+    def _avg(self, key: str, ms: float) -> None:
+        prev = self.timing.get(key)
+        self.timing[key] = round(ms if prev is None else prev * 0.8 + ms * 0.2, 1)
 
     def _on_event(self, ev: DriverEvent) -> None:
         if ev.kind == "ptp" and ev.code == PHOTO_TAKEN:
             self._shutter_at = self._shutter_at or time.monotonic()
+            self._expect_until = time.monotonic() + EXPECT_FILES_S
             self._emit("camera.shutter", first_photo=self.first_photo)
         elif ev.kind == "prop":
             self._refresh_due = time.monotonic() + 0.1  # a dial turned on the body, or the metered shutter moved
