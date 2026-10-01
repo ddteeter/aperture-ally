@@ -1086,6 +1086,16 @@ async def camera_live(request: Request):
                              headers={"Cache-Control": "no-store"})
 
 
+@router.get("/power")
+async def power(request: Request, fresh: bool = False):
+    """Recent power samples (Mac battery and draw, our processes' energy impact, the camera's battery)."""
+    app = app_of(request)
+    if fresh or not app.power_samples:
+        await app.power_sample()
+    samples = list(app.power_samples)
+    return {"last": samples[-1] if samples else None, "samples": samples[-60:], "every_s": app.settings.power_sample_s}
+
+
 @router.get("/devices")
 async def devices(request: Request):
     return device_summary(app_of(request))

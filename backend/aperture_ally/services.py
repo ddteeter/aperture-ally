@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -240,6 +241,8 @@ class ApertureAllyApp:
             self._mic_task = asyncio.create_task(self._mic_watchdog(self.voice.recorder))
         self.network.start()
         self.camera.start(asyncio.get_running_loop())
+        self.power_samples: deque = deque(maxlen=240)
+        self._power_task = asyncio.create_task(self._power_sampler()) if self.settings.power_sample_s > 0 else None
         self.started = True
 
     async def _mic_watchdog(self, rec: ContinuousRecorder, every_s: float = 2.0) -> None:
@@ -257,6 +260,8 @@ class ApertureAllyApp:
             await asyncio.sleep(every_s)
 
     async def stop(self) -> None:
+        if getattr(self, "_power_task", None):
+            self._power_task.cancel()
         # Hand the camera back first so its own buttons work even if the rest of shutdown is slow.
         await asyncio.get_running_loop().run_in_executor(None, self.camera.stop)
         if self._mic_task:
@@ -286,6 +291,39 @@ class ApertureAllyApp:
         for c in await self.store.captures(s.id):
             if c.processing_state not in ("discovered", "stabilizing"):
                 self.tracker.capture_ready(s.id, c.shot_id, c.id, c.seq, self.tracker.later_bracket_frame(c.exif))
+
+    # --- power telemetry (telemetry/power.py) ------------------------------------------------------
+    async def power_sample(self) -> dict[str, Any]:
+        import os
+
+        from .telemetry.power import mac_battery, process_energy
+
+        pids = {"server": os.getpid()}
+        if os.environ.get("APERTURE_ALLY_EXIT_WITH_PARENT") == "1":
+            pids["app"] = os.getppid()  # Aperture Ally.app (its web view runs in a WebKit process not counted here)
+        loop = asyncio.get_running_loop()
+        mac = await loop.run_in_executor(None, mac_battery)
+        procs = await loop.run_in_executor(None, process_energy, pids)
+        active = await self.active_session()
+        sample = {
+            "mac": mac, "processes": procs,
+            "camera": {"state": self.camera.state, "battery": self.camera.battery,
+                       "live_view": self.camera.live_watchers > 0, "mode": self.camera.mode},
+            "context": {"theme": active.ui_theme if active else None, "voice": self.voice.state.value,
+                        "coaching_paused": active.coaching_paused if active else None},
+            "at": utcnow(),
+        }
+        self.power_samples.append(sample)
+        self.telemetry.record("power.sample", sample, session_id=active.id if active else None)
+        return sample
+
+    async def _power_sampler(self) -> None:
+        while True:
+            try:
+                await self.power_sample()
+            except Exception as exc:
+                log.debug("power sample failed: %s", exc)
+            await asyncio.sleep(self.settings.power_sample_s)
 
     # --- camera control ------------------------------------------------------------------------
     async def _camera_cue(self, kind: str) -> None:

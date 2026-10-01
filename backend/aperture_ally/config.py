@@ -152,6 +152,7 @@ class Settings(BaseSettings):
         "off", description="direct = the app controls the camera over USB (python-gphoto2) when OM Capture doesn't "
                            "hold it; mock = a simulated camera for demos and tests; off = watch folder only")
     camera_poll_s: float = Field(2.0, gt=0, description="How often to look for the camera while it's absent")
+    power_sample_s: float = Field(60.0, ge=0, description="Record Mac/app/camera power to telemetry this often (0 = off)")
     camera_debug: bool = Field(False, description="Expose /api/camera/debug/* to list and set raw camera properties")
     camera_speak_delay_ms: int = Field(300, ge=0, description="Speak a changed setting this long after the last press")
     camera_repeat_delay_ms: int = Field(400, ge=50, description="Holding a D-pad direction starts repeating after this")

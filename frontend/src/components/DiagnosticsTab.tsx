@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { Diagnostics, MockFailMode } from "../api/types";
+import type { Diagnostics, MockFailMode, PowerSample } from "../api/types";
 import { useApp, useCoachEvents } from "../AppContext";
 import { useCamera } from "./camera/CameraContext";
 import "./workflows.css";
@@ -272,8 +272,47 @@ function DevicesPanel({ diag }: { diag: Diagnostics }) {
           ]}
         />
         <CameraCard />
+        <PowerCard />
       </div>
     </div>
+  );
+}
+
+/** Battery and energy, sampled into the telemetry log every minute (so a shoot's log shows what live view costs). */
+function PowerCard() {
+  const [p, setP] = useState<{ last: PowerSample | null; samples: PowerSample[]; every_s: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api.power().then((x) => alive && setP(x)).catch(() => undefined);
+    void load();
+    const t = setInterval(load, 30000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+  const m = p?.last?.mac;
+  const procs = p?.last?.processes ?? {};
+  const avg = (live: boolean) => {
+    const xs = (p?.samples ?? []).filter((s) => s.camera.live_view === live && s.mac?.draw_w != null).map((s) => s.mac!.draw_w!);
+    return xs.length ? `${(xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(1)} W (${xs.length})` : "—";
+  };
+  return (
+    <DeviceCard
+      name="Power"
+      glyph="⚡"
+      state={m ? (m.on_power_adapter ? `On the adapter · ${m.percent}%` : `On battery · ${m.percent}%`) : "Not reported"}
+      tone={m && !m.on_power_adapter && (m.percent ?? 100) < 20 ? "unc" : "ok"}
+      rows={[
+        ["Mac draw now", m?.draw_w != null ? `${m.draw_w} W` : m?.on_power_adapter ? "on the adapter" : "—"],
+        ["Time left", m?.minutes_remaining != null ? `${Math.floor(m.minutes_remaining / 60)} h ${m.minutes_remaining % 60} min` : "—"],
+        ["Avg, live view", avg(true)],
+        ["Avg, no live view", avg(false)],
+        ...Object.entries(procs).map(([k, v]) => [`Energy · ${k}`, `${v.energy} (CPU ${v.cpu}%)`] as [string, string]),
+        ["Camera battery", p?.last?.camera.battery != null ? `${p.last.camera.battery}%` : "—"],
+        ["Sampled", p ? `every ${p.every_s} s into telemetry` : "—"],
+      ]}
+    />
   );
 }
 

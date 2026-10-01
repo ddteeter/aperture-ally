@@ -28,6 +28,7 @@ def fast_settings(data_dir: Path, **kw) -> Settings:
         stability_interval_ms=40, stability_checks=3, stability_timeout_s=3.0, reconcile_interval_s=0.3,
         pair_grace_s=0.8, raw_unverified_settle_s=0.3, attribution_ambiguity_s=0.5, teaching_prompt_every=0,
         import_roots=[data_dir.parent], ptt_max_seconds=5, min_utterance_s=0.2, ready_cue=False, _env_file=None,
+        power_sample_s=0,
     )
     base.update(kw)
     return Settings(**base)

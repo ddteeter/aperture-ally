@@ -9,6 +9,7 @@ import type {
   CameraSettingName,
   CameraSnapshot,
   DeviceSummary,
+  PowerSample,
   BaselineCandidate,
   CaptureDetail,
   CapturePatch,
@@ -198,6 +199,7 @@ export const api = {
   // audio preferences (live; saved per person)
   prefs: () => request<AudioPrefsView>("GET", "/prefs"),
   devices: () => request<DeviceSummary>("GET", "/devices"),
+  power: () => request<{ last: PowerSample | null; samples: PowerSample[]; every_s: number }>("GET", "/power"),
   camera: () => request<CameraSnapshot>("GET", "/camera"),
   cameraTake: () => request<CameraSnapshot>("POST", "/camera/take"),
   cameraRelease: () => request<CameraSnapshot>("POST", "/camera/release"),

@@ -74,6 +74,7 @@ class CameraService:
         self.frame_seq = 0
         self._last_frame_at = 0.0
         self._last_event_poll = 0.0
+        self._battery_at = 0.0
         self._expect_until = 0.0  # poll events every loop until then (after a shutter)
         self.timing: dict[str, float] = {}  # rolling ms: preview, event wait (Diagnostics; tuning live view)
 
@@ -263,6 +264,9 @@ class CameraService:
             if frame.startswith(b"\xff\xd8"):  # never pass on a corrupt frame
                 self.frame = frame
                 self.frame_seq += 1
+        if now - self._battery_at >= 60:  # the camera's battery, for the power samples
+            self._battery_at = now
+            self.battery = d.battery()
         if self._refresh_due is not None and now >= self._refresh_due:
             self._refresh_due = None
             self._refresh_values()

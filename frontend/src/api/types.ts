@@ -805,6 +805,15 @@ export interface CameraSettingChange {
   clamped?: boolean;
 }
 
+/** GET /power: Mac battery and draw, our processes' energy impact, the camera's battery (telemetry/power.py). */
+export interface PowerSample {
+  mac: { percent: number | null; charging: boolean; on_power_adapter: boolean; draw_w: number | null; minutes_remaining: number | null; temperature_c: number | null } | null;
+  processes: Record<string, { cpu: number; energy: number }>;
+  camera: { state: string; battery: number | null; live_view: boolean; mode: string };
+  context: { theme: string | null; voice: string; coaching_paused: boolean | null };
+  at: string;
+}
+
 /** GET /devices: the mic and remote reduced to what the top bar shows. */
 export interface DeviceSummary {
   mic: { state: "ok" | "fallback" | "none" | "stalled" | "unmanaged"; device: string | null; preferred: string | null; detail: string };

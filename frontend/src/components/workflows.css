@@ -333,7 +333,7 @@ fieldset.wf-setup-row > .wf-seg { max-width: 520px; }
 .wf-confirm { border: 1px solid var(--line3); border-radius: 8px; padding: 10px; }
 
 /* Diagnostics · devices (Library design, screen 5) */
-.dev-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 @media (max-width: 1100px) { .dev-grid { grid-template-columns: minmax(0, 1fr); } }
 .dev-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .dev-card-head { display: flex; align-items: center; gap: 10px; }
