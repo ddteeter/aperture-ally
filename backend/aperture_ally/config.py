@@ -25,6 +25,10 @@ class ModelPrice(BaseModel):
 
     input_per_mtok: float
     output_per_mtok: float
+    # Prompt caching. Unset: Claude cache reads/writes use Anthropic's multipliers (0.1× / 1.25× input); other
+    # providers' cached tokens are charged at the full input price (an overestimate, never an underestimate).
+    cached_input_per_mtok: float | None = None
+    cache_write_per_mtok: float | None = None
     verified_on: str | None = None
     source_url: str | None = None
 

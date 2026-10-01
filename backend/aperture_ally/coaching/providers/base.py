@@ -49,8 +49,19 @@ def data_url(path: str | Path) -> str:
 
 
 def estimate_cost(usage: dict[str, Any], price) -> float | None:
+    """USD for one call. Claude reports cache reads/writes *beside* input_tokens; OpenAI and Gemini report
+    `cached_input_tokens` *within* input_tokens (discounted only when the price says how much)."""
     if price is None:
         return None
+    pin = price.input_per_mtok
     inp = usage.get("input_tokens") or 0
     out = usage.get("output_tokens") or 0
-    return round(inp / 1e6 * price.input_per_mtok + out / 1e6 * price.output_per_mtok, 6)
+    cost = inp * pin + out * price.output_per_mtok
+    read = usage.get("cache_read_input_tokens") or 0
+    write = usage.get("cache_creation_input_tokens") or 0
+    cost += read * (price.cached_input_per_mtok if price.cached_input_per_mtok is not None else pin * 0.1)
+    cost += write * (price.cache_write_per_mtok if price.cache_write_per_mtok is not None else pin * 1.25)
+    cached = usage.get("cached_input_tokens") or 0
+    if cached and price.cached_input_per_mtok is not None:
+        cost -= cached * (pin - price.cached_input_per_mtok)
+    return round(cost / 1e6, 6)

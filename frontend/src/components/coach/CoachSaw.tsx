@@ -94,6 +94,11 @@ export function CoachSaw({ a, capture, shot, onClose }: { a: Assessment; capture
   const allS = a.timings?.total_ms != null ? `${(a.timings.total_ms / 1000).toFixed(1)} s` : null;
   const inTok = calls?.reduce((n, c) => n + (c.usage.input_tokens ?? 0), 0) ?? 0;
   const outTok = calls?.reduce((n, c) => n + (c.usage.output_tokens ?? 0), 0) ?? 0;
+  // Claude reports cache reads beside input_tokens; OpenAI/Gemini report cached tokens within it.
+  const cacheRead = calls?.reduce((n, c) => n + (c.usage.cache_read_input_tokens ?? 0), 0) ?? 0;
+  const cachedWithin = calls?.reduce((n, c) => n + (c.usage.cached_input_tokens ?? 0), 0) ?? 0;
+  const inAll = inTok + cacheRead + (calls?.reduce((n, c) => n + (c.usage.cache_creation_input_tokens ?? 0), 0) ?? 0);
+  const cached = cacheRead + cachedWithin;
   const k = r ? verdictKind(r) : null;
   const vm = r ? verdictMeta(r.verdict) : null;
   const word = k === "usable" ? "Usable" : k === "usable_but" ? "Usable, but…" : vm?.word;
@@ -394,7 +399,10 @@ export function CoachSaw({ a, capture, shot, onClose }: { a: Assessment; capture
               {[
                 ["Model", `${providerLabel(a.provider)} · ${a.model_resolved ?? a.model_requested ?? "?"}`],
                 ["Latency", failed ? `${allS ?? "?"} · failed` : [firstS && `${firstS} first`, allS && `${allS} all`].filter(Boolean).join(" · ") || "—"],
-                ["Tokens", `${inTok.toLocaleString("en-GB")} in · ${outTok.toLocaleString("en-GB")} out`],
+                [
+                  "Tokens",
+                  `${inAll.toLocaleString("en-GB")} in${cached ? ` (${cached.toLocaleString("en-GB")} cached)` : ""} · ${outTok.toLocaleString("en-GB")} out`,
+                ],
                 ["Cost", a.cost_estimate_usd != null ? `$${a.cost_estimate_usd.toFixed(3)}` : a.provider === "mock" ? "$0 (mock)" : "n/a"],
               ].map(([sk, sv]) => (
                 <div key={sk} className="saw-stat">

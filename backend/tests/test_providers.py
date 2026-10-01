@@ -127,7 +127,9 @@ async def test_claude_request_shape_and_usage(fx):
 
     p.client.beta.messages.create = create
     resp = await p.generate(_req(fx))
-    assert seen["model"] == "claude-opus-5" and seen["system"] == SYSTEM_ASSESS
+    assert seen["model"] == "claude-opus-5"
+    # The fixed instructions are marked for prompt caching (one block, ephemeral = Anthropic's 5-minute cache).
+    assert seen["system"] == [{"type": "text", "text": SYSTEM_ASSESS, "cache_control": {"type": "ephemeral"}}]
     assert seen["thinking"] == {"type": "adaptive"}
     assert seen["output_config"]["format"]["type"] == "json_schema" and seen["output_config"]["effort"] == "medium"
     assert seen["output_config"]["format"]["schema"]["additionalProperties"] is False
@@ -225,3 +227,22 @@ def test_empty_optional_settings_mean_default(tmp_path, monkeypatch):
     s = Settings(_env_file=env)
     assert s.claude_effort is None and s.openai_effort is None and s.gemini_thinking_level is None
     assert s.session_budget_usd is None
+
+
+
+def test_cost_counts_prompt_caching_per_provider_convention():
+    from aperture_ally.coaching.providers.base import estimate_cost
+    from aperture_ally.config import ModelPrice
+
+    sonnet = ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0)
+    # Claude: cache reads/writes are reported beside input_tokens; defaults 0.1× and 1.25× the input price.
+    plain = estimate_cost({"input_tokens": 12000, "output_tokens": 1500}, sonnet)
+    hit = estimate_cost({"input_tokens": 9000, "output_tokens": 1500, "cache_read_input_tokens": 3000}, sonnet)
+    write = estimate_cost({"input_tokens": 9000, "output_tokens": 1500, "cache_creation_input_tokens": 3000}, sonnet)
+    assert plain == 0.039 and hit == pytest.approx(0.0336) and write == pytest.approx(0.0405)
+    # OpenAI/Gemini: cached tokens are inside input_tokens; discounted only when the price says so.
+    gpt = ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0)
+    assert estimate_cost({"input_tokens": 12000, "output_tokens": 1500, "cached_input_tokens": 3000}, gpt) == plain
+    gpt_cached = ModelPrice(input_per_mtok=2.0, output_per_mtok=10.0, cached_input_per_mtok=0.5)
+    assert estimate_cost({"input_tokens": 12000, "output_tokens": 1500, "cached_input_tokens": 3000},
+                         gpt_cached) == pytest.approx(0.0345)

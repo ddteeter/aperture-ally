@@ -76,6 +76,8 @@ class GeminiProvider:
             usage = {"input_tokens": um.prompt_token_count,
                      "output_tokens": (um.candidates_token_count or 0) + (um.thoughts_token_count or 0),
                      "reasoning_tokens": um.thoughts_token_count, "total_tokens": um.total_token_count}
+            if getattr(um, "cached_content_token_count", None):
+                usage["cached_input_tokens"] = um.cached_content_token_count  # implicit caching (within input)
         text = resp.text or ""
         if not text:
             finish = getattr((getattr(resp, "candidates", None) or [None])[0], "finish_reason", None)

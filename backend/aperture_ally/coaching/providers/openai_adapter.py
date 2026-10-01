@@ -65,6 +65,9 @@ class OpenAIProvider:
         if resp.usage:
             usage = {"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens,
                      "total_tokens": resp.usage.total_tokens}
+            in_details = getattr(resp.usage, "input_tokens_details", None)
+            if in_details is not None and getattr(in_details, "cached_tokens", None) is not None:
+                usage["cached_input_tokens"] = in_details.cached_tokens  # automatic prefix caching (within input)
             details = getattr(resp.usage, "output_tokens_details", None)
             if details is not None and getattr(details, "reasoning_tokens", None) is not None:
                 usage["reasoning_tokens"] = details.reasoning_tokens

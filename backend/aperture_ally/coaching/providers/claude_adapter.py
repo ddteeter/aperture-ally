@@ -65,7 +65,9 @@ class ClaudeProvider:
         params: dict[str, Any] = {
             "model": self.model,
             "max_tokens": self.max_tokens,
-            "system": req.instructions,
+            # The instructions are the same on every call of a kind (~3k tokens): cache them. A shoot calls every
+            # minute or so, inside the 5-minute cache window, so most calls read them at 0.1× the input price.
+            "system": [{"type": "text", "text": req.instructions, "cache_control": {"type": "ephemeral"}}],
             "messages": messages,
             "thinking": {"type": "adaptive"},
             "output_config": output_config,
