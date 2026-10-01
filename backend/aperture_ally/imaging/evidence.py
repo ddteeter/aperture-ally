@@ -22,6 +22,7 @@ from PIL import Image, ImageCms, ImageOps
 from ..domain.models import Region
 from . import measurements as M
 from .framing import signature_file, write_signature
+from .subject import analyze as analyze_subject
 
 log = logging.getLogger(__name__)
 Image.MAX_IMAGE_PIXELS = 200_000_000
@@ -226,6 +227,7 @@ def build_evidence(
     overview_long_edge: int = 1600,
     crop_max_edge: int = 1024,
     max_crops: int = 3,
+    analyze_subjects: bool = True,
 ) -> dict[str, Any]:
     t: dict[str, float] = {}
     clock = time.perf_counter
@@ -250,12 +252,22 @@ def build_evidence(
     t["overview_thumb_ms"] += (clock() - t0) * 1000
     t0 = clock()
 
+    # Subject vs background on the overview (Apple Vision; nothing elsewhere): ~40 ms once warm.
+    subj = analyze_subject(out_dir / "overview.jpg", out_dir) if analyze_subjects else None
+    t["subject_ms"] = (clock() - t0) * 1000
+    t0 = clock()
+    box = (subj or {}).get("subject", {}) or {}
     crops: list[dict[str, Any]] = []
     selected = [r.clamp() for r in regions][:max_crops]
     auto = False
     if not selected:
-        x, y, w, h = M.auto_detail_region(arr)
-        selected = [Region(id="auto1", label="auto: highest local detail (not user-selected)", x=x, y=y, w=w, h=h)]
+        if box.get("box"):
+            x, y, w, h = M.auto_detail_region(arr, within=tuple(box["box"]))
+            label = "auto: most detailed part of the subject (not user-selected)"
+        else:
+            x, y, w, h = M.auto_detail_region(arr)
+            label = "auto: highest local detail (not user-selected)"
+        selected = [Region(id="auto1", label=label, x=x, y=y, w=w, h=h)]
         auto = True
     t["auto_region_ms"] = (clock() - t0) * 1000
     t0 = clock()
@@ -294,6 +306,10 @@ def build_evidence(
         "notes": {"global_sharpness_scale": "measured on overview", "region_sharpness_scale": "native pixels"},
         "caveats": M.CAVEATS,
     }
+    if box:
+        measurements["subject"] = box
+    if subj:
+        measurements["subject_labels"] = subj.get("labels", [])
     return {
         "width": W,
         "height": H,
@@ -304,4 +320,6 @@ def build_evidence(
         "measurements": measurements,
         "timings": {k: round(v, 2) for k, v in t.items()},
         "source_bytes": image_path.stat().st_size,
+        "subject_mask": (subj or {}).get("mask_path"),
+        "featureprint": (subj or {}).get("featureprint_path"),
     }

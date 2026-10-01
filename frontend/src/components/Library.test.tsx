@@ -159,7 +159,10 @@ describe("What the coach saw", () => {
       request: {
         instructions: "Judge it on two levels.",
         context: { preferences: { yours: null, project: "Soft backgrounds.", template: null, shoot: "Overcast." },
-                   metadata: { f_number: 8, iso: 6400 }, capture: { raw_kept: true, basis: "RAW paired with this photo" } },
+                   metadata: { f_number: 8, iso: 6400 }, capture: { raw_kept: true, basis: "RAW paired with this photo" },
+                   measurements: { subject: { fraction: 0.34, touches_edge: [], background_to_subject_sharpness: 0.14,
+                     background_busyness: 0.0009, subject_mean_luminance: 146, background_mean_luminance: 50 } },
+                   subject_check: { labels: [["footwear", 0.8], ["shoes", 0.8]], distance_to_baseline: 1.07 } },
         images: [{ role: "current", kind: "overview", region_id: "whole_image", label: "current photo, full frame" }],
       },
       response_text: '{"verdict":"usable_candidate"}',
@@ -179,6 +182,11 @@ describe("What the coach saw", () => {
     expect(dlg).toHaveTextContent("Your defaultsnot set");
     expect(dlg).toHaveTextContent("Aperturef/8");
     expect(dlg).toHaveTextContent("RAW was being kept");
+    const subj = within(dlg).getByTestId("saw-subject");
+    expect(subj).toHaveTextContent("34% of the frame · not cut off");
+    expect(subj).toHaveTextContent("0.14× the subject's (clearly softer)");
+    expect(subj).toHaveTextContent("Looks likefootwear, shoes");
+    expect(subj).toHaveTextContent("1.07 (different subject or scene)");
     expect(dlg).toHaveTextContent("Spoken first");
     expect(dlg).toHaveTextContent("Same as spoken, validated at 4.6 s. No correction.");
     expect(dlg).toHaveTextContent("1.3 s first · 4.6 s all");

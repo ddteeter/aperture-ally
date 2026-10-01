@@ -98,6 +98,11 @@ export function CoachSaw({ a, capture, shot, onClose }: { a: Assessment; capture
   const vm = r ? verdictMeta(r.verdict) : null;
   const word = k === "usable" ? "Usable" : k === "usable_but" ? "Usable, but…" : vm?.word;
   const rawKept = cap.raw_kept as boolean | undefined;
+  const subject = ((ctx.measurements ?? {}) as Record<string, unknown>).subject as
+    | { fraction: number; touches_edge: string[]; background_to_subject_sharpness?: number | null; background_busyness?: number;
+        subject_mean_luminance?: number; background_mean_luminance?: number }
+    | undefined;
+  const check = ctx.subject_check as { labels?: [string, number][]; distance_to_baseline?: number | null } | null | undefined;
 
   const copy = async () => {
     try {
@@ -219,6 +224,57 @@ export function CoachSaw({ a, capture, shot, onClose }: { a: Assessment; capture
                       <dt>Shot</dt>
                       <dd>
                         {shot.ordinal + 1} · {shot.title} ({shot.criteria.length} criteria)
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            )}
+            {subject && (
+              <div className="saw-stack-6" data-testid="saw-subject">
+                <span className="saw-eyebrow">SUBJECT · ON-DEVICE (APPLE VISION)</span>
+                <dl className="saw-meta">
+                  <div className="saw-meta-row">
+                    <dt>Fills</dt>
+                    <dd>
+                      {Math.round(subject.fraction * 100)}% of the frame
+                      {subject.touches_edge.length ? ` · touches ${subject.touches_edge.join(", ")} edge` : " · not cut off"}
+                    </dd>
+                  </div>
+                  {subject.background_to_subject_sharpness != null && (
+                    <div className="saw-meta-row">
+                      <dt>Background sharpness</dt>
+                      <dd>
+                        {subject.background_to_subject_sharpness}× the subject's
+                        {subject.background_to_subject_sharpness > 1 ? " (subject softer: focus or motion?)" : subject.background_to_subject_sharpness < 0.5 ? " (clearly softer)" : ""}
+                      </dd>
+                    </div>
+                  )}
+                  {subject.background_busyness != null && (
+                    <div className="saw-meta-row">
+                      <dt>Background busyness</dt>
+                      <dd>{subject.background_busyness}</dd>
+                    </div>
+                  )}
+                  {subject.subject_mean_luminance != null && (
+                    <div className="saw-meta-row">
+                      <dt>Brightness</dt>
+                      <dd>
+                        subject {subject.subject_mean_luminance} · background {subject.background_mean_luminance}
+                      </dd>
+                    </div>
+                  )}
+                  {check?.labels && (
+                    <div className="saw-meta-row">
+                      <dt>Looks like</dt>
+                      <dd>{check.labels.map(([n]) => n).join(", ") || "—"}</dd>
+                    </div>
+                  )}
+                  {check?.distance_to_baseline != null && (
+                    <div className="saw-meta-row">
+                      <dt>vs baseline</dt>
+                      <dd>
+                        {check.distance_to_baseline} {check.distance_to_baseline < 0.5 ? "(same subject)" : check.distance_to_baseline > 0.8 ? "(different subject or scene)" : ""}
                       </dd>
                     </div>
                   )}

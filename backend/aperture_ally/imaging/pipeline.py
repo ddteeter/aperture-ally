@@ -47,6 +47,7 @@ async def ensure_evidence(
         return build_evidence(
             image, out_dir, regions, overview_long_edge=settings.overview_long_edge,
             crop_max_edge=settings.crop_max_edge, max_crops=settings.max_crops,
+            analyze_subjects=settings.subject_analysis,
         )
 
     ev = await loop.run_in_executor(executor, run)

@@ -241,6 +241,10 @@ class ApertureAllyApp:
             self._mic_task = asyncio.create_task(self._mic_watchdog(self.voice.recorder))
         self.network.start()
         self.camera.start(asyncio.get_running_loop())
+        if self.settings.subject_analysis:
+            from .imaging.subject import prewarm
+
+            asyncio.get_running_loop().run_in_executor(self.executor, prewarm)
         self.power_samples: deque = deque(maxlen=240)
         self._power_task = asyncio.create_task(self._power_sampler()) if self.settings.power_sample_s > 0 else None
         self.started = True

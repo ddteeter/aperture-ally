@@ -22,6 +22,8 @@ dependencies = [
   "anthropic>=1.0",
   "hidapi>=0.15.0",
   "gphoto2>=2.6.4 ; sys_platform == 'darwin'",
+  "pyobjc-framework-vision>=10 ; sys_platform == 'darwin'",
+  "pyobjc-framework-quartz>=10 ; sys_platform == 'darwin'",
 ]
 
 [project.scripts]

@@ -77,12 +77,32 @@ def subsample_nearest(rgb: np.ndarray, max_edge: int = 2000) -> np.ndarray:
     return rgb[::step, ::step]
 
 
-def auto_detail_region(rgb: np.ndarray, cols: int = 6, rows: int = 4) -> tuple[float, float, float, float]:
-    """Normalized (x, y, w, h) of the grid tile with the most local detail (Laplacian variance)."""
+def auto_detail_region(rgb: np.ndarray, cols: int = 6, rows: int = 4,
+                       within: tuple[float, float, float, float] | None = None) -> tuple[float, float, float, float]:
+    """Normalized (x, y, w, h) of the grid tile with the most local detail (Laplacian variance). With `within`
+    (a normalized box, e.g. the subject's), the same-sized tile is searched inside that box only."""
     small = subsample_nearest(rgb, 1200)
     gray = cv2.cvtColor(np.ascontiguousarray(small), cv2.COLOR_RGB2GRAY).astype(np.float32)
     lap = cv2.Laplacian(gray, cv2.CV_32F)
     h, w = gray.shape
+    tw, th = 1 / cols, 1 / rows
+    if within is not None:
+        bx, by, bw, bh = within
+        if bw >= tw and bh >= th:
+            best, best_xy = -1.0, (bx, by)
+            steps = 6
+            for i in range(steps + 1):
+                for j in range(steps + 1):
+                    x = bx + (bw - tw) * i / steps
+                    y = by + (bh - th) * j / steps
+                    tile = lap[int(y * h):int((y + th) * h), int(x * w):int((x + tw) * w)]
+                    v = float(tile.var()) if tile.size else -1.0
+                    if v > best:
+                        best, best_xy = v, (x, y)
+            return best_xy[0], best_xy[1], tw, th
+        # The subject is smaller than a tile: centre the tile on it.
+        cx, cy = bx + bw / 2, by + bh / 2
+        return min(max(cx - tw / 2, 0.0), 1 - tw), min(max(cy - th / 2, 0.0), 1 - th), tw, th
     best, best_rc = -1.0, (0, 0)
     for r in range(rows):
         for c in range(cols):
@@ -91,7 +111,7 @@ def auto_detail_region(rgb: np.ndarray, cols: int = 6, rows: int = 4) -> tuple[f
             if v > best:
                 best, best_rc = v, (r, c)
     r, c = best_rc
-    return c / cols, r / rows, 1 / cols, 1 / rows
+    return c / cols, r / rows, tw, th
 
 
 def region_comparable(a: dict[str, Any], b: dict[str, Any], exif_a: dict, exif_b: dict) -> tuple[bool, list[str]]:

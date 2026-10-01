@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from ..domain.assessment import SPOKEN_SOFT_LIMIT_WORDS
 
-PROMPT_VERSION = "coach-2026-09-28.2"  # + "-spoken-last" when settings.spoken_first is off
+PROMPT_VERSION = "coach-2026-09-30.1"  # + "-spoken-last" when settings.spoken_first is off
 SPOKEN_FIRST_NOTE = """
 Write `spoken_text` right after `verdict`: Drew hears it while you write the remaining fields, so decide the one \
 main action first and keep every later field consistent with it."""
@@ -58,6 +58,7 @@ advice is NOT proof of improvement. Do not praise by default.
 8. Local measurements are supplied with caveats: clipping is on the rendered JPEG (not RAW); sharpness \
 numbers are relative and only meaningful between comparable crops of the same region. Do not treat them \
 as absolute quality scores.
+8a. `measurements.subject`, when present, comes from an on-device subject mask (Apple Vision) on the overview: `fraction` of the frame, `box` and `centre` (normalized), `touches_edge` (sides where the subject meets the frame edge: probably cut off), `background_to_subject_sharpness` (background detail ÷ subject detail in THIS photo; well below 1 means the background is clearly softer than the subject; about 1 means similar; above 1 means the subject is softer than the background: focus missed or motion blur), `background_busyness` (edge density, 0–1, higher is busier), subject vs background mean brightness (0–255). The mask can merge touching objects or miss the subject: use it as supporting evidence and check it against the image. `subject_check.labels` are an on-device classifier's guesses for the whole image and `subject_check.distance_to_baseline` compares it with the baseline photo (about 0.1–0.3 same subject and scene; about 1 a different subject or scene). If the image (with these as support) suggests the shoot's product is not in the photo, say that first, plainly, instead of judging the product.
 9. Only reference region ids of crops actually supplied (listed in `allowed_region_ids`) or "whole_image".
 10. Ask `question_for_user` only when missing context prevents useful advice.
 11. You do not accept keepers, change camera settings, or redefine the shot criteria.
@@ -116,7 +117,10 @@ def compact_measurements(m: dict[str, Any]) -> dict[str, Any]:
         n = len(hist)
         g["histogram_fifths"] = [round(sum(hist[i * n // 5:(i + 1) * n // 5]), 3) for i in range(5)]
     regions = {rid: {k: v for k, v in stats.items() if k != "histogram"} for rid, stats in (m.get("regions") or {}).items()}
-    return {"image": m.get("image"), "global": g, "regions": regions, "caveats": m.get("caveats", [])}
+    out = {"image": m.get("image"), "global": g, "regions": regions, "caveats": m.get("caveats", [])}
+    if m.get("subject"):
+        out["subject"] = m["subject"]
+    return out
 
 
 def metadata_for_model(exif: dict[str, Any]) -> dict[str, Any] | str:

@@ -594,6 +594,20 @@ class CoachingService:
         return (len(done) + 1) % self.settings.teaching_prompt_every == 0
 
     @staticmethod
+    def _subject_check(ev: dict, b_ev: dict | None) -> dict[str, Any] | None:
+        """On-device classifier labels and feature-print distance to the baseline (imaging/subject.py)."""
+        from ..imaging.subject import featureprint_distance, load_featureprint
+
+        labels = (ev.get("measurements") or {}).get("subject_labels")
+        if labels is None:
+            return None
+        out: dict[str, Any] = {"labels": labels}
+        if b_ev:
+            out["distance_to_baseline"] = featureprint_distance(load_featureprint(ev.get("featureprint")),
+                                                                load_featureprint(b_ev.get("featureprint")))
+        return out
+
+    @staticmethod
     def _exposure_ctx(setup: SetupRevision | None, capture: Capture) -> ExposureContext:
         exif = capture.exif
         mode = setup.exposure_mode if setup else "unknown"
@@ -667,6 +681,7 @@ class CoachingService:
             "product": session.product,
             "metadata": metadata_for_model(capture.exif),
             "measurements": compact_measurements(ev["measurements"]),
+            "subject_check": self._subject_check(ev, b_ev if baseline else None),
             "supplied_crops": crops_desc,
             "allowed_region_ids": allowed + ["whole_image"],
             "history": history,
