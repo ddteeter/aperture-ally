@@ -56,7 +56,7 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
   const [advanced, setAdvanced] = useState(false);
   const [watch, setWatch] = useState(lastWatch);
   const [provider, setProvider] = useState<ProviderName | "">("");
-  const [teaching, setTeaching] = useState(true);
+  const [teaching, setTeaching] = useState(false);
   const [simulated, setSimulated] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -288,7 +288,7 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
             </div>
             <label className="ns-check">
               <input type="checkbox" checked={teaching} onChange={(e) => setTeaching(e.target.checked)} />
-              <span>Teaching mode: the coach explains why and names the concept</span>
+              <span>Quiz me: now and then the coach asks me to predict the effect of a change</span>
             </label>
             <label className="ns-check">
               <input type="checkbox" checked={simulated} onChange={(e) => setSimulated(e.target.checked)} />
@@ -311,7 +311,7 @@ export function NewShoot({ preset, onCreated, onLibrary }: { preset: NewShootPre
         )}
         <div className="ns-foot">
           <span className="lib-small lib-t2">
-            Coach: {PROVIDERS.find((p) => p.id === provider)?.label ?? "server default"} · Teaching {teaching ? "on" : "off"}
+            Coach: {PROVIDERS.find((p) => p.id === provider)?.label ?? "server default"} · Quiz {teaching ? "on" : "off"}
             {watch.trim() ? ` · ${watch.trim()}` : ""}
             <button type="button" className="lib-btn-text lib-small ns-change" aria-expanded={advanced} onClick={() => setAdvanced((a) => !a)}>
               Change…

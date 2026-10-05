@@ -60,7 +60,7 @@ class SessionCreate(BaseModel):
     watch_folder: str | None = None
     template: Literal["running_shoe", "running_apparel", "empty"] | None = "running_shoe"
     assess_provider: Literal["mock", "openai", "gemini", "claude"] | None = None
-    teaching_mode: bool = True
+    teaching_mode: bool = False
     simulated: bool = False
     ui_theme: Literal["studio", "daylight"] = "studio"
     setup: SetupFields | None = None

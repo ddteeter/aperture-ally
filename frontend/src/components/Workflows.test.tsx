@@ -140,7 +140,7 @@ describe("NewShoot", () => {
     await userEvent.click(screen.getByRole("button", { name: "Change…" }));
     expect(screen.getByRole("option", { name: /OpenAI · not configured/ })).toBeDisabled();
     await userEvent.selectOptions(screen.getByLabelText("Coach"), "mock");
-    await userEvent.click(screen.getByLabelText(/Teaching mode/));
+    await userEvent.click(screen.getByLabelText(/Quiz me/));
     await userEvent.type(screen.getByLabelText("Watch folder"), "relative/path");
     expect(screen.getByText("! Use a full path, starting with / or ~")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /^Start outdoor shoot/ }));
@@ -152,7 +152,7 @@ describe("NewShoot", () => {
       template_id: "t-shoe",
       project_id: "p1",
       shoot_preferences: "Overcast.",
-      teaching_mode: false,
+      teaching_mode: true,
       simulated: false,
       ui_theme: "daylight",
     });

@@ -119,7 +119,8 @@ class Session(BaseModel):
     active_shot_id: str | None = None
     current_setup_revision_id: str | None = None
     assess_provider: str = "mock"
-    teaching_mode: bool = True
+    teaching_mode: bool = Field(False, description="Now and then the coach asks Drew to predict a change's effect "
+                                "(explanations are always on)")
     simulated: bool = Field(False, description="Replay/simulator session: results are not hardware evidence")
     coaching_paused: bool = Field(False, description="Auto-coaching off; photos still ingested, explicit reviews allowed")
     paused_reason: str | None = None
