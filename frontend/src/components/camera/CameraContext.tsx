@@ -29,8 +29,8 @@ export interface CameraCtx {
 }
 
 /** After a shot, the photo and its verdict stay up until the verdict has been spoken, plus this long; then live
- *  view returns by itself, so nobody at the camera has to press L (owner, 2026-09-29). */
-export const REVIEW_HOLD_MS = 5000;
+ *  view returns by itself, so nobody at the camera has to press L (owner, 2026-09-29; 5 s → 2 s, 2026-10-05). */
+export const REVIEW_HOLD_MS = 2000;
 /** If the verdict never comes (coaching paused, analysis skipped or slow), return after this long anyway. */
 export const REVIEW_MAX_MS = 45000;
 /** After the verdict: if no speech follows within this long, start the hold anyway. */

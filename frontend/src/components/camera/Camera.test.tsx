@@ -214,7 +214,7 @@ describe("full-screen live view", () => {
     expect(v).toHaveTextContent("live view after the verdict · any button now");
     emit("analysis.completed", cap.id);
     emit("coach.speech.stopped");
-    await vi.waitFor(() => expect(screen.getByTestId("live-verdict")).toHaveTextContent(/[45] s/));
+    await vi.waitFor(() => expect(screen.getByTestId("live-verdict")).toHaveTextContent(/[12] s/));
     expect(screen.getByTestId("live-verdict")).toHaveTextContent("to live view · any button now");
   });
 });

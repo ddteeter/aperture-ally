@@ -18,7 +18,7 @@ the screen, so it's too small to judge framing, focus or background from there. 
 - Two themes: **Studio** (dark, indoors) and **Daylight** (outdoors, bright screen). Overlays must stay readable
   on any photo content in both.
 - **L** toggles live view. After a shot the new photo and its verdict show, then live view **returns by itself**
-  ~5 s after the verdict is spoken. Any remote camera button returns at once (built; see "Live view returns
+  ~2 s after the verdict is spoken. Any remote camera button returns at once (built; see "Live view returns
   after the verdict" note in the app).
 - Remote (no keyboard at the camera): L hold = talk · R pause coaching · B cancel · D-pad ↑↓ aperture · ←→
   exposure comp · ZL/ZR ISO · A shutter · Y apply the coach's suggestion · + read out settings · X repeat advice.
