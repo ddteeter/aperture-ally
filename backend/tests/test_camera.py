@@ -376,3 +376,27 @@ async def test_camera_debug_probe_is_off_unless_enabled_then_lists_and_sets(make
         assert [p["name"] for p in props] == ["aperture"]
         r = (await c.post("/api/camera/debug/set", json={"name": "iso", "value": "400"})).json()
         assert r == {"name": "iso", "before": "Auto", "requested": "400", "after": "400"}
+
+
+async def test_y_suggestion_is_the_coachs_aperture_in_any_exposure_mode(make_harness):
+    """Found at the desk (2026-10-05): Y only applied in confirmed manual exposure, so in A mode it never did."""
+    from types import SimpleNamespace
+
+    h = await make_harness(camera="mock", camera_poll_s=0.05)
+    await h.session()
+    note = {"v": None}
+
+    async def captures(_sid):
+        return [SimpleNamespace(id="c1")]
+
+    async def latest(_cid):
+        return SimpleNamespace(exposure_note=note["v"])
+
+    h.app.store.captures, h.app.store.latest_completed_assessment = captures, latest
+    note["v"] = {"applicable": False, "reasons": ["exposure mode is 'aperture_priority'"], "new_f_number": 8.0,
+                 "old": {"f_number": 4.0}}
+    assert await h.app.camera_suggestion() == ("aperture", "8.0")
+    note["v"] = {"applicable": True, "new_f_number": 4.0, "new_iso": 400, "old": {"f_number": 4.0}}  # ISO-only change
+    assert await h.app.camera_suggestion() is None
+    note["v"] = None
+    assert await h.app.camera_suggestion() is None

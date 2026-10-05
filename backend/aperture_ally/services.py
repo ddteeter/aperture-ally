@@ -347,9 +347,11 @@ class ApertureAllyApp:
             a = await self.store.latest_completed_assessment(c.id)
             if a is None:
                 continue
+            # The aperture applies whatever the exposure mode; `applicable` is only about working out the matching
+            # shutter speed (manual exposure, continuous light), which the camera does itself in A mode.
             note = a.exposure_note or {}
-            f = note.get("new_f_number")
-            return ("aperture", f"{float(f):.1f}") if note.get("applicable") and f else None
+            f, old = note.get("new_f_number"), (note.get("old") or {}).get("f_number")
+            return ("aperture", f"{float(f):.1f}") if f and f != old else None
         return None
 
     async def apply_camera_suggestion(self) -> str:
