@@ -153,7 +153,7 @@ class Settings(BaseSettings):
 
     # --- direct camera control (docs/plans/camera-control.md) ------------------------------
     camera: Literal["off", "direct", "mock"] = Field(
-        "off", description="direct = the app controls the camera over USB (python-gphoto2) when OM Capture doesn't "
+        "direct", description="direct = the app controls the camera over USB (python-gphoto2) when OM Capture doesn't "
                            "hold it; mock = a simulated camera for demos and tests; off = watch folder only")
     camera_poll_s: float = Field(2.0, gt=0, description="How often to look for the camera while it's absent")
     subject_analysis: bool = Field(True, description="On-device subject vs background (Apple Vision) per photo")

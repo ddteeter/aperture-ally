@@ -283,6 +283,7 @@ export function ReleaseDialog({ onClose }: { onClose: () => void }) {
           <li>Live view stops here.</li>
           <li>D-pad, A, Y, ZL/ZR and + stop controlling the camera. L, R and B keep working.</li>
           <li>Photos you take in OM Capture still arrive through the watch folder and get coached.</li>
+          <li>The camera's own buttons stay locked until you unplug it and plug it back in (it does this after any PC control, OM Capture's too).</li>
         </ul>
         <div className="cam-dialog-actions">
           <button

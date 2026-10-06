@@ -569,3 +569,24 @@ AirPods. `APERTURE_ALLY_CAMERA=direct` in the local `.env` only.
 - Keyboard R (repeat) with nothing said shows a quiet notice; identical errors replace each other.
 - The coach called a stuffed Mandalorian "the shoe" (shoe shot list + a baseline frame of the shoe anchored it). Kept as an eval case for after shoot 1.
 - Owner asked for full-screen live view with overlays: design brief 3 (`docs/design-brief-live-view.md`).
+
+### Direct camera control, owner session 2 (2026-10-05): steps 6, 9, 10 PASS after fixes; hand-back is a known limit
+
+Same setup as session 1, plus the full-screen live view, subject analysis and prompt caching built since.
+
+| Step | Result |
+|---|---|
+| 6 Apply (Y) | **PASS after a fix.** Y said "nothing to apply" although the coach suggested f/4: Y only used the aperture when the shoot was confirmed manual exposure, which is only needed to work out a matching shutter speed. Y now applies the coach's aperture in any mode (the camera recomputes the shutter in A mode) |
+| 7–8 Release / quit, then the camera's own buttons | **FAIL, accepted as a limit.** The hand-back runs (`d052` 1 → 0, then the PTP session closes) but the body's buttons stay locked. OM Capture leaves it locked too (switching off and on recovered it there); after Aperture Ally only **unplugging** recovers it. While the app has the camera, the body's buttons and dials work. Release/quit messages and setup now say "unplug and replug". Other hand-back variants (no `d052` write, leaving without closing) are untried |
+| 9 Sleep / off–on | **PASS after two fixes.** Reconnects by itself (~4 s). Live view was a still image afterwards: the server had fresh frames, but the web view kept the old stream's last frame (same URL). Each connection now opens its own stream; a dropped stream retries after 1 s. Once (first wake) previews took ~1.3 s and weren't JPEGs until a second reconnect; the worker now reconnects once by itself after 3 bad frames |
+| 10 Focus point | **PASS (probe).** `d051` is the AF target: 1–121 on the 11 × 11 grid (61 = centre, +1 right, +11 down). Set from the Mac, the green box moved (to 121 = bottom right) in S-AF with a single target. `manualfocusdrive` (Near/Far 1–3) moves focus in MF; `focusmode` switches S-AF/C-AF/MF. So the Micro can drive the focus point in live view |
+| 11 Level | **Not available.** No property changes with tilt, with or without live view. A level in the full-screen view would have to be estimated from the picture |
+
+**Also found and fixed during the session:**
+- The app had been running a UI built on 2026-09-30: `build-mac-app.sh` skipped the UI build when any build existed, and the web view cached `index.html`. The script always rebuilds now, and the shell is served `no-cache`.
+- The mic went dead when the AirPods connected after start-up: closing the fallback stream deadlocked inside CoreAudio (`FinishStoppingStream` waiting on the HAL mutex), so nothing reopened it. A restart fixed it; the fix is separate.
+- An expired API key showed "No verdict. The coach couldn't review this one."; to say the key was rejected.
+- Prompt caching verified: the first coached photo wrote 3,929 tokens to Claude's cache, the next three read them (0.1× input price).
+- Teaching questions ("what do you expect to happen…?") are off by default now; the New shoot checkbox is "Quiz me". Explanations were never tied to it.
+- The voice reads "f/4" as "f 4". Live view returns 2 s after the verdict is spoken (was 5 s).
+- Direct control is now the default (`APERTURE_ALLY_CAMERA=direct`).

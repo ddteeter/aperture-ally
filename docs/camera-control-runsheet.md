@@ -46,6 +46,12 @@ With `APERTURE_ALLY_CAMERA_DEBUG=true` (local `.env` only), Claude lists the cam
 11. **Level.** Claude looks for a level / roll / pitch property; tilt the camera left and right while Claude reads
     it. Goal: whether the full-screen live view can draw the design's level.
 
+## Results
+
+Session 1 (2026-09-29): steps 1–5 pass. Session 2 (2026-10-05): 6, 9, 10 pass; 7–8 the body stays locked after
+release/quit until the camera is unplugged (OM Capture does the same; accepted, documented); 11 no level over USB.
+Details: `docs/local-verification-results.md`. Direct control is now the default.
+
 ## Pass criteria
 
 - Every step's feedback arrives with no queueing: one spoken value per burst of presses.

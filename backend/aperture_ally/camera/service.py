@@ -120,7 +120,7 @@ class CameraService:
 
     async def release(self) -> dict[str, Any]:
         def f():
-            self._disconnect("released", "Released to OM Capture. ⌘K takes it back.")
+            self._disconnect("released", "Released. ⌘K takes it back. To use the camera's own buttons, unplug it and plug it back in.")
             return self.snapshot()
         return await self._call(f)
 

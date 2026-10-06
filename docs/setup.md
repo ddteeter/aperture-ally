@@ -89,25 +89,33 @@ At setup time:
 3. Run the paid smoke test once: `uv run pytest -m live -s tests/test_live.py` (a few calls per configured
    provider). Each assessment records the *resolved* model id and prompt version.
 
-## 3. OM Capture (tethering)
+## 3. The camera: direct control (default) or OM Capture
 
-OM Capture is the **only** program that talks to the camera. Aperture Ally never opens the USB device; it
-only reads the files OM Capture saves.
+**Direct control (default, `APERTURE_ALLY_CAMERA=direct`).** The app talks to the E-M1 Mark II over USB
+(python-gphoto2): settings from the 8BitDo Micro, the shutter (A), live view (L), the coach's aperture (Y), and
+photos (JPEG + ORF) downloaded straight into the shoot. Verified at the desk on 2026-10-05
+(`docs/camera-control-runsheet.md`).
 
-> The OM System site could not be reached while writing this, so menu names below are from general
-> knowledge of OM Capture — confirm them in your installed version and correct this page.
+1. Quit OM Capture. Plug in USB, switch the camera on and choose the PC-control USB mode
+   (**RAW/Control** on the E-M1 Mark II).
+2. Open a shoot: the app takes the camera by itself ("connected in ~4 s"). The first photo of each connection
+   takes ~10 s while the card is read; after that ~2 s from shutter to coaching.
+3. While the app has the camera, its own buttons and dials work too.
+4. **After quitting the app or releasing the camera (⌘K), unplug the camera and plug it back in** to use its
+   own buttons. The camera locks them after any PC control (OM Capture's too); switching it off and on isn't
+   enough after the app.
+5. Sleep is fine: when the camera wakes, the app reconnects and live view comes back.
 
-1. Install OM Capture for macOS from the OM System download page; confirm E-M1 Mark II is listed as
-   supported and that your macOS version is supported.
-2. Camera: set the USB connection mode to the tethering/PC-control mode (on the E-M1 Mark II this is
-   offered as **RAW/Control** when the cable is connected, or via the custom menu USB mode setting).
-3. OM Capture → save settings: choose a dedicated folder, e.g. `~/Pictures/OMCapture/ApertureAlly`.
-   If your version offers **save to PC and card**, enable it, so the SD card keeps a backup copy.
-4. Image quality: **RAW+JPEG (LF+RAW)** recommended. JPEG drives coaching; RAW is paired and preserved.
+**OM Capture instead (`APERTURE_ALLY_CAMERA=off`, or ⌘K → Release).** Aperture Ally then only reads the files
+OM Capture saves:
+
+1. OM Capture → save settings: a dedicated folder, e.g. `~/Pictures/OMCapture/ApertureAlly`. If your version
+   offers **save to PC and card**, enable it, so the SD card keeps a backup copy.
+2. Image quality: **RAW+JPEG (LF+RAW)** recommended. JPEG drives coaching; RAW is paired and preserved.
    RAW-only works when LibRaw can extract/develop a preview; otherwise the capture is kept but flagged.
-5. In Aperture Ally (Sessions tab) create a session with **Watch folder** = that folder. Only files
-   modified after the session was created are ingested; older files in the folder are ignored.
-6. Before switching the active shot in the UI, **wait for the "Received ✓ photo #N" indicator** for the
+3. Create the shoot with **Watch folder** = that folder. Only files modified after the shoot was created are
+   ingested.
+4. Before switching the active shot in the UI, **wait for the "Received ✓ photo #N" indicator** for the
    last frame. Captures detected within ~3 s of a shot switch are flagged *ambiguous* and can be reassigned.
 
 ## 4. Headphones and microphone
