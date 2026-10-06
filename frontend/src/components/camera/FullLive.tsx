@@ -287,7 +287,9 @@ function VerdictBox({ captureId, returnAt, now }: { captureId: string; returnAt:
   const meta = r ? verdictMeta(r.verdict) : null;
   const kind = r ? verdictKind(r) : null;
   const word = kind === "usable" ? "Usable" : kind === "usable_but" ? "Usable, but…" : meta?.word;
-  const line = r ? r.primary_action?.instruction ?? r.spoken_text : la?.status === "failed" ? "The coach couldn't review this one." : null;
+  const line = r ? r.primary_action?.instruction ?? r.spoken_text : la?.status === "failed"
+      ? la.error?.includes("API key rejected") ? la.error : "The coach couldn't review this one."
+      : null;
   const secs = returnAt ? Math.max(0, Math.ceil((returnAt - now) / 1000)) : null;
   return (
     <div className="fl-verdict" data-testid="live-verdict">

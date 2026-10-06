@@ -14,6 +14,24 @@ class ProviderUnavailable(Exception):
     """Network/auth/config failure: AI is unavailable; local features continue."""
 
 
+_NAMES = {"claude": "Claude", "openai": "OpenAI", "gemini": "Gemini"}
+_KEY_ENV = {"claude": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "gemini": "GEMINI_API_KEY"}
+
+
+def key_rejected(exc: BaseException) -> bool:
+    """The provider refused the API key (expired, revoked or wrong), as opposed to a network problem."""
+    t = str(exc).lower()
+    return any(s in t for s in ("authentication", "401", "invalid api key", "api key is invalid", "api_key_invalid",
+                                "permission_denied", "api key expired", "api key not valid"))
+
+
+def unavailable_message(provider: str, exc: BaseException) -> str:
+    if key_rejected(exc):
+        return (f"{_NAMES.get(provider, provider)} API key rejected (expired or wrong). Put a new one in "
+                f"backend/.env ({_KEY_ENV.get(provider, 'the key')}) and restart the app.")
+    return f"AI unavailable: {exc}"
+
+
 class ProviderError(Exception):
     """Provider answered but the call failed (refusal, incomplete, bad request)."""
 

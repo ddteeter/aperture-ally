@@ -55,7 +55,7 @@ from .prompt import (
     compact_measurements,
     metadata_for_model,
 )
-from .providers.base import Provider, ProviderError, ProviderUnavailable, estimate_cost
+from .providers.base import Provider, ProviderError, ProviderUnavailable, estimate_cost, unavailable_message
 from .streaming import completed_string_field, spoken_first_schema
 
 log = logging.getLogger(__name__)
@@ -476,7 +476,7 @@ class CoachingService:
                 await self.on_budget_exceeded(session.id, str(exc))
             return assessment
         except (ProviderUnavailable, TimeoutError) as exc:
-            await self._fail(assessment, capture.id, f"AI unavailable: {exc}", unavailable=True)
+            await self._fail(assessment, capture.id, unavailable_message(assessment.provider, exc), unavailable=True)
             return assessment
         except Exception as exc:
             log.exception("assessment failed")
@@ -578,7 +578,7 @@ class CoachingService:
         if unavailable:
             self.providers.health[a.provider] = {"ok": False, "at": utcnow(), "error": error}
         self.bus.publish("analysis.failed", session_id=a.session_id, capture_id=capture_id, assessment_id=a.id,
-                         error=error, ai_unavailable=unavailable)
+                         error=error, ai_unavailable=unavailable, key_rejected="API key rejected" in error)
 
     async def _set_state(self, capture_id: str, state: ProcessingState, error: str | None = None) -> None:
         def f(c: Capture) -> None:

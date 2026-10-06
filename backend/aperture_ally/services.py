@@ -591,6 +591,15 @@ class ApertureAllyApp:
         elif t in ("capture.failed", "capture.ingest_failed") or (
                 t == "analysis.failed" and not str(p.get("error", "")).startswith("Budget")):
             self.cues.play("failure")
+            if p.get("key_rejected") and not getattr(self, "_key_rejected_said", False):
+                # Said once per run: at the camera nobody reads the screen, and a new key needs a restart anyway.
+                self._key_rejected_said = True
+                name = str(p.get("error", "")).split(" API key")[0] or "The"
+                task = asyncio.get_running_loop().create_task(self.audio.speak(
+                    f"{name} API key was rejected, so coaching is off. Replace the key and restart the app.",
+                    lambda: True, {"session_id": event.get("session_id"), "kind": "notice"}))
+                self.coaching.tasks.add(task)
+                task.add_done_callback(self.coaching.tasks.discard)
 
     async def set_active_shot(self, session_id: str, shot_id: str | None) -> Session:
         s = await self.get_session(session_id)

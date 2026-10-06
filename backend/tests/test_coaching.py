@@ -154,6 +154,31 @@ async def test_network_outage_keeps_local_features_and_no_backlog(h, fx):
     await h.app.keepers.accept(upper.id, caps[-1].id)
 
 
+async def test_a_rejected_api_key_says_so_once(h, fx):
+    """Found at the desk (2026-10-05): an expired key showed only "The coach couldn't review this one"."""
+    s = await h.session()
+    await h.use_shot(s, "Upper", "mesh")
+    h.mock.fail_mode = "key_rejected"
+    h.drop(s, fx / "P9260002.JPG")
+    h.drop(s, fx / "P9260003.JPG")
+    await h.n_captures(s, 2)
+    await h.settled()
+    failed = await h.app.store.assessments(s.id)
+    assert failed and all(a.error.startswith("mock API key rejected (expired or wrong)") for a in failed)
+    await h.wait(lambda: h.speech.spoken, 5, "spoken notice")
+    await asyncio.sleep(0.3)
+    said = [t for t in h.speech.spoken if "API key" in t]
+    assert said == ["mock API key was rejected, so coaching is off. Replace the key and restart the app."]
+
+
+def test_unavailable_message_names_the_key_only_for_auth_failures():
+    from aperture_ally.coaching.providers.base import unavailable_message
+
+    msg = unavailable_message("claude", Exception("AuthenticationError: Error code: 401 - API key is invalid."))
+    assert msg.startswith("Claude API key rejected") and "ANTHROPIC_API_KEY" in msg
+    assert unavailable_message("gemini", Exception("ConnectError: timed out")) == "AI unavailable: ConnectError: timed out"
+
+
 async def test_missing_metadata_no_fabricated_settings(h, fx):
     s = await h.session()
     await h.use_shot(s, "Hero", "mesh")

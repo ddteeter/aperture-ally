@@ -103,6 +103,8 @@ class MockProvider:
         self.calls += 1
         if self.fail_mode == "unavailable":
             raise ProviderUnavailable("mock: simulated network outage")
+        if self.fail_mode == "key_rejected":
+            raise ProviderUnavailable("AuthenticationError: Error code: 401 - API key is invalid.")
         await asyncio.sleep(self.latency_s * (20 if self.fail_mode == "slow" else 1))
         if self.fail_mode == "invalid_always" or (self.fail_mode == "invalid_once" and not self._invalid_sent):
             self._invalid_sent = True
