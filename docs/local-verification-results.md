@@ -584,8 +584,8 @@ Same setup as session 1, plus the full-screen live view, subject analysis and pr
 
 **Also found and fixed during the session:**
 - The app had been running a UI built on 2026-09-30: `build-mac-app.sh` skipped the UI build when any build existed, and the web view cached `index.html`. The script always rebuilds now, and the shell is served `no-cache`.
-- The mic went dead when the AirPods connected after start-up: closing the fallback stream deadlocked inside CoreAudio (`FinishStoppingStream` waiting on the HAL mutex), so nothing reopened it. A restart fixed it; the fix is separate.
-- An expired API key showed "No verdict. The coach couldn't review this one."; to say the key was rejected.
+- The mic went dead when the AirPods connected after start-up: closing the fallback stream deadlocked inside CoreAudio (`FinishStoppingStream` waiting on the HAL mutex), so nothing reopened it. A restart fixed it. Fixed after the session (`88868d1`): the pinned mic is looked for from a separate process without closing the open stream, and a hung close is abandoned after 2 s. Not yet re-tested with the AirPods.
+- An expired API key showed "No verdict. The coach couldn't review this one." Now (`2d25711`) it says which key was rejected and where to replace it, in live view and spoken once.
 - Prompt caching verified: the first coached photo wrote 3,929 tokens to Claude's cache, the next three read them (0.1× input price).
 - Teaching questions ("what do you expect to happen…?") are off by default now; the New shoot checkbox is "Quiz me". Explanations were never tied to it.
 - The voice reads "f/4" as "f 4". Live view returns 2 s after the verdict is spoken (was 5 s).
