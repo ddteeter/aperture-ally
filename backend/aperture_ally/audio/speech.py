@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import shutil
 import time
 from collections.abc import Awaitable, Callable
@@ -19,6 +20,14 @@ from ..runtime import Guard
 
 log = logging.getLogger(__name__)
 
+
+
+_F_NUMBER = re.compile(r"\b[fƒ]\s?/\s?(\d+(?:\.\d+)?)")
+
+
+def for_speech(text: str) -> str:
+    """What the voice reads: "f/4" is said "f 4", not "f slash 4" (owner, 2026-10-05). The screen keeps "f/4"."""
+    return _F_NUMBER.sub(r"f \1", text)
 
 class SpeechBackend(Protocol):
     name: str
@@ -314,7 +323,7 @@ class AudioController:
                 if self.on_mark:
                     await self.on_mark("speech_process_started", meta)
 
-            utt.task = asyncio.create_task(self.backend.speak(text, started))
+            utt.task = asyncio.create_task(self.backend.speak(for_speech(text), started))
         try:
             await utt.task
             status = "spoken"

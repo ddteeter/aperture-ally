@@ -437,3 +437,10 @@ def test_fallback_rechecks_are_not_counted_as_reopens():
         streams[-1].feed(10, 0.1)
         rec.ensure_open()
     assert rec.fallback and len(streams) == 4 and rec.reopened == 0
+
+
+def test_f_numbers_are_read_without_the_slash():
+    from aperture_ally.audio.speech import for_speech
+
+    assert for_speech("Stop down to f/4, then f/5.6 or ƒ/ 8.") == "Stop down to f 4, then f 5.6 or f 8."
+    assert for_speech("Shutter 1/60 and/or ISO 400") == "Shutter 1/60 and/or ISO 400"

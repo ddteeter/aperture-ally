@@ -172,7 +172,7 @@ async def test_exposure_note_is_deterministic(h, fx):
     (a,) = await h.wait(lambda: _done(h, s, 1), 10)
     assert a.result["primary_action"]["exposure_target"]["f_number"] == 8
     assert a.exposure_note["applicable"] and a.exposure_note["rounded_label"] == "1/15 s"
-    assert "Starting point: 1/15 s at f/8" in h.speech.spoken[-1]
+    assert "Starting point: 1/15 s at f 8" in h.speech.spoken[-1]  # spoken without the slash
 
 
 async def test_exposure_note_refused_with_auto_iso(h, fx):
