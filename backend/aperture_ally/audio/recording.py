@@ -98,6 +98,22 @@ def _sd_input_names() -> list[str]:
     return [d["name"] for d in sd.query_devices() if d["max_input_channels"] > 0]
 
 
+def _fresh_input_names() -> list[str]:
+    """Input devices as a fresh PortAudio sees them, from a separate process: the in-process list is frozen at
+    start-up, and refreshing it means closing every open stream (see ContinuousRecorder)."""
+    import json
+    import subprocess
+    import sys
+
+    code = ("import json, sounddevice as sd; "
+            "print(json.dumps([d['name'] for d in sd.query_devices() if d['max_input_channels'] > 0]))")
+    try:
+        out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=10).stdout
+        return json.loads(out.strip().splitlines()[-1])
+    except Exception:
+        return []
+
+
 def _sd_refresh() -> None:
     import sounddevice as sd
 
@@ -118,9 +134,10 @@ class ContinuousRecorder:
     name = "sounddevice-open"
 
     FALLBACK_RECHECK_S = 5.0  # on the fallback mic: how often to look for the pinned mic again
+    CLOSE_TIMEOUT_S = 2.0     # a stream close that takes longer is abandoned (CoreAudio deadlock, below)
 
     def __init__(self, device: str | int | None = None, preroll_ms: int = 300, ring_s: float = 2.0,
-                 stream_factory=None, list_inputs=None, refresh_devices=None):
+                 stream_factory=None, list_inputs=None, refresh_devices=None, probe_inputs=None):
         import threading
 
         self.device = device                      # the pinned mic (name/index), None = system default
@@ -130,6 +147,12 @@ class ContinuousRecorder:
         # PortAudio reads the device list once at start-up; headphones that leave and come back get a new
         # identity, so reopening against the stale list failed forever (-9986) until the app restarted.
         self._refresh_devices = refresh_devices or (_sd_refresh if stream_factory is None else (lambda: None))
+        # While on the fallback mic, look for the pinned one without touching the open stream. Closing the fallback
+        # stream every few seconds to re-read the list deadlocked inside CoreAudio once, when the AirPods connected
+        # mid-close (FinishStoppingStream waiting on the HAL mutex, 2026-10-05): the mic stayed dead until a restart.
+        self._probe_inputs = probe_inputs or (_fresh_input_names if stream_factory is None else self._list_inputs)
+        self._last_recheck = 0.0
+        self._wedged: list = []  # streams whose close never returned; kept referenced, never touched again
         self.preroll = int(SAMPLE_RATE * preroll_ms / 1000)
         self.ring_max = int(SAMPLE_RATE * ring_s)
         self._factory = stream_factory
@@ -202,7 +225,8 @@ class ContinuousRecorder:
 
             factory = sd.InputStream
         try:
-            self._refresh_devices()
+            if not self._wedged:  # re-reading the list closes every stream, and would hang on a wedged one
+                self._refresh_devices()
             names = self._list_inputs()
             pinned = self.device
             use = pinned if pinned is None or isinstance(pinned, int) or pinned in names else None
@@ -228,10 +252,13 @@ class ContinuousRecorder:
             self.last_stall = f"{why} (reopened)"
             self._close_stream()
         recheck = False
+        now = self._clock()
         if not why and (self.fallback and self.is_open and self._clip is None and self._opened_at is not None
-                        and self._clock() - self._opened_at > self.FALLBACK_RECHECK_S):
-            self._close_stream()  # look for the pinned mic again (not mid-turn); reopen picks it if it's back
-            recheck = True
+                        and now - max(self._opened_at, self._last_recheck) > self.FALLBACK_RECHECK_S):
+            self._last_recheck = now
+            if self.device in self._probe_inputs():  # back (not mid-turn): switch to it
+                self._close_stream()
+                recheck = True
         if self.is_open:
             return True
         opened_before = self._opened_at is not None and not recheck
@@ -244,13 +271,25 @@ class ContinuousRecorder:
             return False
 
     def _close_stream(self) -> None:
+        import threading
+
         s, self._stream = self._stream, None
-        if s is not None:
+        if s is None:
+            return
+
+        def close() -> None:
             try:
                 s.stop()
                 s.close()
             except Exception:
                 pass
+
+        t = threading.Thread(target=close, name="mic-close", daemon=True)
+        t.start()
+        t.join(self.CLOSE_TIMEOUT_S)
+        if t.is_alive():
+            self._wedged.append(s)
+            self.last_stall = "closing the old mic stream hung in CoreAudio; opened a new one"
 
     def close(self) -> None:
         self._close_stream()

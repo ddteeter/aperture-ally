@@ -436,7 +436,43 @@ def test_fallback_rechecks_are_not_counted_as_reopens():
         now[0] += 6.0
         streams[-1].feed(10, 0.1)
         rec.ensure_open()
-    assert rec.fallback and len(streams) == 4 and rec.reopened == 0
+    assert rec.fallback and len(streams) == 1 and rec.reopened == 0  # pinned mic absent: the stream is left alone
+
+
+def test_a_mic_close_that_hangs_in_coreaudio_doesnt_leave_the_mic_dead():
+    """Found at the desk (2026-10-05): the AirPods connected while the fallback stream was closing; the close
+    never returned and the mic stayed dead until a restart."""
+    import threading
+    import time as _t
+
+    from aperture_ally.audio.recording import ContinuousRecorder
+
+    release = threading.Event()
+    streams: list[_FakeStream] = []
+    refreshes = []
+    present = ["MacBook Air Microphone"]
+
+    def factory(**k):
+        s = _FakeStream(**k)
+        s.device = k["device"]
+        streams.append(s)
+        return s
+
+    now = [0.0]
+    rec = ContinuousRecorder("AirPods", stream_factory=factory, list_inputs=lambda: list(present),
+                             refresh_devices=lambda: refreshes.append(1))
+    rec.CLOSE_TIMEOUT_S = 0.2
+    rec._clock = lambda: now[0]
+    rec.open()
+    assert rec.fallback
+    streams[0].stop = lambda: release.wait()   # the deadlock
+    present.insert(0, "AirPods")
+    now[0] += 6.0
+    t0 = _t.monotonic()
+    assert rec.ensure_open() and _t.monotonic() - t0 < 1.0
+    assert streams[-1].device == "AirPods" and not rec.fallback and "hung" in rec.last_stall
+    assert len(refreshes) == 1                 # no device-list refresh while a stream is wedged (it would hang)
+    release.set()
 
 
 def test_f_numbers_are_read_without_the_slash():
