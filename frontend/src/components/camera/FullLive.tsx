@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { api, CAMERA_LIVE_URL, imageUrl } from "../../api/client";
+import { api, imageUrl } from "../../api/client";
 import type { DeviceSummary, Shot } from "../../api/types";
 import { useApp, useCoachEvents } from "../../AppContext";
 import { useShortcuts } from "../../lib/keys";
 import { verdictMeta } from "../../ui/status";
 import { verdictKind } from "../coach/model";
 import { connected, useCamera } from "./CameraContext";
-import { Readout } from "./CameraViews";
+import { LiveImg, Readout } from "./CameraViews";
 import "./fulllive.css";
 
 /** Full-screen live view (docs/design/Aperture Ally Live View.dc.html, brief 3): the picture 4:3 at full height,
@@ -151,7 +151,7 @@ export function FullLive({ onExit }: { onExit: () => void }) {
             alt={`Photo #${review.seq}`}
           />
         ) : (
-          <img className="fl-img" src={CAMERA_LIVE_URL} alt="Live view from the camera" />
+          <LiveImg className="fl-img" />
         )}
 
         {on && !review && grid && (

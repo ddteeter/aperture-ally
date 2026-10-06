@@ -8,7 +8,7 @@ import { makeCapture, sessionState } from "../../test/fixtures";
 import { FullLive } from "./FullLive";
 import { cameraChip } from "../DeviceChips";
 import { CameraProvider, REVIEW_HOLD_MS, REVIEW_MAX_MS, useCamera } from "./CameraContext";
-import { CameraPanel, CameraStage, isFullStop, Readout, ReleaseDialog } from "./CameraViews";
+import { CameraPanel, CameraStage, isFullStop, LiveImg, Readout, ReleaseDialog } from "./CameraViews";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -36,6 +36,29 @@ function withEvents() {
 }
 
 describe("camera control UI", () => {
+  it("live view opens a new stream after the camera reconnects, and retries a dropped one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.spyOn(api, "camera").mockResolvedValue(snap());
+      const { ctx, emit } = withEvents();
+      renderWithCtx(<CameraProvider><LiveImg className="x" /></CameraProvider>, ctx);
+      const img = await screen.findByAltText("Live view from the camera");
+      await vi.waitFor(() => expect(img.getAttribute("src")).toMatch(/\/camera\/live\?s=\d+$/));
+      const first = img.getAttribute("src");
+      emit("camera.state", { state: "asleep", detail: "asleep" });
+      act(() => vi.advanceTimersByTime(5));
+      emit("camera.state", { state: "connected", detail: "connected" });
+      await vi.waitFor(() => expect(img.getAttribute("src")).not.toBe(first));
+      const second = img.getAttribute("src");
+      act(() => vi.advanceTimersByTime(5));
+      act(() => { img.dispatchEvent(new Event("error")); });
+      act(() => vi.advanceTimersByTime(1100));
+      await vi.waitFor(() => expect(img.getAttribute("src")).not.toBe(second));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows a big readout with the position in the range after a press, then fades", async () => {
     vi.spyOn(api, "camera").mockResolvedValue(snap());
     const { ctx, emit } = withEvents();

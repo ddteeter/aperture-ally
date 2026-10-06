@@ -81,6 +81,34 @@ export function Readout() {
   );
 }
 
+/** The live-view stream. Each connection gets its own URL: after the camera slept and reconnected, the web view
+ *  kept showing the old stream's last frame (same URL, no new request) — a still image (desk, 2026-10-05). A
+ *  dropped stream retries after a second. */
+let streamSeq = 0; // unique for the page's lifetime, so a remount never reuses an old stream's URL
+const nextStream = () => ++streamSeq;
+
+export function LiveImg({ className }: { className: string }) {
+  const { cam } = useCamera();
+  const [token, setToken] = useState(nextStream);
+  const isOn = connected(cam);
+  useEffect(() => {
+    if (isOn) setToken(nextStream());
+  }, [isOn]);
+  const retry = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(retry.current), []);
+  return (
+    <img
+      className={className}
+      src={`${CAMERA_LIVE_URL}?s=${token}`}
+      alt="Live view from the camera"
+      onError={() => {
+        window.clearTimeout(retry.current);
+        retry.current = window.setTimeout(() => setToken(nextStream()), 1000);
+      }}
+    />
+  );
+}
+
 function settingLine(cam: CameraSnapshot) {
   const s = cam.settings;
   return [s.aperture?.display, s.shutterspeed?.display, s.iso?.display, s.exposurecompensation?.display].filter(Boolean) as string[];
@@ -123,7 +151,7 @@ export function CameraStage() {
     <div className="cam-live" data-testid="camera-live">
       <div className="cam-live-inner">
       <div className="cam-live-frame">
-        <img className="cam-live-img" src={CAMERA_LIVE_URL} alt="Live view from the camera" />
+        <LiveImg className="cam-live-img" />
         <span className="cam-live-tag">
           <span className="cam-live-dot" aria-hidden="true" />
           LIVE
