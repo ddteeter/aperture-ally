@@ -33,10 +33,18 @@ LIVE_FPS = 30.0  # a preview frame takes ~22 ms on the E-M1 II
 # during live view it runs about once a second, and every loop for a while after a shot (so files arrive fast).
 LIVE_EVENT_EVERY_S = 1.0
 EXPECT_FILES_S = 8.0
+# After waking from sleep the E-M1 II reconnected but sent no usable live-view frames (~1.3 s each, not JPEG) until
+# a second reconnect (2026-10-05). After this many bad frames in a row, reconnect once (at most every LIVE_HEAL_S).
+LIVE_BAD_FRAMES = 3
+LIVE_HEAL_S = 30.0
 READBACK_S = 0.15  # the body reports a new value ~20 ms after a set; wait this long before calling it clamped
 
 
 class NotConnected(RuntimeError):
+    pass
+
+
+class LiveStalled(RuntimeError):
     pass
 
 
@@ -73,6 +81,8 @@ class CameraService:
         self.frame: bytes | None = None
         self.frame_seq = 0
         self._last_frame_at = 0.0
+        self._bad_frames = 0
+        self._healed_at = -LIVE_HEAL_S
         self._last_event_poll = 0.0
         self._battery_at = 0.0
         self._expect_until = 0.0  # poll events every loop until then (after a shutter)
@@ -178,6 +188,9 @@ class CameraService:
             except CameraLost as exc:
                 self._disconnect("asleep", f"Camera disconnected or asleep ({exc}). Half-press the shutter to wake it.")
                 next_try = time.monotonic() + self.poll_s
+            except LiveStalled:
+                self._disconnect("connecting", "Live view stalled; reconnecting…")
+                next_try = time.monotonic()
             except Exception:
                 log.exception("camera worker error")
         self._disconnect("off" if self.mode == "off" else "absent", "Stopped")
@@ -264,6 +277,13 @@ class CameraService:
             if frame.startswith(b"\xff\xd8"):  # never pass on a corrupt frame
                 self.frame = frame
                 self.frame_seq += 1
+                self._bad_frames = 0
+            else:
+                self._bad_frames += 1
+                if self._bad_frames >= LIVE_BAD_FRAMES and now - self._healed_at >= LIVE_HEAL_S:
+                    self._healed_at, self._bad_frames = now, 0
+                    self._emit("camera.live_stalled", bytes=len(frame), head=frame[:16].hex())
+                    raise LiveStalled(f"{len(frame)} bytes, not a JPEG")
         if now - self._battery_at >= 60:  # the camera's battery, for the power samples
             self._battery_at = now
             self.battery = d.battery()

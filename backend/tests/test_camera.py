@@ -157,6 +157,22 @@ async def test_live_view_frames_only_while_someone_watches(cam):
     assert cam.svc.frame == cam.fake.jpeg
 
 
+async def test_live_view_that_stalls_after_a_wake_reconnects_once(cam):
+    """Found at the desk (2026-10-05): after sleep the camera reconnected but live view sent no JPEGs until a
+    second reconnect."""
+    cam.svc.start()
+    await cam.wait(lambda: cam.svc.state == "connected")
+    good, cam.fake.jpeg = cam.fake.jpeg, b"not a jpeg"
+    cam.svc.live_watchers = 1
+    await cam.wait(lambda: "camera.live_stalled" in cam.types())
+    await cam.wait(lambda: cam.svc.state == "connected" and cam.fake.log.count("connect") == 2)
+    await asyncio.sleep(0.3)
+    assert cam.fake.log.count("connect") == 2  # still bad: no reconnect loop (at most one per LIVE_HEAL_S)
+    cam.fake.jpeg = good
+    seq = cam.svc.frame_seq
+    await cam.wait(lambda: cam.svc.frame_seq > seq)
+
+
 async def test_off_mode_does_nothing(tmp_path):
     svc = CameraService("off", FakeDriver, lambda *a, **k: None, inbox=tmp_path)
     svc.start()
@@ -334,7 +350,7 @@ async def test_remote_x_repeats_the_last_advice_not_a_camera_readout(make_harnes
     await h.app.audio.speak("f 4.5", lambda: True, {"kind": "camera"})
     await h.app.on_remote_button("x", True)
     await h.wait(lambda: len(h.speech.spoken) >= 4, 3, "repeat spoken")
-    assert h.speech.spoken[-1] == "Open to f/2.8 for a softer background."
+    assert h.speech.spoken[-1] == "Open to f 2.8 for a softer background."  # the voice reads f/2.8 as "f 2.8"
 
 
 def test_voice_commands_for_the_live_view_grid_and_applying_the_suggestion():
