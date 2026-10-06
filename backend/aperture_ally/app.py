@@ -51,7 +51,9 @@ def create_app(settings: Settings | None = None, coach: ApertureAllyApp | None =
                 if "/" not in path and f.is_file():
                     return FileResponse(f)
                 raise HTTPException(404)
-            return FileResponse(dist / "index.html")
+            # Always revalidate the shell: without this the app's web view cached it and kept running an old UI
+            # after rebuilds (found 2026-10-05). The hashed files under /assets can stay cached.
+            return FileResponse(dist / "index.html", headers={"Cache-Control": "no-cache"})
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     return app

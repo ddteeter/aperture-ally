@@ -159,7 +159,8 @@ async def test_the_ui_shell_favicon_and_nothing_else_is_served_from_dist(tmp_pat
     app = create_app(Settings(data_dir=tmp_path / "data", frontend_dist=dist, _env_file=None))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1") as c:
         assert (await c.get("/favicon.svg")).text == "<svg/>"
-        assert (await c.get("/library")).text == "<html>shell</html>"
+        shell = await c.get("/library")
+        assert shell.text == "<html>shell</html>" and shell.headers["cache-control"] == "no-cache"  # never a stale UI
         assert (await c.get("/assets/app.js")).text == "js"
         assert (await c.get("/nope.png")).status_code == 404
         assert (await c.get("/assets/../../secret.txt")).status_code == 404
